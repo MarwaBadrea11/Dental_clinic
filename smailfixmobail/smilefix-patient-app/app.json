@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SmileFix",
+    "slug": "smilefix-patient-app",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#edf1f4"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.smilefix.patient"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#61bec5"
+      },
+      "package": "com.smilefix.patient",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      "expo-localization"
+    ]
+  }
+}

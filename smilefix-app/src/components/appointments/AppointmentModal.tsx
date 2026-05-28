@@ -1,0 +1,251 @@
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
+import { Calendar, Clock, User, Stethoscope, FileText, Hash } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
+import { Textarea } from '@/components/ui/Textarea'
+import { Button } from '@/components/ui/Button'
+import { FormField } from '@/components/ui/FormField'
+import { AppointmentStatusBadge } from './AppointmentStatusBadge'
+import { cn } from '@/utils/cn'
+import type { Appointment, AppointmentStatus } from '@/types'
+
+// ── View Modal ────────────────────────────────────────────────────────────────
+
+interface AppointmentViewModalProps {
+  appointment: Appointment | null
+  open: boolean
+  onClose: () => void
+  onEdit?: (a: Appointment) => void
+  onDelete?: (id: string) => void
+  onStatusChange?: (id: string, status: AppointmentStatus) => void
+}
+
+export function AppointmentViewModal({ appointment: a, open, onClose, onEdit, onDelete, onStatusChange }: AppointmentViewModalProps) {
+  const { t } = useTranslation()
+  if (!a) return null
+
+  const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
+    { value: 'scheduled',   label: t('status.scheduled') },
+    { value: 'confirmed',   label: t('status.confirmed') },
+    { value: 'in-progress', label: t('status.inProgress') },
+    { value: 'completed',   label: t('status.completed') },
+    { value: 'cancelled',   label: t('status.cancelled') },
+    { value: 'no-show',     label: t('status.noShow') },
+  ]
+
+  return (
+    <Modal open={open} onClose={onClose} size="md">
+      <div className="-mx-6 -mt-6 h-1.5 mb-6 rounded-t-[var(--radius-xl)]" style={{ background: a.color ?? 'var(--color-primary)' }} />
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-[var(--color-on-surface)]" style={{ fontFamily: 'Manrope, sans-serif' }}>{a.treatment}</h2>
+            <p className="text-sm text-[var(--color-on-surface-variant)] mt-0.5">{a.treatmentCategory}</p>
+          </div>
+          <AppointmentStatusBadge status={a.status} size="md" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { icon: <User size={14} />,       label: t('common.patient'), value: `${a.patientName} (${a.patientCode ?? ''})` },
+            { icon: <Stethoscope size={14} />, label: t('common.doctor'),  value: a.doctorName },
+            { icon: <Calendar size={14} />,    label: t('common.date'),    value: new Date(a.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
+            { icon: <Clock size={14} />,       label: t('common.type'),    value: `${a.startTime} – ${a.endTime}` },
+            ...(a.chair ? [{ icon: <Hash size={14} />, label: t('calendar.chair'), value: `${t('calendar.chair')} ${a.chair}` }] : []),
+          ].map((item) => (
+            <div key={item.label} className="bg-[var(--color-surface-container-low)] rounded-[var(--radius-DEFAULT)] p-3">
+              <div className="flex items-center gap-1.5 text-[var(--color-on-surface-variant)] mb-1">
+                {item.icon}
+                <span className="text-[10px] font-semibold uppercase tracking-wide">{item.label}</span>
+              </div>
+              <p className="text-sm font-medium text-[var(--color-on-surface)]">{item.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {a.notes && (
+          <div className="bg-[var(--color-surface-container-low)] rounded-[var(--radius-DEFAULT)] p-3">
+            <div className="flex items-center gap-1.5 text-[var(--color-on-surface-variant)] mb-1">
+              <FileText size={14} />
+              <span className="text-[10px] font-semibold uppercase tracking-wide">{t('common.notes')}</span>
+            </div>
+            <p className="text-sm text-[var(--color-on-surface-variant)]">{a.notes}</p>
+          </div>
+        )}
+
+        {onStatusChange && (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)] mb-2">{t('calendar.updateStatus')}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {STATUS_OPTIONS.map((s) => (
+                <button key={s.value} onClick={() => onStatusChange(a.id, s.value)}
+                  className={cn('px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150',
+                    a.status === s.value
+                      ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]'
+                      : 'bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:bg-[var(--color-primary-container)]/20 hover:text-[var(--color-primary)]')}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-outline-variant)]/15">
+          {onDelete && <Button variant="danger" size="sm" onClick={() => { onDelete(a.id); onClose() }}>{t('common.delete')}</Button>}
+          {onEdit && <Button variant="outline" size="sm" onClick={() => { onEdit(a); onClose() }}>{t('common.edit')}</Button>}
+          <Button size="sm" onClick={onClose}>{t('common.close')}</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Create/Edit Modal ─────────────────────────────────────────────────────────
+
+interface AppointmentFormModalProps {
+  open: boolean
+  onClose: () => void
+  onSave: (data: Omit<Appointment, 'id'>) => void
+  initialDate?: string
+  initialData?: Partial<Appointment>
+  patients?: { id: string; name: string; code: string }[]
+  loading?: boolean
+}
+
+const DOCTOR_OPTIONS = [
+  { value: 'Dr. Smith',    label: 'Dr. Smith — Orthodontist' },
+  { value: 'Dr. Peterson', label: 'Dr. Peterson — Endodontist' },
+  { value: 'Dr. Lee',      label: 'Dr. Lee — Periodontist' },
+]
+
+const TREATMENT_OPTIONS = [
+  { value: 'Dental Cleaning',     label: 'Dental Cleaning' },
+  { value: 'Composite Filling',   label: 'Composite Filling' },
+  { value: 'Root Canal Therapy',  label: 'Root Canal Therapy' },
+  { value: 'Crown Placement',     label: 'Crown Placement' },
+  { value: 'Teeth Whitening',     label: 'Teeth Whitening' },
+  { value: 'Braces Adjustment',   label: 'Braces Adjustment' },
+  { value: 'Tooth Extraction',    label: 'Tooth Extraction' },
+  { value: 'Periodontal Scaling', label: 'Periodontal Scaling' },
+  { value: 'X-Ray Series',        label: 'X-Ray Series' },
+  { value: 'Consultation',        label: 'Consultation' },
+]
+
+export function AppointmentFormModal({ open, onClose, onSave, initialDate, initialData, patients = [], loading = false }: AppointmentFormModalProps) {
+  const { t } = useTranslation()
+
+  const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
+    { value: 'scheduled',   label: t('status.scheduled') },
+    { value: 'confirmed',   label: t('status.confirmed') },
+    { value: 'in-progress', label: t('status.inProgress') },
+    { value: 'completed',   label: t('status.completed') },
+    { value: 'cancelled',   label: t('status.cancelled') },
+    { value: 'no-show',     label: t('status.noShow') },
+  ]
+
+  const CHAIR_OPTIONS = [1, 2, 3, 4].map((n) => ({ value: String(n), label: `${t('calendar.chair')} ${n}` }))
+
+  const [form, setForm] = useState({
+    patientId: initialData?.patientId ?? '',
+    patientName: initialData?.patientName ?? '',
+    patientCode: initialData?.patientCode ?? '',
+    doctorId: initialData?.doctorId ?? 'd1',
+    doctorName: initialData?.doctorName ?? 'Dr. Smith',
+    date: initialData?.date ?? initialDate ?? new Date().toISOString().split('T')[0],
+    startTime: initialData?.startTime ?? '09:00',
+    endTime: initialData?.endTime ?? '10:00',
+    treatment: initialData?.treatment ?? '',
+    treatmentCategory: initialData?.treatmentCategory ?? '',
+    status: (initialData?.status ?? 'scheduled') as AppointmentStatus,
+    notes: initialData?.notes ?? '',
+    chair: initialData?.chair ?? 1,
+    color: initialData?.color ?? 'var(--color-primary)',
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const set = (key: string, value: unknown) => {
+    setForm((f) => ({ ...f, [key]: value }))
+    setErrors((e) => ({ ...e, [key]: '' }))
+  }
+
+  const validate = () => {
+    const errs: Record<string, string> = {}
+    if (!form.patientName) errs.patientName = t('common.required')
+    if (!form.treatment)   errs.treatment   = t('common.required')
+    if (!form.date)        errs.date        = t('common.required')
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const handleSave = () => {
+    if (!validate()) return
+    onSave({ ...form })
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={initialData?.id ? t('calendar.editAppointment') : t('calendar.newApptTitle')}
+      description={t('calendar.newApptDesc')}
+      size="lg"
+    >
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+        {/* Patient Name — spans full width on its own row */}
+        <FormField label={t('calendar.patientName')} required error={errors.patientName} className="col-span-2">
+          <Input placeholder={t('calendar.patientName')} value={form.patientName} onChange={(e) => set('patientName', e.target.value)} />
+        </FormField>
+
+        {/* Patient Code + Doctor — side by side */}
+        <FormField label={t('calendar.patientCode')}>
+          <Input placeholder="SF-00000" value={form.patientCode} onChange={(e) => set('patientCode', e.target.value)} />
+        </FormField>
+        <FormField label={t('common.doctor')}>
+          <Select options={DOCTOR_OPTIONS} value={form.doctorName} onChange={(e) => set('doctorName', e.target.value)} />
+        </FormField>
+
+        {/* Treatment — spans full width */}
+        <FormField label={t('patients.treatment')} required error={errors.treatment} className="col-span-2">
+          <Select options={[{ value: '', label: t('calendar.selectTreatment') }, ...TREATMENT_OPTIONS]} value={form.treatment} onChange={(e) => set('treatment', e.target.value)} />
+        </FormField>
+
+        {/* Date + Chair — side by side */}
+        <FormField label={t('common.date')} required error={errors.date}>
+          <Input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
+        </FormField>
+        <FormField label={t('calendar.chair')}>
+          <Select options={CHAIR_OPTIONS} value={String(form.chair)} onChange={(e) => set('chair', Number(e.target.value))} />
+        </FormField>
+
+        {/* Start Time + End Time — side by side */}
+        <FormField label={t('calendar.startTime')}>
+          <Input type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} />
+        </FormField>
+        <FormField label={t('calendar.endTime')}>
+          <Input type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} />
+        </FormField>
+
+        {/* Status — spans full width */}
+        <FormField label={t('common.status')} className="col-span-2">
+          <Select options={STATUS_OPTIONS} value={form.status} onChange={(e) => set('status', e.target.value as AppointmentStatus)} />
+        </FormField>
+
+        {/* Notes — spans full width */}
+        <FormField label={t('common.notes')} className="col-span-2">
+          <Textarea placeholder={t('common.notes')} value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={2} />
+        </FormField>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-[var(--color-outline-variant)]/15">
+        <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+        <Button onClick={handleSave} loading={loading}>
+          {initialData?.id ? t('calendar.saveChanges') : t('calendar.bookAppointment')}
+        </Button>
+      </div>
+    </Modal>
+  )
+}

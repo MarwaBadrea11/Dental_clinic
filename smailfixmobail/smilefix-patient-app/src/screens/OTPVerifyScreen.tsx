@@ -1,0 +1,554 @@
+// ─────────────────────────────────────────────
+// OTP Verification Screen
+// 4-digit boxes | Countdown | Resend
+// Clinical Serenity | Arabic RTL
+// ─────────────────────────────────────────────
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Animated,
+  StatusBar,
+  ActivityIndicator,
+  Keyboard,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../navigation/types';
+import { useAppStore } from '../store/appStore';
+import Text from '../components/Text';
+
+const C = {
+  bg:        '#edf1f4',
+  surface:   '#f6fafd',
+  warm:      '#f7eee5',
+  teal:      '#61bec5',
+  tealLight: '#9acec1',
+  blue:      '#1e5979',
+  primary:   '#00696f',
+  onTeal:    '#004b4f',
+  textSub:   '#3e494a',
+  outline:   '#bdc9c9',
+  white:     '#ffffff',
+  error:     '#ba1a1a',
+  errorBg:   '#ffdad6',
+  secondary: '#b6eadd',
+  secText:   '#35675d',
+};
+
+const OTP_LENGTH = 4;
+
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'OTPVerify'>;
+  route: RouteProp<RootStackParamList, 'OTPVerify'>;
+};
+
+export default function OTPVerifyScreen({ navigation, route }: Props) {
+  const { phone } = route.params;
+  const setAuthenticated = useAppStore((s) => s.setAuthenticated);
+
+  const [digits, setDigits]     = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
+  const [countdown, setCountdown] = useState(59);
+  const [resending, setResending] = useState(false);
+  const [success, setSuccess]   = useState(false);
+
+  // One hidden input that drives all boxes
+  const hiddenRef = useRef<TextInput>(null);
+
+  // Animations
+  const cardY   = useRef(new Animated.Value(50)).current;
+  const cardO   = useRef(new Animated.Value(0)).current;
+  const shakeX  = useRef(new Animated.Value(0)).current;
+  const successS = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(cardY, { toValue: 0, tension: 65, friction: 9, useNativeDriver: true }),
+      Animated.timing(cardO, { toValue: 1, duration: 500, useNativeDriver: true }),
+    ]).start();
+    // Auto-focus
+    setTimeout(() => hiddenRef.current?.focus(), 400);
+  }, []);
+
+  // Countdown timer
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  const shake = () =>
+    Animated.sequence([
+      Animated.timing(shakeX, { toValue: 14,  duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -14, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 8,   duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 0,   duration: 55, useNativeDriver: true }),
+    ]).start();
+
+  // Handle digit input from hidden field
+  const handleChange = (text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, OTP_LENGTH);
+    const arr = cleaned.split('');
+    while (arr.length < OTP_LENGTH) arr.push('');
+    setDigits(arr);
+    setError('');
+
+    // Auto-verify when all filled
+    if (cleaned.length === OTP_LENGTH) {
+      Keyboard.dismiss();
+      verify(cleaned);
+    }
+  };
+
+  const verify = useCallback((code: string) => {
+    setLoading(true);
+    setError('');
+
+    // Simulate API verification (any 4 digits pass in demo)
+    setTimeout(() => {
+      if (code.length === OTP_LENGTH) {
+        // Success animation
+        setSuccess(true);
+        Animated.spring(successS, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }).start();
+
+        setTimeout(() => {
+          setAuthenticated(
+            {
+              id: Date.now().toString(),
+              fullName: 'أحمد محمد',
+              phone,
+              nationalId: '1234567890',
+              dateOfBirth: '1990-01-01',
+              gender: 'male',
+              email: 'ahmed@smilefix.sa',
+              alignersTotal: 24,
+              alignersCurrent: 12,
+            },
+            'token-' + Date.now()
+          );
+          setLoading(false);
+          // Navigator reacts to isAuthenticated automatically
+        }, 800);
+      } else {
+        setLoading(false);
+        setError('رمز التحقق غير صحيح. حاول مرة أخرى.');
+        setDigits(Array(OTP_LENGTH).fill(''));
+        shake();
+        setTimeout(() => hiddenRef.current?.focus(), 200);
+      }
+    }, 1200);
+  }, [phone]);
+
+  const handleResend = () => {
+    setResending(true);
+    setDigits(Array(OTP_LENGTH).fill(''));
+    setError('');
+    setTimeout(() => {
+      setResending(false);
+      setCountdown(59);
+      setTimeout(() => hiddenRef.current?.focus(), 200);
+    }, 1000);
+  };
+
+  const filledCount = digits.filter(Boolean).length;
+
+  return (
+    <View style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+
+      <LinearGradient
+        colors={[C.surface, C.bg, C.warm + '70']}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={s.blob1} />
+      <View style={s.blob2} />
+
+      <SafeAreaView style={s.safe}>
+        {/* ── Back ── */}
+        <TouchableOpacity
+          style={s.backRow}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={s.backArrow}>←</Text>
+          <Text style={s.backText}>تغيير الرقم</Text>
+        </TouchableOpacity>
+
+        {/* ── Header ── */}
+        <View style={s.header}>
+          {/* Success icon or lock icon */}
+          <Animated.View
+            style={[
+              s.iconCircle,
+              success && s.iconCircleSuccess,
+              {
+                transform: [{
+                  scale: successS.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }),
+                }],
+              },
+            ]}
+          >
+            <Text style={s.iconEmoji}>{success ? '✅' : '📱'}</Text>
+          </Animated.View>
+
+          <Text style={s.title}>
+            {success ? 'تم التحقق بنجاح!' : 'أدخل رمز التحقق'}
+          </Text>
+          <Text style={s.subtitle}>
+            {success
+              ? 'جارٍ تسجيل دخولك...'
+              : `أرسلنا رمزاً مكوّناً من ${OTP_LENGTH} أرقام إلى`}
+          </Text>
+          {!success && (
+            <Text style={s.phoneDisplay}>{phone}</Text>
+          )}
+        </View>
+
+        {/* ── OTP Card ── */}
+        <Animated.View
+          style={[
+            s.card,
+            {
+              opacity: cardO,
+              transform: [{ translateY: cardY }, { translateX: shakeX }],
+            },
+          ]}
+        >
+          {/* ── 4 digit boxes ── */}
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => hiddenRef.current?.focus()}
+            style={s.boxesRow}
+          >
+            {digits.map((d, i) => {
+              const isFocused = !loading && filledCount === i;
+              const isFilled  = !!d;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    s.digitBox,
+                    isFocused && s.digitBoxFocused,
+                    isFilled  && s.digitBoxFilled,
+                    !!error   && s.digitBoxError,
+                    success   && s.digitBoxSuccess,
+                  ]}
+                >
+                  {loading && isFilled ? (
+                    <ActivityIndicator color={C.teal} size="small" />
+                  ) : (
+                    <Text style={[s.digitText, isFilled && s.digitTextFilled]}>
+                      {d || (isFocused ? '|' : '')}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </TouchableOpacity>
+
+          {/* Hidden input */}
+          <TextInput
+            ref={hiddenRef}
+            style={s.hiddenInput}
+            value={digits.join('')}
+            onChangeText={handleChange}
+            keyboardType="number-pad"
+            maxLength={OTP_LENGTH}
+            caretHidden
+          />
+
+          {/* Error message */}
+          {!!error && (
+            <View style={s.errRow}>
+              <Text style={s.errText}>{error}</Text>
+              <Text style={s.errIcon}>⚠️</Text>
+            </View>
+          )}
+
+          {/* Progress bar */}
+          <View style={s.progressTrack}>
+            <Animated.View
+              style={[
+                s.progressFill,
+                { width: `${(filledCount / OTP_LENGTH) * 100}%` },
+                success && s.progressSuccess,
+              ]}
+            />
+          </View>
+          <Text style={s.progressHint}>
+            {filledCount}/{OTP_LENGTH} أرقام
+          </Text>
+
+          {/* Verify button (manual) */}
+          {!success && (
+            <TouchableOpacity
+              style={[
+                s.btnVerify,
+                (loading || filledCount < OTP_LENGTH) && s.btnDisabled,
+              ]}
+              onPress={() => verify(digits.join(''))}
+              disabled={loading || filledCount < OTP_LENGTH}
+              activeOpacity={0.82}
+            >
+              <LinearGradient
+                colors={
+                  loading || filledCount < OTP_LENGTH
+                    ? [C.outline, C.outline]
+                    : [C.teal, C.blue]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.btnGrad}
+              >
+                {loading ? (
+                  <ActivityIndicator color={C.white} size="small" />
+                ) : (
+                  <Text style={s.btnText}>تحقق وادخل</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {/* Resend section */}
+          {!success && (
+            <View style={s.resendSection}>
+              {countdown > 0 ? (
+                <View style={s.countdownRow}>
+                  <Text style={s.countdownText}>
+                    إعادة الإرسال بعد{' '}
+                    <Text style={s.countdownNum}>{countdown}</Text>
+                    {' '}ثانية
+                  </Text>
+                  {/* Circular progress */}
+                  <View style={s.countdownCircle}>
+                    <Text style={s.countdownCircleText}>{countdown}</Text>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={s.resendBtn}
+                  onPress={handleResend}
+                  disabled={resending}
+                >
+                  {resending ? (
+                    <ActivityIndicator color={C.primary} size="small" />
+                  ) : (
+                    <>
+                      <Text style={s.resendIcon}>🔄</Text>
+                      <Text style={s.resendText}>إعادة إرسال الرمز</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </Animated.View>
+
+        {/* ── Demo hint ── */}
+        <View style={s.demoBox}>
+          <Text style={s.demoIcon}>💡</Text>
+          <Text style={s.demoText}>
+            للتجربة: أدخل أي {OTP_LENGTH} أرقام للدخول
+          </Text>
+        </View>
+
+        {/* ── Register link ── */}
+        <View style={s.regRow}>
+          <Text style={s.regText}>مريض جديد؟ </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={s.regLink}>أنشئ حسابك الآن</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────
+const BOX = 64;
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, paddingHorizontal: 24 },
+
+  blob1: {
+    position: 'absolute', width: 280, height: 280, borderRadius: 140,
+    backgroundColor: C.teal + '14', top: -60, right: -60,
+  },
+  blob2: {
+    position: 'absolute', width: 200, height: 200, borderRadius: 100,
+    backgroundColor: C.tealLight + '10', bottom: 80, left: -60,
+  },
+
+  backRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingTop: 16, paddingBottom: 4, alignSelf: 'flex-end',
+  },
+  backArrow: { fontSize: 18, color: C.primary },
+  backText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: C.primary },
+
+  // Header
+  header: { alignItems: 'center', marginVertical: 24 },
+  iconCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: C.teal + '20',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+  },
+  iconCircleSuccess: { backgroundColor: '#b6eadd' },
+  iconEmoji: { fontSize: 36 },
+  title: {
+    fontFamily: 'Manrope_700Bold', fontSize: 26,
+    color: C.blue, textAlign: 'center', marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: 'Inter_400Regular', fontSize: 14,
+    color: C.textSub, textAlign: 'center',
+  },
+  phoneDisplay: {
+    fontFamily: 'Manrope_700Bold', fontSize: 18,
+    color: C.primary, textAlign: 'center',
+    marginTop: 4, letterSpacing: 1,
+  },
+
+  // Card
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderRadius: 24, padding: 24,
+    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.9)',
+    shadowColor: C.blue, shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.07, shadowRadius: 28, elevation: 4,
+    marginBottom: 16,
+  },
+
+  // OTP boxes
+  boxesRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  digitBox: {
+    width: BOX, height: BOX, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 2, borderColor: C.outline,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  digitBoxFocused: {
+    borderColor: C.teal,
+    shadowColor: C.teal, shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 3,
+  },
+  digitBoxFilled: { borderColor: C.blue, backgroundColor: C.blue + '08' },
+  digitBoxError:  { borderColor: C.error, backgroundColor: C.errorBg + '40' },
+  digitBoxSuccess: { borderColor: '#35675d', backgroundColor: '#b6eadd' },
+  digitText: {
+    fontFamily: 'Manrope_700Bold', fontSize: 28,
+    color: C.outline, letterSpacing: 0,
+  },
+  digitTextFilled: { color: C.blue },
+
+  // Hidden input
+  hiddenInput: {
+    position: 'absolute', opacity: 0,
+    width: 1, height: 1, top: 0, left: 0,
+  },
+
+  // Error
+  errRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6, marginBottom: 12,
+  },
+  errText: {
+    fontFamily: 'Inter_400Regular', fontSize: 13,
+    color: C.error, textAlign: 'center',
+  },
+  errIcon: { fontSize: 14 },
+
+  // Progress
+  progressTrack: {
+    height: 4, backgroundColor: C.outline + '40',
+    borderRadius: 2, overflow: 'hidden', marginBottom: 6,
+  },
+  progressFill: {
+    height: '100%', backgroundColor: C.teal,
+    borderRadius: 2,
+  },
+  progressSuccess: { backgroundColor: '#35675d' },
+  progressHint: {
+    fontFamily: 'Inter_400Regular', fontSize: 11,
+    color: C.textSub, textAlign: 'center', marginBottom: 16,
+  },
+
+  // Verify button
+  btnVerify: {
+    borderRadius: 16, overflow: 'hidden',
+    shadowColor: C.teal, shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.30, shadowRadius: 18, elevation: 5,
+    marginBottom: 16,
+  },
+  btnDisabled: { opacity: 0.45 },
+  btnGrad: { height: 56, alignItems: 'center', justifyContent: 'center' },
+  btnText: {
+    fontFamily: 'Manrope_700Bold', fontSize: 17,
+    color: C.white, letterSpacing: 0.3,
+  },
+
+  // Resend
+  resendSection: { alignItems: 'center' },
+  countdownRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+  },
+  countdownText: {
+    fontFamily: 'Inter_400Regular', fontSize: 13, color: C.textSub,
+  },
+  countdownNum: {
+    fontFamily: 'Manrope_700Bold', color: C.primary,
+  },
+  countdownCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    borderWidth: 2, borderColor: C.teal,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  countdownCircleText: {
+    fontFamily: 'Manrope_700Bold', fontSize: 13, color: C.primary,
+  },
+  resendBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 10, paddingHorizontal: 20,
+    backgroundColor: C.secondary + '60',
+    borderRadius: 12,
+  },
+  resendIcon: { fontSize: 16 },
+  resendText: {
+    fontFamily: 'Inter_600SemiBold', fontSize: 14, color: C.primary,
+  },
+
+  // Demo
+  demoBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: C.warm, borderRadius: 12,
+    padding: 12, marginBottom: 16,
+  },
+  demoIcon: { fontSize: 16 },
+  demoText: {
+    fontFamily: 'Inter_400Regular', fontSize: 12,
+    color: C.textSub, flex: 1, textAlign: 'right',
+  },
+
+  // Register
+  regRow: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+  },
+  regText: { fontFamily: 'Inter_400Regular', fontSize: 14, color: C.textSub },
+  regLink: {
+    fontFamily: 'Manrope_700Bold', fontSize: 14,
+    color: C.primary, textDecorationLine: 'underline',
+  },
+});

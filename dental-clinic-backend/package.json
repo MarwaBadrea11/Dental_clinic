@@ -1,0 +1,36 @@
+{
+  "name": "dental-clinic-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "vitest --run",
+    "db:migrate": "knex --knexfile src/db/knexfile.js migrate:latest",
+    "db:rollback": "knex --knexfile src/db/knexfile.js migrate:rollback",
+    "db:make": "knex --knexfile src/db/knexfile.js migrate:make"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/jwt": "^10.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.8.5",
+    "fastify-cors": "^6.0.3",
+    "fastify-plugin": "^5.1.0",
+    "knex": "^3.2.10",
+    "pg": "^8.21.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "fast-check": "^4.8.0",
+    "vitest": "^4.1.7"
+  }
+}

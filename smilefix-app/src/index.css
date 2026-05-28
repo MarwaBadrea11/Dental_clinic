@@ -1,0 +1,315 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand Colors (Clinical Serenity) ── */
+  --color-primary: #00696f;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #61bec5;
+  --color-on-primary-container: #004b4f;
+  --color-inverse-primary: #79d5dc;
+  --color-primary-fixed: #95f1f8;
+  --color-primary-fixed-dim: #79d5dc;
+  --color-on-primary-fixed: #002022;
+  --color-on-primary-fixed-variant: #004f54;
+
+  --color-secondary: #35675d;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #b6eadd;
+  --color-on-secondary-container: #396b61;
+  --color-secondary-fixed: #b8ede0;
+  --color-secondary-fixed-dim: #9dd1c4;
+  --color-on-secondary-fixed: #00201b;
+  --color-on-secondary-fixed-variant: #1b4f45;
+
+  --color-tertiary: #2c6484;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #82b6da;
+  --color-on-tertiary-container: #004867;
+  --color-tertiary-fixed: #c7e7ff;
+  --color-tertiary-fixed-dim: #98cdf2;
+  --color-on-tertiary-fixed: #001e2e;
+  --color-on-tertiary-fixed-variant: #074c6b;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --color-background: #f6fafd;
+  --color-on-background: #171c1f;
+  --color-surface: #f6fafd;
+  --color-surface-dim: #d6dbdd;
+  --color-surface-bright: #f6fafd;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f0f4f7;
+  --color-surface-container: #eaeef1;
+  --color-surface-container-high: #e5e9ec;
+  --color-surface-container-highest: #dfe3e6;
+  --color-on-surface: #171c1f;
+  --color-on-surface-variant: #3e494a;
+  --color-inverse-surface: #2c3134;
+  --color-inverse-on-surface: #edf1f4;
+  --color-surface-variant: #dfe3e6;
+  --color-surface-tint: #00696f;
+  --color-outline: #6e797a;
+  --color-outline-variant: #bdc9c9;
+
+  /* ── Typography ── */
+  --font-display: "Manrope", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  /* ── Border Radius ── */
+  --radius-sm: 0.25rem;
+  --radius-DEFAULT: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Spacing ── */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 3rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-margin: 2rem;
+
+  /* ── Shadows ── */
+  --shadow-card: 0 2px 12px 0 rgba(0, 105, 111, 0.08);
+  --shadow-card-hover: 0 8px 32px 0 rgba(0, 105, 111, 0.14);
+  --shadow-modal: 0 24px 64px 0 rgba(0, 105, 111, 0.18);
+  --shadow-sidebar: 4px 0 24px 0 rgba(0, 105, 111, 0.07);
+  --shadow-topbar: 0 2px 16px 0 rgba(23, 28, 31, 0.06);
+  --shadow-glow-primary: 0 0 20px 0 rgba(0, 105, 111, 0.25);
+  --shadow-glow-sm: 0 0 8px 0 rgba(0, 105, 111, 0.15);
+}
+
+/* ── Google Fonts — imported at top of file ── */
+
+/* ── Base Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  line-height: 1.6;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-container-low);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* ── Glass Panel Utility ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-sidebar {
+  background: rgba(240, 244, 247, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* ── Focus Ring ── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-DEFAULT);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RTL SUPPORT — flip directional utilities when dir="rtl"
+   ══════════════════════════════════════════════════════════════ */
+
+/* Arabic font stack — better rendering for Arabic text */
+[dir="rtl"] {
+  font-family: 'Segoe UI', 'Tahoma', 'Arial', var(--font-body), sans-serif;
+  letter-spacing: 0; /* Arabic doesn't use letter-spacing */
+}
+
+/* Sidebar: flip from left to right in RTL */
+[dir="rtl"] .sidebar-panel {
+  left: auto;
+  right: 0;
+}
+
+/* Flip chevron/arrow icons in RTL */
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Ensure text alignment follows direction */
+[dir="rtl"] input,
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
+  direction: rtl;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK MODE — override all surface/text tokens under .dark
+   Brand colors (primary/secondary/tertiary/error) stay the same.
+   Only surfaces, backgrounds, and text adapt.
+   ══════════════════════════════════════════════════════════════ */
+
+/* Smooth transition for theme switch — only on color properties */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Disable transition on elements that shouldn't animate (e.g. SVG paths) */
+svg *, img {
+  transition: none;
+}
+
+.dark {
+  /* ── Surfaces ── */
+  --color-background:                #0f1416;
+  --color-on-background:             #e1e5e8;
+  --color-surface:                   #0f1416;
+  --color-surface-dim:               #0a0e10;
+  --color-surface-bright:            #1a2124;
+  --color-surface-container-lowest:  #0a0e10;
+  --color-surface-container-low:     #141b1e;
+  --color-surface-container:         #1a2124;
+  --color-surface-container-high:    #212b2e;
+  --color-surface-container-highest: #2a3438;
+  --color-surface-variant:           #2a3438;
+
+  /* ── Text ── */
+  --color-on-surface:         #e1e5e8;
+  --color-on-surface-variant: #8fa3a6;
+  --color-inverse-surface:    #e1e5e8;
+  --color-inverse-on-surface: #1a2124;
+
+  /* ── Outlines ── */
+  --color-outline:         #4a5c5e;
+  --color-outline-variant: #2a3c3e;
+
+  /* ── Primary adaptations ── */
+  --color-primary:              #79d5dc;
+  --color-on-primary:           #002022;
+  --color-primary-container:    #004f54;
+  --color-on-primary-container: #95f1f8;
+  --color-surface-tint:         #79d5dc;
+
+  /* ── Secondary adaptations ── */
+  --color-secondary:              #9dd1c4;
+  --color-on-secondary:           #00201b;
+  --color-secondary-container:    #1b4f45;
+  --color-on-secondary-container: #b8ede0;
+
+  /* ── Tertiary adaptations ── */
+  --color-tertiary:              #98cdf2;
+  --color-on-tertiary:           #001e2e;
+  --color-tertiary-container:    #074c6b;
+  --color-on-tertiary-container: #c7e7ff;
+
+  /* ── Error adaptations ── */
+  --color-error:             #ffb4ab;
+  --color-on-error:          #690005;
+  --color-error-container:   #93000a;
+  --color-on-error-container:#ffdad6;
+
+  /* ── Shadows — softer on dark ── */
+  --shadow-card:        0 2px 12px 0 rgba(0, 0, 0, 0.35);
+  --shadow-card-hover:  0 8px 32px 0 rgba(0, 0, 0, 0.50);
+  --shadow-modal:       0 24px 64px 0 rgba(0, 0, 0, 0.60);
+  --shadow-sidebar:     4px 0 24px 0 rgba(0, 0, 0, 0.30);
+  --shadow-topbar:      0 2px 16px 0 rgba(0, 0, 0, 0.25);
+  --shadow-glow-primary:0 0 20px 0 rgba(121, 213, 220, 0.20);
+  --shadow-glow-sm:     0 0 8px  0 rgba(121, 213, 220, 0.12);
+}
+
+/* ── Dark glass panels ── */
+.dark .glass-panel {
+  background: rgba(20, 27, 30, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.dark .glass-sidebar {
+  background: rgba(15, 20, 22, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* ── Dark scrollbar ── */
+.dark ::-webkit-scrollbar-track {
+  background: var(--color-surface-container-low);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-outline);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* ── Dark input/select native elements ── */
+.dark input,
+.dark select,
+.dark textarea {
+  color-scheme: dark;
+}
+
+
+/* ── Patient profile responsive helpers ── */
+@media (max-width: 767px) {
+  .patient-stats-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .patient-finance-grid  { grid-template-columns: 1fr !important; }
+  .patient-overview-grid { grid-template-columns: 1fr !important; }
+  .info-grid             { grid-template-columns: 1fr !important; }
+  .patients-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .patients-card-grid    { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 1023px) {
+  .patient-overview-grid { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .patients-card-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .patients-card-grid    { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* ── Treatments page responsive helpers ── */
+@media (max-width: 767px) {
+  .treatments-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .treatments-card-grid  { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .treatments-card-grid  { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .treatments-card-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}

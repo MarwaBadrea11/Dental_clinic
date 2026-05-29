@@ -53,4 +53,13 @@ export class PatientsRepository {
       .returning('*');
     return patient;
   }
+
+  async softDelete(id) {
+    const [patient] = await this.db('patients')
+      .where({ id })
+      .whereNull('deleted_at')
+      .update({ deleted_at: this.db.fn.now() })
+      .returning('*');
+    return patient;
+  }
 }

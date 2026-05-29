@@ -62,7 +62,7 @@ export function mapPatient(p: BackendPatient): Patient {
     patientCode: p.national_id,
     firstName: p.first_name,
     lastName: p.last_name,
-    dateOfBirth: p.date_of_birth,
+    dateOfBirth: p.date_of_birth?.split('T')[0] ?? p.date_of_birth,
     gender: p.gender as Patient['gender'],
     phone: p.phone,
     email: p.email ?? undefined,
@@ -120,6 +120,10 @@ export async function createPatient(payload: CreatePatientPayload): Promise<Pati
 export async function updatePatient(id: string, payload: UpdatePatientPayload): Promise<Patient> {
   const p = await apiClient.put<BackendPatient>(`/patients/${id}`, payload)
   return mapPatient(p)
+}
+
+export async function deletePatient(id: string): Promise<void> {
+  await apiClient.delete<unknown>(`/patients/${id}`)
 }
 
 // ── Attachment download ───────────────────────────────────────────────────────

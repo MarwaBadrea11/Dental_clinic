@@ -22,10 +22,11 @@ type ViewMode = 'table' | 'grid'
 export default function PatientsPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { patients, deletePatient, loadPatients, loading } = usePatientStore()
+  const { patients, deletePatientById, loadPatients, loading } = usePatientStore()
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => { loadPatients() }, [])
 
@@ -89,7 +90,21 @@ export default function PatientsPage() {
   const actions: DataTableAction<Patient>[] = [
     { label: t('patients.viewProfile'), onClick: (p) => navigate(`/patients/${p.id}`) },
     { label: t('patients.editPatient'), onClick: (p) => navigate(`/patients/${p.id}/edit`) },
-    { label: t('common.delete'),        onClick: (p) => { if (confirm(`${t('common.delete')} ${p.firstName} ${p.lastName}?`)) deletePatient(p.id) }, danger: true },
+    {
+      label: t('common.delete'),
+      danger: true,
+      onClick: async (p) => {
+        if (!confirm(`${t('common.delete')} ${p.firstName} ${p.lastName}?`)) return
+        setDeletingId(p.id)
+        try {
+          await deletePatientById(p.id)
+        } catch {
+          alert(t('patients.deleteFailed') ?? 'Failed to delete patient. Please try again.')
+        } finally {
+          setDeletingId(null)
+        }
+      },
+    },
   ]
 
   return (

@@ -1,10 +1,9 @@
-import { config as loadEnv } from 'dotenv';
-import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
-// Resolve .env relative to the project root (two levels up from src/db/)
+// Absolute path to migrations so knex CLI works from any cwd
 const __dirname = dirname(fileURLToPath(import.meta.url));
-loadEnv({ path: resolve(__dirname, '../../.env') });
+const migrationsDir = resolve(__dirname, 'migrations');
 
 /** @type {Record<string, import('knex').Knex.Config>} */
 const config = {
@@ -12,7 +11,7 @@ const config = {
     client: 'pg',
     connection: process.env['DATABASE_URL'],
     migrations: {
-      directory: './migrations',
+      directory: migrationsDir,
       extension: 'js',
       loadExtensions: ['.js'],
     },
@@ -23,7 +22,7 @@ const config = {
     client: 'pg',
     connection: process.env['DATABASE_URL'],
     migrations: {
-      directory: './migrations',
+      directory: migrationsDir,
       extension: 'js',
       loadExtensions: ['.js'],
     },
@@ -37,7 +36,7 @@ const config = {
       ssl: { rejectUnauthorized: false },
     },
     migrations: {
-      directory: './migrations',
+      directory: migrationsDir,
       extension: 'js',
       loadExtensions: ['.js'],
     },

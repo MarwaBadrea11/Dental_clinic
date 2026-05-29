@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 import type { Patient, MedicalHistoryEntry } from '@/types'
-import { fetchPatients, fetchPatientById, createPatient, updatePatient, type CreatePatientPayload, type UpdatePatientPayload } from '@/services/patientService'
+import {
+  fetchPatients,
+  fetchPatientById,
+  createPatient,
+  updatePatient,
+  deletePatient as deletePatientApi,
+  type CreatePatientPayload,
+  type UpdatePatientPayload,
+} from '@/services/patientService'
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +39,7 @@ interface PatientState {
   loadPatientById: (id: string) => Promise<Patient>
   createPatient: (payload: CreatePatientPayload) => Promise<Patient>
   updatePatientById: (id: string, payload: UpdatePatientPayload) => Promise<Patient>
+  deletePatientById: (id: string) => Promise<void>
 }
 
 export const usePatientStore = create<PatientState>((set, get) => ({
@@ -93,5 +102,18 @@ export const usePatientStore = create<PatientState>((set, get) => ({
     const patient = await updatePatient(id, payload)
     set((s) => ({ patients: s.patients.map((p) => (p.id === id ? patient : p)) }))
     return patient
+  },
+
+  deletePatientById: async (id) => {
+    // Optimistic removal — revert on error
+    const previous = get().patients
+    set((s) => ({ patients: s.patients.filter((p) => p.id !== id) }))
+    try {
+      await deletePatientApi(id)
+    } catch (err) {
+      // Revert optimistic update on failure
+      set({ patients: previous })
+      throw err
+    }
   },
 }))

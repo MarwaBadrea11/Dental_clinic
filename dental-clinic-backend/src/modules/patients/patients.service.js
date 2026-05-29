@@ -43,4 +43,10 @@ export class PatientsService {
 
     return this.repo.update(id, dto);
   }
+
+  async delete(id) {
+    const patient = await this.repo.findById(id);
+    if (!patient) throw new NotFoundError('Patient not found');
+    return this.repo.softDelete(id);
+  }
 }

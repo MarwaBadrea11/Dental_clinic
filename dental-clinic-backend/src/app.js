@@ -33,7 +33,11 @@ export async function buildApp(opts = {}) {
   await fastify.register(knexPlugin);
   await fastify.register(jwtPlugin);
   await fastify.register(securityHeadersPlugin);
-  await fastify.register(cors, { origin: env.CORS_ORIGIN, credentials: true });
+  await fastify.register(cors, {
+    origin: env.CORS_ORIGIN,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
   await fastify.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: '1 minute',

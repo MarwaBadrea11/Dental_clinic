@@ -44,3 +44,8 @@ export async function updatePatientHandler(request, reply) {
   const patient = await getService(request).update(request.params.id, data);
   return reply.status(200).send(successResponse(patient));
 }
+
+export async function deletePatientHandler(request, reply) {
+  await getService(request).delete(request.params.id);
+  return reply.status(200).send(successResponse({ id: request.params.id }));
+}

@@ -50,10 +50,10 @@ export function EmployeeCard({ member: m, onClick, delay = 0, className }: Emplo
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Avatar name={fullName} src={m.avatar} size="md" ring />
-          <div>
-            <p className="font-semibold text-sm text-[var(--color-on-surface)]">{fullName}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm text-[var(--color-on-surface)] truncate">{fullName}</p>
             <p className="text-[11px] text-[var(--color-on-surface-variant)]">{m.employeeCode}</p>
           </div>
         </div>

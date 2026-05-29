@@ -171,11 +171,12 @@ export function DataTable<T extends { id: string }>({
               ))
             ) : paginated.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (hasActions ? 1 : 0)}>
+                <td colSpan={columns.length + (hasActions ? 1 : 0)} style={{ width: '100%' }}>
                   <EmptyState
                     icon={emptyIcon}
                     title={emptyTitle}
                     description={emptyDescription}
+                    className="py-16"
                   />
                 </td>
               </tr>

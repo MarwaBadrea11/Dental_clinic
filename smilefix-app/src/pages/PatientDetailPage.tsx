@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,7 @@ import { AddTimelineNoteModal } from '@/components/patients/AddTimelineNoteModal
 import { UploadFilesModal } from '@/components/patients/UploadFilesModal'
 import type { Attachment } from '@/types'
 import { usePatientStore } from '@/store/patientStore'
+import { downloadAttachment } from '@/services/patientService'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { ROUTES } from '@/constants/routes'
@@ -38,23 +39,39 @@ export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { getPatientById, getHistoryByPatientId, deletePatient, addHistoryEntry } = usePatientStore()
+  const { getPatientById, getHistoryByPatientId, deletePatient, addHistoryEntry, loadPatientById } = usePatientStore()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [fetching, setFetching] = useState(true)  // start true to avoid "not found" flash
 
   const patient = getPatientById(id ?? '')
+
+  // Fetch from API if not in store (e.g. after a page refresh)
+  useEffect(() => {
+    if (!id) { setFetching(false); return }
+    if (patient) { setFetching(false); return }
+    setFetching(true)
+    loadPatientById(id)
+      .catch(() => setFetchError('Patient not found'))
+      .finally(() => setFetching(false))
+  }, [id])
   const history = getHistoryByPatientId(id ?? '')
 
   if (!patient) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <EmptyState
-          title="Patient not found"
-          description="This patient record doesn't exist or has been removed."
-          action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>{t('patients.backToPatients')}</Button>}
-        />
+        {fetching ? (
+          <Loader />
+        ) : (
+          <EmptyState
+            title="Patient not found"
+            description={fetchError ?? "This patient record doesn't exist or has been removed."}
+            action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>{t('patients.backToPatients')}</Button>}
+          />
+        )}
       </div>
     )
   }
@@ -374,7 +391,12 @@ export default function PatientDetailPage() {
                         <p className="text-sm font-medium text-[var(--color-on-surface)] truncate">{att.name}</p>
                         <p className="text-xs text-[var(--color-on-surface-variant)]">{att.size} · {formatDate(att.uploadedAt)}</p>
                       </div>
-                      <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded text-[var(--color-primary)] hover:bg-[var(--color-primary-container)]/20">
+                      <button
+                        onClick={() => downloadAttachment(patient.id, att.id, att.name)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded text-[var(--color-primary)] hover:bg-[var(--color-primary-container)]/20"
+                        title="Download file"
+                        aria-label="Download file"
+                      >
                         <Download size={14} />
                       </button>
                     </motion.div>
@@ -420,11 +442,11 @@ export default function PatientDetailPage() {
                         transition={{ duration: 0.2, delay: i * 0.05 }}
                         className="flex items-center justify-between py-3 border-b border-[var(--color-outline-variant)]/10 last:border-0"
                       >
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-[var(--color-on-surface)]">{h.title}</p>
                           <p className="text-xs text-[var(--color-on-surface-variant)]">{formatDate(h.date)} · {h.doctor}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0 ml-3">
                           <p className="text-sm font-bold text-[var(--color-on-surface)]">{formatCurrency(h.cost!)}</p>
                           {h.status && (
                             <Badge

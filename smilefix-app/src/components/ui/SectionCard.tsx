@@ -35,21 +35,21 @@ export function SectionCard({
     >
       {(title || action) && (
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-outline-variant)]/15">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {icon && (
-              <div className="w-8 h-8 rounded-[var(--radius-DEFAULT)] bg-[var(--color-primary-container)]/20 flex items-center justify-center text-[var(--color-primary)]">
+              <div className="w-8 h-8 rounded-[var(--radius-DEFAULT)] bg-[var(--color-primary-container)]/20 flex items-center justify-center text-[var(--color-primary)] shrink-0">
                 {icon}
               </div>
             )}
-            <div>
+            <div className="min-w-0">
               {title && <h3 className="font-semibold text-sm text-[var(--color-on-surface)]">{title}</h3>}
               {subtitle && <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5">{subtitle}</p>}
             </div>
           </div>
-          {action && <div>{action}</div>}
+          {action && <div className="shrink-0 ml-2">{action}</div>}
         </div>
       )}
-      <div className={cn(!noPadding && 'p-6', bodyClassName)}>
+      <div className={cn('min-w-0 w-full', !noPadding && 'p-6', bodyClassName)}>
         {children}
       </div>
     </motion.div>

@@ -52,7 +52,7 @@ export function TreatmentTimeline({ treatments, className }: TreatmentTimelinePr
               </div>
 
               {/* Content */}
-              <div className="flex-1 bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-md)] border border-[var(--color-outline-variant)]/15 p-4 shadow-[var(--shadow-card)]">
+              <div className="flex-1 min-w-0 bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-md)] border border-[var(--color-outline-variant)]/15 p-4 shadow-[var(--shadow-card)]">
                 <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1">

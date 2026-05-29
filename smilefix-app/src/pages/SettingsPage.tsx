@@ -364,7 +364,7 @@ export default function SettingsPage() {
                       { device: 'Safari on iPhone',  location: 'Los Angeles, CA', time: '2 hours ago',     current: false },
                     ].map((s, i) => (
                       <div key={i} className="flex items-center justify-between py-3 border-b border-[var(--color-outline-variant)]/10 last:border-0">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-[var(--color-on-surface)]">{s.device}</p>
                           <p className="text-xs text-[var(--color-on-surface-variant)]">{s.location} · {s.time}</p>
                         </div>

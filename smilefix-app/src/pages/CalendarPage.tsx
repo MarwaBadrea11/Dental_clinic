@@ -14,6 +14,7 @@ import {
   AppointmentFormModal, ScheduleWidget, CalendarCell,
 } from '@/components/appointments'
 import { useAppointmentStore } from '@/store/appointmentStore'
+import { ApiError } from '@/services/apiClient'
 import { cn } from '@/utils/cn'
 import type { Appointment, AppointmentStatus } from '@/types'
 
@@ -32,6 +33,8 @@ export default function CalendarPage() {
   const [showForm, setShowForm] = useState(false)
   const [editAppt, setEditAppt] = useState<Appointment | undefined>()
   const [listSearch, setListSearch] = useState('')
+  const [bookingError, setBookingError] = useState<string | null>(null)
+  const [bookingLoading, setBookingLoading] = useState(false)
 
   // Week grid helpers
   const getWeekStart = (dateStr: string) => {
@@ -64,8 +67,45 @@ export default function CalendarPage() {
     if (viewAppt?.id === id) setViewAppt((a) => a ? { ...a, status } : null)
   }
 
-  const handleSaveNew = (data: Omit<Appointment, 'id'>) => {
-    addAppointment({ ...data, id: `a${Date.now()}` })
+  const handleSaveNew = async (data: Omit<Appointment, 'id'>) => {
+    setBookingError(null)
+
+    // If patientId and doctorId look like UUIDs, call the real API
+    const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v)
+    if (isUuid(data.patientId) && isUuid(data.doctorId)) {
+      setBookingLoading(true)
+      try {
+        // Build ISO datetime from date + startTime
+        const scheduledAt = `${data.date}T${data.startTime}:00+00:00`
+        // Derive duration from start/end times
+        const [sh, sm] = data.startTime.split(':').map(Number)
+        const [eh, em] = data.endTime.split(':').map(Number)
+        const duration_minutes = (eh * 60 + em) - (sh * 60 + sm)
+
+        await useAppointmentStore.getState().bookAppointment({
+          patient_id: data.patientId,
+          dentist_id: data.doctorId,
+          scheduled_at: scheduledAt,
+          duration_minutes: duration_minutes > 0 ? duration_minutes : 30,
+          notes: data.notes ?? null,
+        })
+      } catch (err) {
+        if (err instanceof ApiError) {
+          setBookingError(err.message)
+          setBookingLoading(false)
+          return // keep modal open so user sees the error
+        }
+        setBookingError('Failed to book appointment. Please try again.')
+        setBookingLoading(false)
+        return
+      } finally {
+        setBookingLoading(false)
+      }
+    } else {
+      // Fallback: add locally (mock mode — no UUIDs available yet)
+      addAppointment({ ...data, id: `a${Date.now()}` })
+    }
+
     setShowForm(false)
     setEditAppt(undefined)
   }
@@ -86,8 +126,8 @@ export default function CalendarPage() {
       render: (a) => (
         <div className="flex items-center gap-2.5">
           <Avatar name={a.patientName} size="sm" />
-          <div>
-            <p className="font-semibold text-sm">{a.patientName}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{a.patientName}</p>
             <p className="text-xs text-[var(--color-on-surface-variant)]">{a.patientCode}</p>
           </div>
         </div>
@@ -317,11 +357,17 @@ export default function CalendarPage() {
       />
       <AppointmentFormModal
         open={showForm}
-        onClose={() => { setShowForm(false); setEditAppt(undefined) }}
+        onClose={() => { setShowForm(false); setEditAppt(undefined); setBookingError(null) }}
         onSave={handleSaveNew}
         initialDate={selectedDate}
         initialData={editAppt}
+        loading={bookingLoading}
       />
+      {bookingError && (
+        <div style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: 'var(--color-error-container)', color: 'var(--color-on-error-container)', padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-DEFAULT)', fontSize: '0.875rem', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxWidth: '28rem', textAlign: 'center' }}>
+          {bookingError}
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 767px) {

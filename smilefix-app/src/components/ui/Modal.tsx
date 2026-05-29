@@ -67,7 +67,7 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
             {/* Header */}
             {(title || description) && (
               <div className="flex items-start justify-between p-6 pb-4 border-b border-[var(--color-outline-variant)]/20">
-                <div>
+                <div className="min-w-0 flex-1">
                   {title && (
                     <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">{title}</h2>
                   )}

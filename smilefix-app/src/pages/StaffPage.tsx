@@ -199,8 +199,8 @@ export default function StaffPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar name={`${selected.firstName} ${selected.lastName}`} size="xl" ring />
-              <div>
-                <p className="text-lg font-bold text-[var(--color-on-surface)]">{selected.firstName} {selected.lastName}</p>
+              <div className="min-w-0">
+                <p className="text-lg font-bold text-[var(--color-on-surface)] truncate">{selected.firstName} {selected.lastName}</p>
                 <p className="text-sm text-[var(--color-on-surface-variant)] capitalize">{selected.role}{selected.specialty ? ` · ${selected.specialty}` : ''}</p>
                 <Badge variant={selected.status === 'active' ? 'success' : selected.status === 'on-leave' ? 'warning' : 'neutral'} dot size="sm" className="mt-1">
                   {selected.status === 'on-leave' ? t('status.onLeave') : selected.status === 'active' ? t('status.active') : t('status.inactive')}

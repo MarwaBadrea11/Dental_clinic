@@ -107,6 +107,18 @@ body {
   line-height: 1.6;
 }
 
+/* ── Global text-wrapping fix ──────────────────────────────────────
+   Tailwind v4 preflight + flex/grid layouts can collapse text
+   containers to zero width, causing word-by-word vertical rendering.
+   This is the single correct fix: ensure all text elements wrap
+   naturally and never shrink below their content.
+   ─────────────────────────────────────────────────────────────────── */
+p, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;

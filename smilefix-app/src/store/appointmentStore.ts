@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Appointment, AppointmentStatus } from '@/types'
+import { fetchAppointments, bookAppointment, type CreateAppointmentPayload } from '@/services/appointmentService'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,8 @@ interface AppointmentState {
   appointments: Appointment[]
   selectedDate: string
   viewMode: 'day' | 'week' | 'list'
+  loading: boolean
+  error: string | null
 
   addAppointment: (a: Appointment) => void
   updateAppointment: (id: string, data: Partial<Appointment>) => void
@@ -42,12 +45,18 @@ interface AppointmentState {
   getByDate: (date: string) => Appointment[]
   getByPatient: (patientId: string) => Appointment[]
   getByWeek: (startDate: string) => Appointment[]
+
+  // API actions
+  loadAppointments: (params?: { date?: string; dentist_id?: string; patient_id?: string }) => Promise<void>
+  bookAppointment: (payload: CreateAppointmentPayload) => Promise<Appointment>
 }
 
 export const useAppointmentStore = create<AppointmentState>((set, get) => ({
   appointments: MOCK_APPOINTMENTS,
   selectedDate: d(0),
   viewMode: 'week',
+  loading: false,
+  error: null,
 
   addAppointment: (a) => set((s) => ({ appointments: [a, ...s.appointments] })),
   updateAppointment: (id, data) =>
@@ -66,5 +75,23 @@ export const useAppointmentStore = create<AppointmentState>((set, get) => ({
       const dt = new Date(a.date)
       return dt >= start && dt <= end
     })
+  },
+
+  // ── API actions ────────────────────────────────────────────────────────────
+
+  loadAppointments: async (params) => {
+    set({ loading: true, error: null })
+    try {
+      const appointments = await fetchAppointments(params)
+      set({ appointments, loading: false })
+    } catch (err) {
+      set({ loading: false, error: err instanceof Error ? err.message : 'Failed to load appointments' })
+    }
+  },
+
+  bookAppointment: async (payload) => {
+    const appointment = await bookAppointment(payload)
+    set((s) => ({ appointments: [appointment, ...s.appointments] }))
+    return appointment
   },
 }))

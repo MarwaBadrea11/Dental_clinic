@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Mail, Lock, Eye, EyeOff, User as UserIcon, ArrowLeft, CheckCircle2 } from 'lucide-react'
@@ -94,6 +94,8 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { setUser } = useAuthStore()
+  const location = useLocation()
+  const from = (location.state as { from?: Location })?.from?.pathname ?? ROUTES.DASHBOARD
 
   // View toggle
   const [isRegistering, setIsRegistering] = useState(false)
@@ -131,7 +133,7 @@ export default function LoginPage() {
         email: result.user.email,
         role: result.user.role.toLowerCase() as User['role'],
       })
-      navigate(ROUTES.DASHBOARD)
+      navigate(from, { replace: true })
     } catch (err: unknown) {
       setLoginError(err instanceof Error ? err.message : 'Invalid credentials. Please try again.')
     } finally {

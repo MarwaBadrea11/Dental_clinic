@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -22,10 +22,12 @@ type ViewMode = 'table' | 'grid'
 export default function PatientsPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { patients, deletePatient } = usePatientStore()
+  const { patients, deletePatient, loadPatients, loading } = usePatientStore()
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+
+  useEffect(() => { loadPatients() }, [])
 
   const STATUS_FILTER_OPTIONS = [
     { value: 'all',      label: t('common.allStatuses') },
@@ -49,8 +51,8 @@ export default function PatientsPage() {
       render: (p) => (
         <div className="flex items-center gap-3">
           <Avatar name={`${p.firstName} ${p.lastName}`} src={p.avatar} size="sm" />
-          <div>
-            <p className="font-semibold text-sm text-[var(--color-on-surface)]">{p.firstName} {p.lastName}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm text-[var(--color-on-surface)] truncate">{p.firstName} {p.lastName}</p>
             <p className="text-xs text-[var(--color-on-surface-variant)]">{p.patientCode}</p>
           </div>
         </div>

@@ -63,13 +63,13 @@ export function StatCard({
 
         {/* Top row */}
         <div className="flex items-start justify-between relative z-10">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)] mb-1">
               {label}
             </p>
             <p className={cn('text-3xl font-bold leading-none', tokens.text)}>{value}</p>
           </div>
-          <div className={cn('p-2 rounded-[var(--radius-md)]', tokens.iconBg)}>
+          <div className={cn('p-2 rounded-[var(--radius-md)] shrink-0', tokens.iconBg)}>
             {icon}
           </div>
         </div>

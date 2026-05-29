@@ -13,6 +13,12 @@ export class PatientsService {
     return this.repo.create(dto);
   }
 
+  async getById(id) {
+    const patient = await this.repo.findById(id);
+    if (!patient) throw new NotFoundError('Patient not found');
+    return patient;
+  }
+
   async list(query = {}) {
     const limit = Math.min(Number(query.limit) || 20, 100);
     const offset = Number(query.offset) || 0;

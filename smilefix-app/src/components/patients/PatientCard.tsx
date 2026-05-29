@@ -35,10 +35,10 @@ export function PatientCard({ patient, onView, delay = 0, className }: PatientCa
     >
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Avatar name={fullName} src={patient.avatar} size="md" ring />
-          <div>
-            <p className="font-semibold text-sm text-[var(--color-on-surface)]">{fullName}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm text-[var(--color-on-surface)] truncate">{fullName}</p>
             <p className="text-xs text-[var(--color-on-surface-variant)]">{patient.patientCode}</p>
           </div>
         </div>

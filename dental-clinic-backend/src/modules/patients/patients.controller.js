@@ -33,6 +33,11 @@ export async function listPatientsHandler(request, reply) {
   }));
 }
 
+export async function getPatientHandler(request, reply) {
+  const patient = await getService(request).getById(request.params.id);
+  return reply.status(200).send(successResponse(patient));
+}
+
 export async function updatePatientHandler(request, reply) {
   const data = parseValidation(UpdatePatientSchema, request.body, reply);
   if (!data) return;

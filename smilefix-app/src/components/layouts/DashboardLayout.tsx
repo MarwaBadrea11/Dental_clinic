@@ -56,7 +56,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           : { marginLeft: sidebarWidth, marginRight: 0 }
         }
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="min-h-screen pt-16"
+        className="min-h-screen pt-16 min-w-0"
         style={isRTL
           ? { marginRight: sidebarWidth, marginLeft: 0 }
           : { marginLeft: sidebarWidth, marginRight: 0 }
@@ -67,7 +67,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="p-6 max-w-[1600px]"
+          className="p-6 max-w-[1600px] mx-auto min-w-0 w-full"
         >
           {children}
         </motion.div>

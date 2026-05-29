@@ -1,4 +1,10 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Resolve .env relative to the project root (two levels up from src/db/)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: resolve(__dirname, '../../.env') });
 
 /** @type {Record<string, import('knex').Knex.Config>} */
 const config = {

@@ -47,20 +47,20 @@ interface CardHeaderProps {
 export function CardHeader({ title, subtitle, action, icon, className }: CardHeaderProps) {
   return (
     <div className={cn('flex items-center justify-between mb-4', className)}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         {icon && (
-          <div className="w-9 h-9 rounded-[var(--radius-DEFAULT)] bg-[var(--color-primary-container)]/20 flex items-center justify-center text-[var(--color-primary)]">
+          <div className="w-9 h-9 rounded-[var(--radius-DEFAULT)] bg-[var(--color-primary-container)]/20 flex items-center justify-center text-[var(--color-primary)] shrink-0">
             {icon}
           </div>
         )}
-        <div>
+        <div className="min-w-0">
           <h3 className="font-semibold text-[var(--color-on-surface)] text-base leading-tight">{title}</h3>
           {subtitle && (
             <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
-      {action && <div>{action}</div>}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   )
 }

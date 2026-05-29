@@ -17,7 +17,7 @@ export function PageHeader({ title, subtitle, actions, breadcrumb, className }: 
       transition={{ duration: 0.25 }}
       className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6', className)}
     >
-      <div>
+      <div className="min-w-0">
         {breadcrumb && breadcrumb.length > 0 && (
           <nav className="flex items-center gap-1.5 mb-1.5" aria-label="Breadcrumb">
             {breadcrumb.map((crumb, i) => (

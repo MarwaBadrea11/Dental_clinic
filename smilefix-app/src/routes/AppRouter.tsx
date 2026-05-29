@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layouts/DashboardLayout'
 import { Loader } from '@/components/ui/Loader'
 import { useAuthStore } from '@/store/authStore'
@@ -27,7 +27,8 @@ const NotFoundPage       = lazy(() => import('@/pages/NotFoundPage'))
 // ── Guards ────────────────────────────────────────────────────────────────────
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
-  if (!isAuthenticated) return <Navigate to={ROUTES.LOGIN} replace />
+  const location = useLocation()
+  if (!isAuthenticated) return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />
   return <>{children}</>
 }
 

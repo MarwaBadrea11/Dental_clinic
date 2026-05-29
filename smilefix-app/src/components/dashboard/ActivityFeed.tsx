@@ -50,7 +50,7 @@ export function ActivityFeed({ items, title = 'Clinical Activity Log', delay = 0
               <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', colorMap[entry.color])}>
                 {entry.icon}
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-[var(--color-on-surface)] leading-relaxed">{entry.text}</p>
                 <p className="text-[10px] text-[var(--color-on-surface-variant)] mt-0.5">{entry.time}</p>
               </div>

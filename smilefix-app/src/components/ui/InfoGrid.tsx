@@ -25,11 +25,11 @@ export function InfoGrid({ items, cols = 2, className }: InfoGridProps) {
       style={{ display: 'grid', gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`, gap: '1rem 1.5rem' }}
     >
       {items.map((item, i) => (
-        <div key={i} style={item.span === 2 ? { gridColumn: '1 / -1' } : undefined}>
+        <div key={i} className="min-w-0" style={item.span === 2 ? { gridColumn: '1 / -1' } : undefined}>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)] mb-0.5">
             {item.label}
           </p>
-          <div className="text-sm font-medium text-[var(--color-on-surface)]">
+          <div className="text-sm font-medium text-[var(--color-on-surface)] break-words">
             {item.value ?? <span className="text-[var(--color-outline)] italic">Not provided</span>}
           </div>
         </div>

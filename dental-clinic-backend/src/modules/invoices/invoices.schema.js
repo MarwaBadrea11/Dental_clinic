@@ -1,10 +1,13 @@
 import { z } from 'zod';
 
-const LineItemSchema = z.object({
+export const LineItemSchema = z.object({
   description: z.string().min(1),
   quantity: z.number().int().min(1).default(1),
   unit_cost: z.number().min(0),
   total: z.number().min(0),
+  // Optional back-reference to the source procedure for traceability
+  procedure_id: z.string().uuid().optional().nullable(),
+  tooth_number: z.string().max(3).optional().nullable(),
 });
 
 export const CreateInvoiceSchema = z.object({
@@ -38,4 +41,9 @@ export const RecordPaymentSchema = z.object({
   reference: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   paid_at: z.string().datetime({ offset: true }).optional(),
+});
+
+export const RecordRefundSchema = z.object({
+  amount: z.number().positive(),
+  reason: z.string().min(1).max(500),
 });

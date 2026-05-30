@@ -89,6 +89,8 @@ export class TreatmentsService {
       quantity: p.quantity,
       unit_cost: Number(p.unit_cost),
       total: p.quantity * Number(p.unit_cost),
+      procedure_id: p.procedure_id,
+      tooth_number: p.tooth_number ?? null,
     }));
 
     const subtotal = lineItems.reduce((sum, li) => sum + li.total, 0);

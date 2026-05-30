@@ -91,4 +91,60 @@ export class InvoicesRepository {
       .where('due_date', '<', this.db.raw('CURRENT_DATE'))
       .update({ status: 'OVERDUE' });
   }
+
+  /** List all payments for an invoice, including any refunds */
+  async getPaymentsWithRefunds(invoice_id) {
+    const payments = await this.db('payments as p')
+      .leftJoin('payment_refunds as r', 'r.payment_id', 'p.id')
+      .where('p.invoice_id', invoice_id)
+      .orderBy('p.paid_at', 'asc')
+      .select(
+        'p.*',
+        this.db.raw(`
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', r.id,
+                'amount', r.amount,
+                'reason', r.reason,
+                'refunded_at', r.refunded_at
+              )
+            ) FILTER (WHERE r.id IS NOT NULL),
+            '[]'
+          ) as refunds
+        `)
+      )
+      .groupBy('p.id');
+
+    return payments;
+  }
+
+  /** Record a refund against a payment */
+  async recordRefund(data) {
+    const [row] = await this.db('payment_refunds').insert(data).returning('*');
+    return row;
+  }
+
+  /** Sum of all refunds for a payment */
+  async sumRefunds(payment_id) {
+    const [{ total }] = await this.db('payment_refunds').where({ payment_id }).sum('amount as total');
+    return Number(total ?? 0);
+  }
+
+  /** Sum of all refunds across all payments for an invoice */
+  async sumAllRefundsForInvoice(invoice_id) {
+    const [{ total }] = await this.db('payment_refunds').where({ invoice_id }).sum('amount as total');
+    return Number(total ?? 0);
+  }
+
+  /** All invoices for a patient with pagination */
+  async listByPatient(patient_id, { page = 1, limit = 20, status } = {}) {
+    const q = this.db('invoices').where({ patient_id }).orderBy('created_at', 'desc');
+    if (status) q.where({ status });
+
+    const [{ count }] = await q.clone().count('id as count');
+    const data = await q.limit(limit).offset((page - 1) * limit);
+
+    return { data, total: Number(count), page, limit };
+  }
 }

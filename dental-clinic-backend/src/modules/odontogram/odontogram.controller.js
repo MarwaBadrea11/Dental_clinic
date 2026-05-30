@@ -18,26 +18,84 @@ function parseValidation(schema, data, reply) {
 }
 
 export async function getOdontogramHandler(request, reply) {
-  const chart = await getService(request).getByPatient(request.params.patientId);
+  const { patientId } = request.params;
+  request.log.info({ patientId }, '[odontogram] GET chart');
+
+  const chart = await getService(request).getByPatient(patientId);
+
+  request.log.info(
+    { patientId, tooth_count: Object.keys(chart.teeth).length, updated_at: chart.updated_at },
+    '[odontogram] chart fetched'
+  );
+
   return reply.status(200).send(successResponse(chart));
 }
 
+export async function createOdontogramHandler(request, reply) {
+  const { patientId } = request.params;
+  const userId = request.user.sub;
+
+  request.log.info({ patientId, userId }, '[odontogram] POST create chart — request received');
+
+  const service = getService(request);
+
+  // Initialise an empty chart row in the DB
+  const rawRow = await service.initChart(patientId, userId);
+
+  request.log.info(
+    {
+      patientId,
+      db_row: rawRow ?? '(already existed — no insert)',
+    },
+    '[odontogram] initChart result'
+  );
+
+  // Return the full normalised chart so the frontend sees all 32 teeth
+  const chart = await service.getByPatient(patientId);
+
+  request.log.info(
+    { patientId, updated_at: chart.updated_at },
+    '[odontogram] chart created/confirmed — sending 201'
+  );
+
+  return reply.status(201).send(successResponse(chart));
+}
+
 export async function updateToothHandler(request, reply) {
+  const { patientId, toothNumber } = request.params;
+
+  request.log.info(
+    { patientId, toothNumber, body: request.body },
+    '[odontogram] PATCH tooth — request received'
+  );
+
   const data = parseValidation(UpdateToothSchema, request.body, reply);
   if (!data) return;
+
   const result = await getService(request).updateTooth(
-    request.params.patientId,
-    request.params.toothNumber,
+    patientId,
+    toothNumber,
     data,
     request.user.sub
   );
+
+  request.log.info(
+    { patientId, toothNumber, result },
+    '[odontogram] tooth updated'
+  );
+
   return reply.status(200).send(successResponse(result));
 }
 
 export async function getOdontogramHistoryHandler(request, reply) {
-  const history = await getService(request).getHistory(
-    request.params.patientId,
-    request.query.tooth_number
-  );
+  const { patientId } = request.params;
+  const { tooth_number } = request.query;
+
+  request.log.info({ patientId, tooth_number }, '[odontogram] GET history');
+
+  const history = await getService(request).getHistory(patientId, tooth_number);
+
+  request.log.info({ patientId, count: history.length }, '[odontogram] history fetched');
+
   return reply.status(200).send(successResponse(history));
 }

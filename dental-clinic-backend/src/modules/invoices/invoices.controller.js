@@ -5,6 +5,7 @@ import {
   UpdateInvoiceSchema,
   ListInvoicesSchema,
   RecordPaymentSchema,
+  RecordRefundSchema,
 } from './invoices.schema.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
 import { z } from 'zod';
@@ -26,6 +27,12 @@ function parseValidation(schema, data, reply) {
 const FinanceSummarySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+const PatientInvoicesQuerySchema = z.object({
+  status: z.enum(['DRAFT', 'ISSUED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export async function listInvoicesHandler(request, reply) {
@@ -61,9 +68,33 @@ export async function recordPaymentHandler(request, reply) {
   return reply.status(201).send(successResponse(payment));
 }
 
+export async function listPaymentsHandler(request, reply) {
+  const payments = await getService(request).listPayments(request.params.id);
+  return reply.status(200).send(successResponse(payments));
+}
+
+export async function refundPaymentHandler(request, reply) {
+  const data = parseValidation(RecordRefundSchema, request.body, reply);
+  if (!data) return;
+  const refund = await getService(request).refundPayment(
+    request.params.id,
+    request.params.paymentId,
+    data,
+    request.user.sub
+  );
+  return reply.status(201).send(successResponse(refund));
+}
+
 export async function getPatientDebtHandler(request, reply) {
   const debt = await getService(request).getPatientDebt(request.params.patientId);
   return reply.status(200).send(successResponse(debt));
+}
+
+export async function listPatientInvoicesHandler(request, reply) {
+  const query = parseValidation(PatientInvoicesQuerySchema, request.query, reply);
+  if (!query) return;
+  const result = await getService(request).listByPatient(request.params.patientId, query);
+  return reply.status(200).send(successResponse(result.data, { total: result.total, page: result.page, limit: result.limit }));
 }
 
 export async function getFinanceSummaryHandler(request, reply) {

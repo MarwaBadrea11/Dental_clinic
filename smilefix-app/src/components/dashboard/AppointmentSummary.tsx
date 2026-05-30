@@ -7,7 +7,8 @@ import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/utils/cn'
 
 export interface PatientRow {
-  id: string
+  id: string        // UUID — used for navigation
+  code?: string     // national_id display code (optional for backwards compat)
   name: string
   lastVisit: string
   treatment: string
@@ -19,6 +20,7 @@ interface AppointmentSummaryProps {
   patients: PatientRow[]
   title?: string
   onViewAll?: () => void
+  onView?: (patientId: string) => void
   delay?: number
   className?: string
 }
@@ -32,7 +34,7 @@ const statusVariant = {
 } as const
 
 export function AppointmentSummary({
-  patients, title, onViewAll, delay = 0, className,
+  patients, title, onViewAll, onView, delay = 0, className,
 }: AppointmentSummaryProps) {
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('dashboard.recentPatients')
@@ -85,7 +87,9 @@ export function AppointmentSummary({
                       <Avatar name={p.name} src={p.avatar} size="sm" />
                       <div>
                         <p className="font-semibold text-sm text-[var(--color-on-surface)]">{p.name}</p>
-                        <p className="text-xs text-[var(--color-on-surface-variant)]">ID: {p.id}</p>
+                        <p className="text-xs text-[var(--color-on-surface-variant)]">
+                          ID: {p.code ?? p.id}
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -95,11 +99,17 @@ export function AppointmentSummary({
                   </td>
                   <td className="px-6 py-4">
                     <Badge variant={statusVariant[p.status]} dot size="sm">
-                      {t(`status.${p.status === 'active' ? 'active' : p.status === 'completed' ? 'completed' : p.status === 'scheduled' ? 'scheduled' : p.status === 'cancelled' ? 'cancelled' : 'pending'}`)}
+                      {t(`status.${p.status}`)}
                     </Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <Button variant="ghost" size="xs">{t('common.view')}</Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => onView?.(p.id)}
+                    >
+                      {t('common.view')}
+                    </Button>
                   </td>
                 </motion.tr>
               ))}

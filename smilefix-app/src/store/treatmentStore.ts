@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 import type { Treatment, PatientTreatment, OdontogramRecord, ToothCondition } from '@/types'
+import {
+  fetchOdontogram,
+  updateTooth,
+  CONDITION_TO_STATUS,
+} from '@/services/odontogramService'
 
 // ── Mock treatments catalogue ─────────────────────────────────────────────────
 
@@ -88,13 +93,16 @@ interface TreatmentState {
   treatments: Treatment[]
   patientTreatments: PatientTreatment[]
   odontograms: OdontogramRecord[]
+  odontogramLoading: boolean
 
   addTreatment: (t: Treatment) => void
   updateTreatment: (id: string, data: Partial<Treatment>) => void
   deleteTreatment: (id: string) => void
   getPatientTreatments: (patientId: string) => PatientTreatment[]
   getOdontogram: (patientId: string) => OdontogramRecord | undefined
+  loadOdontogram: (patientId: string) => Promise<void>
   updateToothCondition: (patientId: string, toothNumber: number, condition: ToothCondition, notes?: string) => void
+  syncToothToBackend: (patientId: string, toothNumber: number, condition: ToothCondition, notes?: string) => Promise<void>
   addPatientTreatment: (pt: PatientTreatment) => void
 }
 
@@ -102,6 +110,7 @@ export const useTreatmentStore = create<TreatmentState>((set, get) => ({
   treatments: MOCK_TREATMENTS,
   patientTreatments: MOCK_PATIENT_TREATMENTS,
   odontograms: [MOCK_ODONTOGRAM],
+  odontogramLoading: false,
 
   addTreatment: (t) => set((s) => ({ treatments: [t, ...s.treatments] })),
   updateTreatment: (id, data) =>
@@ -112,6 +121,24 @@ export const useTreatmentStore = create<TreatmentState>((set, get) => ({
     get().patientTreatments.filter((pt) => pt.patientId === patientId),
   getOdontogram: (patientId) =>
     get().odontograms.find((o) => o.patientId === patientId),
+
+  loadOdontogram: async (patientId) => {
+    set({ odontogramLoading: true })
+    try {
+      const record = await fetchOdontogram(patientId)
+      set((s) => ({
+        odontogramLoading: false,
+        odontograms: [
+          ...s.odontograms.filter((o) => o.patientId !== patientId),
+          record,
+        ],
+      }))
+    } catch (err) {
+      console.error('[odontogram] loadOdontogram failed:', err)
+      set({ odontogramLoading: false })
+    }
+  },
+
   updateToothCondition: (patientId, toothNumber, condition, notes) =>
     set((s) => ({
       odontograms: s.odontograms.map((o) =>
@@ -131,6 +158,16 @@ export const useTreatmentStore = create<TreatmentState>((set, get) => ({
         }
       ),
     })),
+
+  syncToothToBackend: async (patientId, toothNumber, condition, notes) => {
+    // Optimistic local update first
+    get().updateToothCondition(patientId, toothNumber, condition, notes)
+    await updateTooth(patientId, toothNumber, {
+      status: CONDITION_TO_STATUS[condition] ?? 'HEALTHY',
+      notes: notes ?? null,
+    })
+  },
+
   addPatientTreatment: (pt) =>
     set((s) => ({ patientTreatments: [pt, ...s.patientTreatments] })),
 }))

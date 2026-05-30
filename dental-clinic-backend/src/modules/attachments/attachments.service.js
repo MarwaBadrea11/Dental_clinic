@@ -20,7 +20,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 function inferImageType(mimeType, fileName) {
   if (mimeType === 'application/pdf') return 'DOCUMENT';
-  if (/\.(dcm|dicom)$/i.test(fileName)) return 'XRAY';
+  if (/\.(dcm|dicom)$/i.test(fileName) || mimeType === 'application/dicom') return 'XRAY';
   if (mimeType.startsWith('image/')) return 'PHOTO';
   return 'DOCUMENT';
 }

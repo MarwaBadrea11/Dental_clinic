@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, CalendarDays, CreditCard, Zap, UserPlus, CalendarPlus, FlaskConical, Upload, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Users, CalendarDays, CreditCard, Zap, UserPlus, CalendarPlus, FlaskConical, Upload, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -9,55 +9,77 @@ import { Card } from '@/components/ui/Card'
 import {
   StatCard, QuickActions, AppointmentSummary, UpcomingAppointments,
   ActivityFeed, ChartCard,
-  type ScheduleItem, type ActivityItem, type PatientRow,
+  type ActivityItem,
 } from '@/components/dashboard'
 import { ImageAnalyzerModal } from '@/components/dashboard/ImageAnalyzerModal'
 import { formatCurrency } from '@/utils/format'
 import { ROUTES } from '@/constants/routes'
+import { useDashboardStats, useRecentPatients, useTodaySchedule } from '@/hooks/useDashboard'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [analyzerOpen, setAnalyzerOpen] = useState(false)
 
+  // ── Live data ──────────────────────────────────────────────────────────────
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+    refetch: refetchStats,
+  } = useDashboardStats()
+
+  const {
+    data: patients,
+    isLoading: patientsLoading,
+    isError: patientsError,
+  } = useRecentPatients()
+
+  const {
+    data: schedule,
+    isLoading: scheduleLoading,
+  } = useTodaySchedule()
+
+  // ── Stat cards ─────────────────────────────────────────────────────────────
+  // Show skeleton dashes while loading; show '!' on error so the user knows
+  const statValue = (v: string | number | undefined, loading: boolean, error: boolean) => {
+    if (loading) return '—'
+    if (error)   return '!'
+    return typeof v === 'number' ? v.toLocaleString() : (v ?? '—')
+  }
+
   const STATS = [
     {
-      label: t('dashboard.totalPatients'), value: '1,284',
+      label: t('dashboard.totalPatients'),
+      value: statValue(stats?.totalPatients, statsLoading, statsError),
       icon: <Users size={22} />, color: 'primary' as const,
-      trend: `+12% ${t('dashboard.thisMonth')}`, trendUp: true,
+      trend: stats ? `+${stats.patientsThisMonth} ${t('dashboard.thisMonth')}` : undefined,
+      trendUp: true,
       bgIcon: <Users size={64} />,
     },
     {
-      label: t('dashboard.todayAppointments'), value: '24',
+      label: t('dashboard.todayAppointments'),
+      value: statValue(stats?.todayAppointments, statsLoading, statsError),
       icon: <CalendarDays size={22} />, color: 'secondary' as const,
-      progress: 75,
+      progress: stats ? Math.min(Math.round((stats.todayAppointments / 30) * 100), 100) : undefined,
       bgIcon: <CalendarDays size={64} />,
     },
     {
-      label: t('dashboard.pendingPayments'), value: formatCurrency(4120),
+      label: t('dashboard.pendingPayments'),
+      value: stats ? formatCurrency(stats.pendingPayments.total) : statValue(undefined, statsLoading, statsError),
       icon: <CreditCard size={22} />, color: 'tertiary' as const,
-      alert: `8 ${t('dashboard.invoicesOverdue')}`,
+      alert: stats?.pendingPayments.overdueCount
+        ? `${stats.pendingPayments.overdueCount} ${t('dashboard.invoicesOverdue')}`
+        : undefined,
       bgIcon: <CreditCard size={64} />,
     },
     {
-      label: t('dashboard.clinicEfficiency'), value: '94.2%',
+      label: t('dashboard.clinicEfficiency'),
+      value: stats ? `${stats.clinicEfficiency}%` : statValue(undefined, statsLoading, statsError),
       icon: <Zap size={22} />, color: 'primary' as const,
-      badge: t('status.optimized'),
+      badge: stats ? t('status.optimized') : undefined,
       bgIcon: <Zap size={64} />,
     },
-  ]
-
-  const PATIENTS: PatientRow[] = [
-    { id: 'SF-90210', name: 'Sarah Miller',    lastVisit: 'Oct 12, 2023', treatment: 'Root Canal',         status: 'completed' },
-    { id: 'SF-88421', name: 'James Wilson',    lastVisit: 'Oct 14, 2023', treatment: 'Invisalign Checkup', status: 'scheduled' },
-    { id: 'SF-77310', name: 'Elena Rodriguez', lastVisit: 'Oct 15, 2023', treatment: 'Braces Adjustment',  status: 'active' },
-    { id: 'SF-66201', name: 'Michael Chang',   lastVisit: 'Oct 16, 2023', treatment: 'Teeth Whitening',    status: 'pending' },
-  ]
-
-  const SCHEDULE: ScheduleItem[] = [
-    { time: '09:00 – 10:30 AM', patient: 'Elena Rodriguez', treatment: 'Dental Braces Adjustment', active: true },
-    { time: '11:00 AM – 12:00 PM', patient: 'Michael Chang', treatment: 'Teeth Whitening Session', active: false },
-    { time: '02:00 – 03:30 PM', patient: 'Sarah Miller', treatment: 'Follow-up: Root Canal', active: false },
   ]
 
   const ACTIVITY: ActivityItem[] = [
@@ -84,6 +106,22 @@ export default function DashboardPage() {
         }
       />
 
+      {/* Stats fetch error — non-blocking banner with retry */}
+      {statsError && (
+        <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-on-error-container)] text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={15} />
+            <span>Could not load dashboard stats. Check your connection or permissions.</span>
+          </div>
+          <button
+            onClick={() => refetchStats()}
+            className="flex items-center gap-1 text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {STATS.map((s, i) => (
@@ -96,12 +134,26 @@ export default function DashboardPage() {
         <div className="col-span-12 lg:col-span-8 space-y-6">
           <QuickActions actions={quickActions} delay={0.28} />
 
-          <AppointmentSummary
-            patients={PATIENTS}
-            title={t('dashboard.recentPatients')}
-            onViewAll={() => navigate(ROUTES.PATIENTS)}
-            delay={0.32}
-          />
+          {patientsError ? (
+            <Card className="flex items-center gap-3 px-6 py-5 text-sm text-[var(--color-error)]">
+              <AlertCircle size={16} />
+              <span>Could not load recent patients.</span>
+            </Card>
+          ) : patientsLoading ? (
+            <Card className="px-6 py-5 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-10 rounded-[var(--radius-DEFAULT)] bg-[var(--color-surface-container-high)] animate-pulse" />
+              ))}
+            </Card>
+          ) : (
+            <AppointmentSummary
+              patients={patients ?? []}
+              title={t('dashboard.recentPatients')}
+              onViewAll={() => navigate(ROUTES.PATIENTS)}
+              onView={(id) => navigate(`/patients/${id}`)}
+              delay={0.32}
+            />
+          )}
 
           {/* Bento */}
           <motion.div
@@ -149,7 +201,7 @@ export default function DashboardPage() {
 
         <div className="col-span-12 lg:col-span-4 space-y-6">
           <UpcomingAppointments
-            items={SCHEDULE}
+            items={scheduleLoading ? [] : (schedule ?? [])}
             title={t('dashboard.todaySchedule')}
             onViewAll={() => navigate(ROUTES.CALENDAR)}
             delay={0.3}

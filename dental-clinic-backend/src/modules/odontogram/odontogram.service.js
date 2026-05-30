@@ -22,14 +22,23 @@ export class OdontogramService {
     return { patient_id: patientId, teeth, updated_at: record?.updated_at ?? null };
   }
 
+  async initChart(patientId, userId) {
+    const existing = await this.repo.findByPatient(patientId);
+    if (existing) return null; // already exists — signal to caller
+    return this.repo.upsert(patientId, {}, userId); // returns the raw inserted row
+  }
+
   async updateTooth(patientId, toothNumber, dto, userId) {
-    if (!VALID_FDI_TEETH.includes(toothNumber)) {
-      throw new AppError(400, `Invalid tooth number '${toothNumber}'. Use FDI notation (e.g. 11, 46).`, 'INVALID_TOOTH');
+    // Normalise: accept both number (14) and string ("14") from the route param
+    const toothKey = String(toothNumber);
+
+    if (!VALID_FDI_TEETH.includes(toothKey)) {
+      throw new AppError(400, `Invalid tooth number '${toothKey}'. Use FDI notation (e.g. 11, 46).`, 'INVALID_TOOTH');
     }
 
     const record = await this.repo.findByPatient(patientId);
     const currentTeeth = record?.teeth ?? {};
-    const previousState = currentTeeth[toothNumber] ?? { ...DEFAULT_TOOTH };
+    const previousState = currentTeeth[toothKey] ?? { ...DEFAULT_TOOTH };
 
     const newState = {
       status: dto.status,
@@ -40,17 +49,17 @@ export class OdontogramService {
     // Write history before applying change
     await this.repo.appendHistory({
       patient_id: patientId,
-      tooth_number: toothNumber,
+      tooth_number: toothKey,
       previous_state: previousState,
       new_state: newState,
       changed_by: userId,
       treatment_plan_id: dto.treatment_plan_id ?? null,
     });
 
-    const updatedTeeth = { ...currentTeeth, [toothNumber]: newState };
+    const updatedTeeth = { ...currentTeeth, [toothKey]: newState };
     const odontogram = await this.repo.upsert(patientId, updatedTeeth, userId);
 
-    return { tooth_number: toothNumber, ...newState, updated_at: odontogram.updated_at };
+    return { tooth_number: toothKey, ...newState, updated_at: odontogram.updated_at };
   }
 
   getHistory(patientId, toothNumber) {

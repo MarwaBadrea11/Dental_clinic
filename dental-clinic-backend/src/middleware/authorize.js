@@ -3,6 +3,7 @@ import { errorResponse } from '../utils/response.js';
 export const ROLE_PERMISSIONS = {
   ADMIN: ['*'],
   DENTIST: [
+    'dashboard:read',
     'patients:read',
     'appointments:read',
     'appointments:update',
@@ -11,15 +12,18 @@ export const ROLE_PERMISSIONS = {
     'invoices:read',
   ],
   RECEPTIONIST: [
+    'dashboard:read',
     'patients:*',
     'appointments:*',
     'invoices:*',
     'payments:*',
     'inventory:read',
+    'odontogram:read',
+    'odontogram:create',
   ],
-  ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*'],
-  STOREKEEPER: ['inventory:*'],
-  HR: ['staff:*'],
+  ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*', 'reports:financial'],
+  STOREKEEPER: ['inventory:*', 'reports:inventory'],
+  HR: ['staff:*', 'reports:payroll'],
 };
 
 export function hasPermission(userPermissions, required) {

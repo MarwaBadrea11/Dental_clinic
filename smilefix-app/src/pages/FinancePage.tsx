@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { CreditCard, DollarSign, TrendingUp, AlertCircle, Plus, List, LayoutGrid, FileText } from 'lucide-react'
@@ -28,7 +28,10 @@ const MONTHLY_DATA = [
 
 export default function FinancePage() {
   const { t } = useTranslation()
-  const { invoices, payments, updateInvoice, deleteInvoice, addInvoice, addPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount } = useFinanceStore()
+  const { invoices, payments, updateInvoice, deleteInvoice, addInvoice, addPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading } = useFinanceStore()
+
+  // Load real invoices on mount
+  useEffect(() => { loadInvoices() }, [loadInvoices])
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
   const [listMode, setListMode] = useState<'table' | 'grid'>('table')
   const [search, setSearch] = useState('')
@@ -69,7 +72,6 @@ export default function FinancePage() {
     updateInvoice(invoiceId, { paid: newPaid, status: newPaid >= inv.total ? 'paid' : 'partial', paymentMethod: method })
     addPayment({ id: `p${Date.now()}`, invoiceId, patientId: inv.patientId, patientName: inv.patientName, amount, method, date: new Date().toISOString().split('T')[0] })
   }
-
   const columns: DataTableColumn<Invoice>[] = [
     {
       key: 'invoiceNumber', header: t('finance.invoiceNumber'), sortable: true,

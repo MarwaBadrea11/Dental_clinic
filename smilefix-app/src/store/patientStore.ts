@@ -9,6 +9,8 @@ import {
   type CreatePatientPayload,
   type UpdatePatientPayload,
 } from '@/services/patientService'
+import { getQueryClient } from '@/lib/queryClient'
+import { dashboardKeys } from '@/hooks/useDashboard'
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
@@ -95,6 +97,8 @@ export const usePatientStore = create<PatientState>((set, get) => ({
   createPatient: async (payload) => {
     const patient = await createPatient(payload)
     set((s) => ({ patients: [patient, ...s.patients] }))
+    // Invalidate dashboard cache so stats + recent-patients reflect the new patient immediately
+    getQueryClient().invalidateQueries({ queryKey: dashboardKeys.all })
     return patient
   },
 

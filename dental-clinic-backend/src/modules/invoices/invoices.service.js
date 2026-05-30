@@ -6,14 +6,16 @@ export class InvoicesService {
     this.repo = repo;
   }
 
-  list(query) {
+  async list(query) {
+    // Refresh overdue statuses on every list call
+    await this.repo.markOverdue();
     return this.repo.list(query);
   }
 
   async getById(id) {
     const invoice = await this.repo.findById(id);
     if (!invoice) throw new NotFoundError('Invoice not found');
-    const payments = await this.repo.getPayments(id);
+    const payments = await this.repo.getPaymentsWithRefunds(id);
     return { ...invoice, payments };
   }
 
@@ -59,7 +61,7 @@ export class InvoicesService {
       updateData.line_items = JSON.stringify(dto.line_items);
     }
 
-    // Set issued_at when transitioning to ISSUED
+    // Set issued_at when transitioning to ISSUED (trigger will assign invoice_number)
     if (dto.status === 'ISSUED' && invoice.status === 'DRAFT') {
       updateData.issued_at = new Date().toISOString();
     }
@@ -99,13 +101,60 @@ export class InvoicesService {
     return payment;
   }
 
+  async listPayments(invoiceId) {
+    const invoice = await this.repo.findById(invoiceId);
+    if (!invoice) throw new NotFoundError('Invoice not found');
+    return this.repo.getPaymentsWithRefunds(invoiceId);
+  }
+
+  async refundPayment(invoiceId, paymentId, dto, actorId) {
+    const invoice = await this.repo.findById(invoiceId);
+    if (!invoice) throw new NotFoundError('Invoice not found');
+
+    const payments = await this.repo.getPayments(invoiceId);
+    const payment = payments.find((p) => p.id === paymentId);
+    if (!payment) throw new NotFoundError('Payment not found on this invoice');
+
+    // Ensure refund doesn't exceed what was paid minus already-refunded amounts
+    const alreadyRefunded = await this.repo.sumRefunds(paymentId);
+    const refundable = Number(payment.amount) - alreadyRefunded;
+
+    if (dto.amount > refundable + 0.001) {
+      throw new AppError(422, `Refund amount exceeds refundable balance of ${refundable.toFixed(2)}`, 'REFUND_EXCEEDS_PAYMENT');
+    }
+
+    const refund = await this.repo.recordRefund({
+      payment_id: paymentId,
+      invoice_id: invoiceId,
+      amount: dto.amount,
+      reason: dto.reason,
+      refunded_by: actorId,
+    });
+
+    // Recalculate amount_paid: sum payments minus sum all refunds for this invoice
+    const totalPaid = await this.repo.sumPayments(invoiceId);
+    const allRefunds = await this.repo.sumAllRefundsForInvoice(invoiceId);
+
+    const netPaid = Math.max(0, totalPaid - allRefunds);
+    const total = Number(invoice.total_amount);
+    const newStatus = netPaid <= 0 ? 'ISSUED' : netPaid >= total - 0.001 ? 'PAID' : 'PARTIALLY_PAID';
+
+    await this.repo.update(invoiceId, { amount_paid: netPaid, status: newStatus });
+
+    return refund;
+  }
+
   async getPatientDebt(patientId) {
     const outstanding = await this.repo.patientDebt(patientId);
     return { patient_id: patientId, outstanding_balance: outstanding };
   }
 
+  async listByPatient(patientId, query) {
+    await this.repo.markOverdue();
+    return this.repo.listByPatient(patientId, query);
+  }
+
   async getFinanceSummary(query) {
-    // Refresh overdue statuses before summarising
     await this.repo.markOverdue();
     return this.repo.financeSummary(query);
   }

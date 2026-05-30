@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -7,12 +7,12 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
-import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { OdontogramChart } from '@/components/odontogram'
 import { TreatmentTimeline } from '@/components/treatments'
 import { usePatientStore } from '@/store/patientStore'
 import { useTreatmentStore } from '@/store/treatmentStore'
+import { createOdontogram } from '@/services/odontogramService'
 import { ROUTES } from '@/constants/routes'
 import type { ToothCondition } from '@/types'
 
@@ -21,12 +21,20 @@ export default function OdontogramPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { getPatientById } = usePatientStore()
-  const { getOdontogram, updateToothCondition, getPatientTreatments } = useTreatmentStore()
+  const { getOdontogram, syncToothToBackend, loadOdontogram, getPatientTreatments } = useTreatmentStore()
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  // Track which teeth have been changed locally but not yet confirmed saved
+  const pendingRef = useRef<Map<number, { condition: ToothCondition; notes?: string }>>(new Map())
 
   const patient = getPatientById(id ?? '')
   const odontogram = getOdontogram(id ?? '')
   const patientTreatments = getPatientTreatments(id ?? '')
+
+  // Load real odontogram data on mount
+  useEffect(() => {
+    if (id) loadOdontogram(id)
+  }, [id, loadOdontogram])
 
   if (!patient) {
     return (
@@ -38,13 +46,44 @@ export default function OdontogramPage() {
   }
 
   const handleUpdate = (toothNumber: number, condition: ToothCondition, notes?: string) => {
-    updateToothCondition(patient.id, toothNumber, condition, notes)
+    // Queue the change locally — will be flushed on Save
+    pendingRef.current.set(toothNumber, { condition, notes })
+    // Also update local store immediately so the chart re-renders
+    syncToothToBackend(patient.id, toothNumber, condition, notes).catch(console.error)
     setSaved(false)
   }
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    if (!id || saving) return
+    setSaving(true)
+    try {
+      // Flush all pending changes that haven't been confirmed yet
+      const pending = Array.from(pendingRef.current.entries())
+      if (pending.length > 0) {
+        await Promise.all(
+          pending.map(([toothNumber, { condition, notes }]) =>
+            syncToothToBackend(id, toothNumber, condition, notes)
+          )
+        )
+        pendingRef.current.clear()
+      }
+      // Reload from DB to confirm what was actually persisted
+      await loadOdontogram(id)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error('[odontogram] save failed:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Initialise the chart by calling the dedicated POST endpoint — no tooth
+  // write needed, so receptionists (odontogram:create) can do this too.
+  const handleCreateChart = async () => {
+    if (!id) return
+    await createOdontogram(id).catch(console.error)
+    await loadOdontogram(id)
   }
 
   const fullName = `${patient.firstName} ${patient.lastName}`
@@ -77,8 +116,9 @@ export default function OdontogramPage() {
               Back to Patient
             </Button>
             <Button size="sm" leftIcon={<Save size={14} />} onClick={handleSave}
+              disabled={saving}
               className={saved ? 'bg-[var(--color-secondary)]' : ''}>
-              {saved ? `${t('odontogram.saved')} ✓` : t('odontogram.saveChanges')}
+              {saving ? 'Saving…' : saved ? `${t('odontogram.saved')} ✓` : t('odontogram.saveChanges')}
             </Button>
           </div>
         }
@@ -146,7 +186,7 @@ export default function OdontogramPage() {
               <EmptyState
                 title={t('odontogram.noRecord')}
                 description={t('odontogram.noRecordDesc')}
-                action={<Button size="sm">{t('odontogram.createChart')}</Button>}
+                action={<Button size="sm" onClick={handleCreateChart}>{t('odontogram.createChart')}</Button>}
               />
             )}
           </SectionCard>

@@ -19,6 +19,9 @@ import { proceduresRoutes } from './modules/procedures/procedures.routes.js';
 import { treatmentsRoutes } from './modules/treatments/treatments.routes.js';
 import { odontogramRoutes } from './modules/odontogram/odontogram.routes.js';
 import { invoicesRoutes, financeRoutes, patientDebtRoute } from './modules/invoices/invoices.routes.js';
+import { reportsRoutes } from './modules/reports/reports.routes.js';
+import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
+import auditHookPlugin from './plugins/auditHook.js';
 import { AppError, ValidationError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
 
@@ -52,6 +55,9 @@ export async function buildApp(opts = {}) {
     decorateReply: false,
   });
 
+  // ─── Audit Hook ──────────────────────────────────────────────────────────────
+  await fastify.register(auditHookPlugin);
+
   // ─── Global Error Handler ────────────────────────────────────────────────────
   fastify.setErrorHandler((error, _request, reply) => {
     if (!error.statusCode || error.statusCode >= 500) fastify.log.error(error);
@@ -81,6 +87,8 @@ export async function buildApp(opts = {}) {
   await fastify.register(invoicesRoutes, { prefix: '/api/v1/invoices' });
   await fastify.register(financeRoutes, { prefix: '/api/v1/finance' });
   await fastify.register(patientDebtRoute, { prefix: '/api/v1/patients' });
+  await fastify.register(reportsRoutes, { prefix: '/api/v1/reports' });
+  await fastify.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
 
   return fastify;
 }

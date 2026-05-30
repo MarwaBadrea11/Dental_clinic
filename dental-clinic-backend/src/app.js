@@ -19,6 +19,8 @@ import { proceduresRoutes } from './modules/procedures/procedures.routes.js';
 import { treatmentsRoutes } from './modules/treatments/treatments.routes.js';
 import { odontogramRoutes } from './modules/odontogram/odontogram.routes.js';
 import { invoicesRoutes, financeRoutes, patientDebtRoute } from './modules/invoices/invoices.routes.js';
+import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
+import { staffRoutes } from './modules/staff/staff.routes.js';
 import { AppError, ValidationError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
 
@@ -34,7 +36,7 @@ export async function buildApp(opts = {}) {
   await fastify.register(jwtPlugin);
   await fastify.register(securityHeadersPlugin);
   await fastify.register(cors, {
-    origin: env.CORS_ORIGIN,
+    origin: env.CORS_ORIGIN.split(',').map(o => o.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
@@ -81,6 +83,8 @@ export async function buildApp(opts = {}) {
   await fastify.register(invoicesRoutes, { prefix: '/api/v1/invoices' });
   await fastify.register(financeRoutes, { prefix: '/api/v1/finance' });
   await fastify.register(patientDebtRoute, { prefix: '/api/v1/patients' });
+  await fastify.register(inventoryRoutes, { prefix: '/api/v1/inventory' });
+  await fastify.register(staffRoutes, { prefix: '/api/v1/staff' });
 
   return fastify;
 }

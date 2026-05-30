@@ -16,8 +16,9 @@ export const ROLE_PERMISSIONS = {
     'invoices:*',
     'payments:*',
     'inventory:read',
+    'staff:read',
   ],
-  ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*'],
+  ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*', 'staff:read'],
   STOREKEEPER: ['inventory:*'],
   HR: ['staff:*'],
 };

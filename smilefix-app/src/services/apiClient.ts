@@ -98,10 +98,10 @@ async function request<T>(
   const token = await getValidToken()
 
   if (!token && retry) {
-    // No valid token and no refresh token — send to login
+    // No valid token and no refresh token — clear storage and signal logout
     clearTokens()
     clearUser()
-    window.location.href = '/login'
+    window.dispatchEvent(new CustomEvent('auth:session-expired'))
     throw new ApiError(401, 'Session expired. Please log in again.')
   }
 
@@ -120,7 +120,7 @@ async function request<T>(
     if (newToken) return request<T>(method, path, body, false)
     clearTokens()
     clearUser()
-    window.location.href = '/login'
+    window.dispatchEvent(new CustomEvent('auth:session-expired'))
     throw new ApiError(401, 'Session expired. Please log in again.')
   }
 

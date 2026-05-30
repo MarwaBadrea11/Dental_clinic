@@ -22,6 +22,8 @@ import { invoicesRoutes, financeRoutes, patientDebtRoute } from './modules/invoi
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import auditHookPlugin from './plugins/auditHook.js';
+import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
+import { staffRoutes } from './modules/staff/staff.routes.js';
 import { AppError, ValidationError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
 
@@ -37,7 +39,7 @@ export async function buildApp(opts = {}) {
   await fastify.register(jwtPlugin);
   await fastify.register(securityHeadersPlugin);
   await fastify.register(cors, {
-    origin: env.CORS_ORIGIN,
+    origin: env.CORS_ORIGIN.split(',').map(o => o.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
@@ -89,6 +91,8 @@ export async function buildApp(opts = {}) {
   await fastify.register(patientDebtRoute, { prefix: '/api/v1/patients' });
   await fastify.register(reportsRoutes, { prefix: '/api/v1/reports' });
   await fastify.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
+  await fastify.register(inventoryRoutes, { prefix: '/api/v1/inventory' });
+  await fastify.register(staffRoutes, { prefix: '/api/v1/staff' });
 
   return fastify;
 }

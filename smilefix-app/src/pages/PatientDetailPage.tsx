@@ -39,13 +39,14 @@ export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { getPatientById, getHistoryByPatientId, deletePatient, addHistoryEntry, loadPatientById } = usePatientStore()
+  const { getPatientById, getHistoryByPatientId, deletePatientById, addHistoryEntry, loadPatientById } = usePatientStore()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
-  const [fetching, setFetching] = useState(true)  // start true to avoid "not found" flash
+  const [fetching, setFetching] = useState(true)
+  const [deleting, setDeleting] = useState(false)
 
   const patient = getPatientById(id ?? '')
 
@@ -85,10 +86,15 @@ export default function PatientDetailPage() {
   const totalSpent = history.reduce((sum, h) => sum + (h.cost ?? 0), 0)
   const completedTreatments = history.filter((h) => h.status === 'completed').length
 
-  const handleDelete = () => {
-    if (confirm(`Permanently delete ${fullName}?`)) {
-      deletePatient(patient.id)
+  const handleDelete = async () => {
+    if (!confirm(`Permanently delete ${fullName}?`)) return
+    setDeleting(true)
+    try {
+      await deletePatientById(patient.id)
       navigate(ROUTES.PATIENTS)
+    } catch {
+      alert('Failed to delete patient. Please try again.')
+      setDeleting(false)
     }
   }
 
@@ -112,7 +118,7 @@ export default function PatientDetailPage() {
               onClick={() => navigate(`/patients/${patient.id}/odontogram`)}>
               🦷 Odontogram
             </Button>
-            <Button variant="danger" size="sm" leftIcon={<Trash2 size={14} />} onClick={handleDelete}>
+            <Button variant="danger" size="sm" leftIcon={<Trash2 size={14} />} onClick={handleDelete} loading={deleting}>
               Delete
             </Button>
           </div>

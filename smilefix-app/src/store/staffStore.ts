@@ -1,51 +1,191 @@
 import { create } from 'zustand'
 import type { StaffMember, AttendanceRecord } from '@/types'
+import {
+  fetchStaff,
+  fetchStaffById,
+  createStaffMember,
+  updateStaffMember,
+  deleteStaffMember,
+  fetchAttendance,
+  logAttendance,
+  updateAttendanceLog,
+  deleteAttendanceLog,
+  fetchSalaryRecords,
+  createSalaryRecord,
+  updateSalaryRecord,
+  deleteSalaryRecord,
+  fetchMonthlySalarySummary,
+  type CreateStaffPayload,
+  type UpdateStaffPayload,
+  type CreateAttendancePayload,
+  type CreateSalaryPayload,
+  type BackendSalaryRecord,
+} from '@/services/staffService'
 
-const today = new Date().toISOString().split('T')[0]
-
-export const MOCK_STAFF: StaffMember[] = [
-  { id: 'e1', employeeCode: 'EMP-001', firstName: 'Alexander', lastName: 'Smith',    role: 'doctor',       specialty: 'Orthodontist',   email: 'a.smith@smilefix.com',    phone: '+1 (555) 100-0001', status: 'active',   joinDate: '2019-03-15', department: 'Clinical',     salary: 12000, shift: 'morning',   workingDays: ['Mon','Tue','Wed','Thu','Fri'] },
-  { id: 'e2', employeeCode: 'EMP-002', firstName: 'Rachel',    lastName: 'Peterson', role: 'doctor',       specialty: 'Endodontist',    email: 'r.peterson@smilefix.com', phone: '+1 (555) 100-0002', status: 'active',   joinDate: '2020-06-01', department: 'Clinical',     salary: 11500, shift: 'morning',   workingDays: ['Mon','Tue','Wed','Thu','Fri'] },
-  { id: 'e3', employeeCode: 'EMP-003', firstName: 'James',     lastName: 'Lee',      role: 'doctor',       specialty: 'Periodontist',   email: 'j.lee@smilefix.com',      phone: '+1 (555) 100-0003', status: 'active',   joinDate: '2021-01-10', department: 'Clinical',     salary: 11000, shift: 'afternoon', workingDays: ['Mon','Tue','Wed','Thu','Fri'] },
-  { id: 'e4', employeeCode: 'EMP-004', firstName: 'Maria',     lastName: 'Santos',   role: 'nurse',        specialty: undefined,        email: 'm.santos@smilefix.com',   phone: '+1 (555) 100-0004', status: 'active',   joinDate: '2020-09-20', department: 'Clinical',     salary: 4800,  shift: 'morning',   workingDays: ['Mon','Tue','Wed','Thu','Fri'] },
-  { id: 'e5', employeeCode: 'EMP-005', firstName: 'Kevin',     lastName: 'Brown',    role: 'assistant',    specialty: undefined,        email: 'k.brown@smilefix.com',    phone: '+1 (555) 100-0005', status: 'active',   joinDate: '2022-03-01', department: 'Clinical',     salary: 3600,  shift: 'morning',   workingDays: ['Mon','Tue','Wed','Thu','Fri'] },
-  { id: 'e6', employeeCode: 'EMP-006', firstName: 'Sophie',    lastName: 'Turner',   role: 'receptionist', specialty: undefined,        email: 's.turner@smilefix.com',   phone: '+1 (555) 100-0006', status: 'active',   joinDate: '2021-07-15', department: 'Front Desk',   salary: 3200,  shift: 'full-day',  workingDays: ['Mon','Tue','Wed','Thu','Fri'] },
-  { id: 'e7', employeeCode: 'EMP-007', firstName: 'Daniel',    lastName: 'Kim',      role: 'hygienist',    specialty: undefined,        email: 'd.kim@smilefix.com',      phone: '+1 (555) 100-0007', status: 'on-leave', joinDate: '2020-11-01', department: 'Clinical',     salary: 5200,  shift: 'morning',   workingDays: ['Mon','Tue','Wed','Thu'] },
-  { id: 'e8', employeeCode: 'EMP-008', firstName: 'Linda',     lastName: 'Garcia',   role: 'admin',        specialty: undefined,        email: 'l.garcia@smilefix.com',   phone: '+1 (555) 100-0008', status: 'active',   joinDate: '2018-05-20', department: 'Administration',salary: 4200, shift: 'full-day',  workingDays: ['Mon','Tue','Wed','Thu','Fri'] },
-]
-
-export const MOCK_ATTENDANCE: AttendanceRecord[] = [
-  { id: 'att1', employeeId: 'e1', date: today, checkIn: '08:55', checkOut: undefined, status: 'present' },
-  { id: 'att2', employeeId: 'e2', date: today, checkIn: '09:02', checkOut: undefined, status: 'present' },
-  { id: 'att3', employeeId: 'e3', date: today, checkIn: '13:05', checkOut: undefined, status: 'present' },
-  { id: 'att4', employeeId: 'e4', date: today, checkIn: '08:48', checkOut: undefined, status: 'present' },
-  { id: 'att5', employeeId: 'e5', date: today, checkIn: '09:15', checkOut: undefined, status: 'late' },
-  { id: 'att6', employeeId: 'e6', date: today, checkIn: '08:58', checkOut: undefined, status: 'present' },
-  { id: 'att7', employeeId: 'e7', date: today, checkIn: undefined, checkOut: undefined, status: 'leave' },
-  { id: 'att8', employeeId: 'e8', date: today, checkIn: '09:00', checkOut: undefined, status: 'present' },
-]
+// ── Store ─────────────────────────────────────────────────────────────────────
 
 interface StaffState {
   staff: StaffMember[]
   attendance: AttendanceRecord[]
+  salaryRecords: BackendSalaryRecord[]
+  loading: boolean
+  error: string | null
 
-  addStaff: (s: StaffMember) => void
-  updateStaff: (id: string, data: Partial<StaffMember>) => void
-  deleteStaff: (id: string) => void
+  // Sync helpers
   getStaffById: (id: string) => StaffMember | undefined
   getAttendanceByDate: (date: string) => AttendanceRecord[]
   getTodayAttendance: () => AttendanceRecord[]
+
+  // API actions — Staff
+  loadStaff: (params?: { search?: string; role?: string; status?: string }) => Promise<void>
+  addStaff: (payload: CreateStaffPayload) => Promise<StaffMember>
+  editStaff: (id: string, payload: UpdateStaffPayload) => Promise<StaffMember>
+  removeStaff: (id: string) => Promise<void>
+
+  // API actions — Attendance
+  loadAttendance: (params?: { staff_id?: string; date?: string; from_date?: string; to_date?: string }) => Promise<void>
+  addAttendance: (payload: CreateAttendancePayload) => Promise<AttendanceRecord>
+  editAttendance: (id: string, payload: Partial<CreateAttendancePayload>) => Promise<AttendanceRecord>
+  removeAttendance: (id: string) => Promise<void>
+
+  // API actions — Salary
+  loadSalaryRecords: (params?: { staff_id?: string; month?: number; year?: number }) => Promise<void>
+  addSalaryRecord: (payload: CreateSalaryPayload) => Promise<BackendSalaryRecord>
+  editSalaryRecord: (id: string, payload: Partial<CreateSalaryPayload>) => Promise<BackendSalaryRecord>
+  removeSalaryRecord: (id: string) => Promise<void>
 }
 
-export const useStaffStore = create<StaffState>((set, get) => ({
-  staff: MOCK_STAFF,
-  attendance: MOCK_ATTENDANCE,
+const todayStr = () => new Date().toISOString().split('T')[0]
 
-  addStaff: (s) => set((st) => ({ staff: [s, ...st.staff] })),
-  updateStaff: (id, data) =>
-    set((s) => ({ staff: s.staff.map((m) => m.id === id ? { ...m, ...data } : m) })),
-  deleteStaff: (id) => set((s) => ({ staff: s.staff.filter((m) => m.id !== id) })),
+export const useStaffStore = create<StaffState>((set, get) => ({
+  staff: [],
+  attendance: [],
+  salaryRecords: [],
+  loading: false,
+  error: null,
+
+  // ── Sync helpers ───────────────────────────────────────────────────────────
+
   getStaffById: (id) => get().staff.find((m) => m.id === id),
+
   getAttendanceByDate: (date) => get().attendance.filter((a) => a.date === date),
-  getTodayAttendance: () => get().attendance.filter((a) => a.date === today),
+
+  getTodayAttendance: () => get().attendance.filter((a) => a.date === todayStr()),
+
+  // ── Staff API actions ──────────────────────────────────────────────────────
+
+  loadStaff: async (params) => {
+    set({ loading: true, error: null })
+    try {
+      const { staff } = await fetchStaff(params)
+      set({ staff, loading: false })
+    } catch (err) {
+      set({ loading: false, error: err instanceof Error ? err.message : 'Failed to load staff' })
+    }
+  },
+
+  addStaff: async (payload) => {
+    const member = await createStaffMember(payload)
+    set((s) => ({ staff: [member, ...s.staff] }))
+    return member
+  },
+
+  editStaff: async (id, payload) => {
+    const member = await updateStaffMember(id, payload)
+    set((s) => ({ staff: s.staff.map((m) => (m.id === id ? member : m)) }))
+    return member
+  },
+
+  removeStaff: async (id) => {
+    const previous = get().staff
+    set((s) => ({ staff: s.staff.filter((m) => m.id !== id) }))
+    try {
+      await deleteStaffMember(id)
+    } catch (err) {
+      set({ staff: previous })
+      throw err
+    }
+  },
+
+  // ── Attendance API actions ─────────────────────────────────────────────────
+
+  loadAttendance: async (params) => {
+    set({ loading: true, error: null })
+    try {
+      const records = await fetchAttendance(params)
+      set({ attendance: records, loading: false })
+    } catch (err) {
+      set({ loading: false, error: err instanceof Error ? err.message : 'Failed to load attendance' })
+    }
+  },
+
+  addAttendance: async (payload) => {
+    const record = await logAttendance(payload)
+    set((s) => {
+      // Replace if same staff+date already exists, otherwise prepend
+      const exists = s.attendance.some(
+        (a) => a.employeeId === record.employeeId && a.date === record.date
+      )
+      return {
+        attendance: exists
+          ? s.attendance.map((a) =>
+              a.employeeId === record.employeeId && a.date === record.date ? record : a
+            )
+          : [record, ...s.attendance],
+      }
+    })
+    return record
+  },
+
+  editAttendance: async (id, payload) => {
+    const record = await updateAttendanceLog(id, payload)
+    set((s) => ({ attendance: s.attendance.map((a) => (a.id === id ? record : a)) }))
+    return record
+  },
+
+  removeAttendance: async (id) => {
+    const previous = get().attendance
+    set((s) => ({ attendance: s.attendance.filter((a) => a.id !== id) }))
+    try {
+      await deleteAttendanceLog(id)
+    } catch (err) {
+      set({ attendance: previous })
+      throw err
+    }
+  },
+
+  // ── Salary API actions ─────────────────────────────────────────────────────
+
+  loadSalaryRecords: async (params) => {
+    set({ loading: true, error: null })
+    try {
+      const records = await fetchSalaryRecords(params)
+      set({ salaryRecords: records, loading: false })
+    } catch (err) {
+      set({ loading: false, error: err instanceof Error ? err.message : 'Failed to load salary records' })
+    }
+  },
+
+  addSalaryRecord: async (payload) => {
+    const record = await createSalaryRecord(payload)
+    set((s) => ({ salaryRecords: [record, ...s.salaryRecords] }))
+    return record
+  },
+
+  editSalaryRecord: async (id, payload) => {
+    const record = await updateSalaryRecord(id, payload)
+    set((s) => ({ salaryRecords: s.salaryRecords.map((r) => (r.id === id ? record : r)) }))
+    return record
+  },
+
+  removeSalaryRecord: async (id) => {
+    const previous = get().salaryRecords
+    set((s) => ({ salaryRecords: s.salaryRecords.filter((r) => r.id !== id) }))
+    try {
+      await deleteSalaryRecord(id)
+    } catch (err) {
+      set({ salaryRecords: previous })
+      throw err
+    }
+  },
 }))

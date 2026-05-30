@@ -10,7 +10,7 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   PORT: z.coerce.number().int().positive().default(3000),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:5174'),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   UPLOAD_DIR: z.string().default('uploads'),
 });

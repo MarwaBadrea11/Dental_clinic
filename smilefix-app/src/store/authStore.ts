@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { User } from '@/types'
-import { logout as apiLogout, getAccessToken, getRefreshToken, getSavedUser, saveTokens } from '@/services/authService'
+import { logout as apiLogout, getAccessToken, getRefreshToken, getSavedUser, saveTokens, clearTokens, clearUser } from '@/services/authService'
 
 interface AuthState {
   user: User | null
@@ -9,6 +9,7 @@ interface AuthState {
 
   setUser: (user: User) => void
   logout: () => Promise<void>
+  forceLogout: () => void
   setLoading: (loading: boolean) => void
   /** Call once on app boot to silently restore session via refresh token. */
   rehydrate: () => Promise<void>
@@ -46,6 +47,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, isAuthenticated: false })
   },
 
+  forceLogout: () => {
+    clearTokens()
+    clearUser()
+    set({ user: null, isAuthenticated: false })
+  },
+
   setLoading: (isLoading) => set({ isLoading }),
 
   rehydrate: async () => {
@@ -61,6 +68,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     // Access token missing or expired — try to refresh silently
     if (!refreshToken) {
+      clearTokens()
+      clearUser()
       set({ user: null, isAuthenticated: false })
       return
     }
@@ -73,6 +82,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       })
 
       if (!res.ok) {
+        // Refresh token is dead — wipe everything so the app redirects to login
+        clearTokens()
+        clearUser()
         set({ user: null, isAuthenticated: false })
         return
       }
@@ -84,6 +96,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = buildUser(getSavedUser())
       set({ user, isAuthenticated: !!user })
     } catch {
+      clearTokens()
+      clearUser()
       set({ user: null, isAuthenticated: false })
     }
   },

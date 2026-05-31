@@ -5,7 +5,6 @@ export const LineItemSchema = z.object({
   quantity: z.number().int().min(1).default(1),
   unit_cost: z.number().min(0),
   total: z.number().min(0),
-  // Optional back-reference to the source procedure for traceability
   procedure_id: z.string().uuid().optional().nullable(),
   tooth_number: z.string().max(3).optional().nullable(),
 });
@@ -17,6 +16,7 @@ export const CreateInvoiceSchema = z.object({
   line_items: z.array(LineItemSchema).min(1),
   tax_rate: z.number().min(0).max(1).default(0),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  notes: z.string().optional().nullable(), // مضاف لدعم واجهة الـ Modal
 });
 
 export const UpdateInvoiceSchema = z.object({
@@ -33,6 +33,7 @@ export const ListInvoicesSchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().optional(), // مضاف لدعم شريط البحث في الجداول
 });
 
 export const RecordPaymentSchema = z.object({

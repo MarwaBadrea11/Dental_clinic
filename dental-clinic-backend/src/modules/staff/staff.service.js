@@ -139,4 +139,10 @@ export class StaffService {
     const totalPayroll = records.reduce((sum, r) => sum + Number(r.net_salary), 0);
     return { year, month, records, total_payroll: totalPayroll };
   }
+
+  // ── Dashboard Stats ──────────────────────────────────────────────────────────
+
+  async getDashboardStats() {
+    return this.repo.getDashboardStats();
+  }
 }

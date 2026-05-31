@@ -15,6 +15,7 @@ import {
   updateSalaryRecordHandler,
   deleteSalaryRecordHandler,
   getMonthlySummaryHandler,
+  getDashboardStatsHandler,
 } from './staff.controller.js';
 
 export async function staffRoutes(fastify) {
@@ -40,4 +41,7 @@ export async function staffRoutes(fastify) {
   fastify.put('/salary/:id',                    { preHandler: writeAuth }, updateSalaryRecordHandler);
   fastify.delete('/salary/:id',                 { preHandler: writeAuth }, deleteSalaryRecordHandler);
   fastify.get('/salary/summary/:year/:month',   { preHandler: readAuth  }, getMonthlySummaryHandler);
+
+  // ── Dashboard Stats ──────────────────────────────────────────────────────────
+  fastify.get('/dashboard-stats',               { preHandler: readAuth  }, getDashboardStatsHandler);
 }

@@ -10,6 +10,7 @@ export const ROLE_PERMISSIONS = {
     'treatments:*',
     'odontogram:*',
     'invoices:read',
+    'staff:read',
   ],
   RECEPTIONIST: [
     'dashboard:read',
@@ -22,6 +23,7 @@ export const ROLE_PERMISSIONS = {
     'odontogram:read',
     'odontogram:create',
     'staff:read',
+    'staff:update',
   ],
   ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*', 'reports:financial', 'staff:read'],
   STOREKEEPER: ['inventory:*', 'reports:inventory'],

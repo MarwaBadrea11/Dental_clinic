@@ -18,8 +18,8 @@ import { EmployeeCard, AttendanceWidget, SalaryCard, ShiftTable } from '@/compon
 import { useStaffStore } from '@/store/staffStore'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import type { StaffMember, EmployeeRole, EmployeeStatus } from '@/types'
-import type { CreateStaffPayload, CreateAttendancePayload, CreateSalaryPayload } from '@/services/staffService'
+import type { StaffMember, EmployeeRole, EmployeeStatus, AttendanceRecord } from '@/types'
+import type { CreateStaffPayload, CreateAttendancePayload, CreateSalaryPayload, BackendSalaryRecord } from '@/services/staffService'
 
 type ViewMode = 'team' | 'attendance' | 'schedule' | 'payroll'
 
@@ -156,7 +156,7 @@ function AttendanceModal({
 }: {
   open: boolean
   onClose: () => void
-  onSave: (payload: CreateAttendancePayload) => Promise<void>
+  onSave: (payload: CreateAttendancePayload) => Promise<AttendanceRecord | void>
   staff: StaffMember[]
 }) {
   const { t } = useTranslation()
@@ -217,7 +217,7 @@ function SalaryModal({
 }: {
   open: boolean
   onClose: () => void
-  onSave: (payload: CreateSalaryPayload) => Promise<void>
+  onSave: (payload: CreateSalaryPayload) => Promise<BackendSalaryRecord | void>
   staff: StaffMember[]
 }) {
   const { t } = useTranslation()
@@ -284,10 +284,11 @@ function SalaryModal({
 export default function StaffPage() {
   const { t } = useTranslation()
   const {
-    staff, attendance, salaryRecords, loading,
+    staff, attendance, salaryRecords, loading, dashboardStats,
     loadStaff, addStaff, editStaff, removeStaff,
     loadAttendance, addAttendance,
     loadSalaryRecords, addSalaryRecord,
+    loadDashboardStats,
     getTodayAttendance,
   } = useStaffStore()
 
@@ -303,7 +304,11 @@ export default function StaffPage() {
   const [showSalaryModal, setShowSalaryModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => { loadStaff() }, [])
+  useEffect(() => {
+    loadStaff({ search, role: roleFilter === 'all' ? undefined : roleFilter, status: statusFilter === 'all' ? undefined : statusFilter })
+    loadDashboardStats()
+  }, [search, roleFilter, statusFilter])
+
   useEffect(() => {
     if (viewMode === 'attendance') loadAttendance({ date: new Date().toISOString().split('T')[0] })
     if (viewMode === 'payroll') loadSalaryRecords()
@@ -322,23 +327,20 @@ export default function StaffPage() {
     { value: 'on-leave', label: t('status.onLeave') },
   ]
 
-  const filtered = staff.filter((m) => {
-    const matchRole = roleFilter === 'all' || m.role === roleFilter
-    const matchStatus = statusFilter === 'all' || m.status === statusFilter
-    const q = search.toLowerCase()
-    const matchSearch = !q || [`${m.firstName} ${m.lastName}`, m.email, m.role, m.employeeCode].some((v) => v.toLowerCase().includes(q))
-    return matchRole && matchStatus && matchSearch
-  })
-
   const handleSaveStaff = async (payload: CreateStaffPayload) => {
     if (editTarget) { await editStaff(editTarget.id, payload) }
     else { await addStaff(payload) }
+    loadStaff({ search, role: roleFilter === 'all' ? undefined : roleFilter, status: statusFilter === 'all' ? undefined : statusFilter })
+    loadDashboardStats()
   }
 
   const handleDelete = async (m: StaffMember) => {
     if (!confirm(`Delete ${m.firstName} ${m.lastName}?`)) return
     setDeletingId(m.id)
-    try { await removeStaff(m.id) }
+    try {
+      await removeStaff(m.id)
+      loadDashboardStats()
+    }
     catch { alert('Failed to delete staff member.') }
     finally { setDeletingId(null) }
   }
@@ -401,10 +403,10 @@ export default function StaffPage() {
       {/* Stats */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {[
-          { label: t('staff.totalStaff'),   value: staff.length,                                          color: 'text-[var(--color-primary)]' },
-          { label: t('status.active'),      value: staff.filter((m) => m.status === 'active').length,     color: 'text-[var(--color-secondary)]' },
-          { label: t('status.onLeave'),     value: staff.filter((m) => m.status === 'on-leave').length,   color: 'text-amber-600' },
-          { label: t('staff.presentToday'), value: todayAttendance.filter((a) => a.status === 'present').length, color: 'text-[var(--color-primary)]' },
+          { label: t('staff.totalStaff'),   value: dashboardStats?.total ?? staff.length,                                          color: 'text-[var(--color-primary)]' },
+          { label: t('status.active'),      value: dashboardStats?.active ?? staff.filter((m) => m.status === 'active').length,     color: 'text-[var(--color-secondary)]' },
+          { label: t('status.onLeave'),     value: dashboardStats?.onLeave ?? staff.filter((m) => m.status === 'on-leave').length,   color: 'text-amber-600' },
+          { label: t('staff.presentToday'), value: dashboardStats?.presentToday ?? todayAttendance.filter((a) => a.status === 'present').length, color: 'text-[var(--color-primary)]' },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-lg)] border border-[var(--color-outline-variant)]/20 shadow-[var(--shadow-card)] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]">{s.label}</p>
@@ -446,11 +448,11 @@ export default function StaffPage() {
               <AnimatePresence mode="wait">
                 {listMode === 'grid' ? (
                   <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-5">
-                    {filtered.length === 0 ? (
+                    {staff.length === 0 ? (
                       <p className="text-center text-sm text-[var(--color-on-surface-variant)] py-10">{t('staff.noStaff')}</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filtered.map((m, i) => (
+                        {staff.map((m, i) => (
                           <div key={m.id} className="relative group">
                             <EmployeeCard member={m} onClick={setSelected} delay={i * 0.04} />
                             <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1 bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-DEFAULT)] shadow-[var(--shadow-card)] p-1">
@@ -464,7 +466,7 @@ export default function StaffPage() {
                   </motion.div>
                 ) : (
                   <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <DataTable columns={columns} data={filtered} actions={actions} loading={loading} searchable={false} externalSearch={search} pageSize={8} emptyTitle={t('staff.noStaff')} emptyIcon={<Users size={28} />} onRowClick={setSelected} />
+                    <DataTable columns={columns} data={staff} actions={actions} loading={loading} searchable={false} externalSearch={search} pageSize={8} emptyTitle={t('staff.noStaff')} emptyIcon={<Users size={28} />} onRowClick={(row) => setSelected(row as StaffMember)} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -572,7 +574,10 @@ export default function StaffPage() {
       <AttendanceModal
         open={showAttendanceModal}
         onClose={() => setShowAttendanceModal(false)}
-        onSave={addAttendance}
+        onSave={async (payload) => {
+          await addAttendance(payload)
+          loadDashboardStats()
+        }}
         staff={staff}
       />
 

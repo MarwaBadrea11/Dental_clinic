@@ -515,7 +515,16 @@
     "shiftMorning":   "AM",
     "shiftAfternoon": "PM",
     "shiftEvening":   "Eve",
-    "shiftFullDay":   "Full"
+    "shiftFullDay":   "Full",
+    "logAttendance":  "Log Attendance",
+    "addSalaryRecord": "Add Salary Record",
+    "editStaff":      "Edit Staff",
+    "baseSalary":     "Base Salary",
+    "shiftStart":     "Shift Start",
+    "shiftEnd":       "Shift End",
+    "bonus":          "Bonus",
+    "deductions":     "Deductions",
+    "checkOut":       "Check-out"
   },
   "reports": {
     "title":              "Reports",

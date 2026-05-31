@@ -122,3 +122,10 @@ export async function getMonthlySummaryHandler(request, reply) {
   const summary = await getService(request).getMonthlySummary(year, month);
   return reply.status(200).send(successResponse(summary));
 }
+
+// ── Dashboard Stats ──────────────────────────────────────────────────────────────
+
+export async function getDashboardStatsHandler(request, reply) {
+  const stats = await getService(request).getDashboardStats();
+  return reply.status(200).send(successResponse(stats));
+}

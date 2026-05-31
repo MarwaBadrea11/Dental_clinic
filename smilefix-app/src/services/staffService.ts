@@ -135,18 +135,9 @@ export async function fetchStaff(params?: {
 
   const query = qs.toString() ? `?${qs}` : ''
 
-  const { getAccessToken } = await import('./authService')
-  const { API_BASE } = await import('./apiClient')
-  const token = getAccessToken()
-  const res = await fetch(`${API_BASE}/staff${query}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  })
-  const json = await res.json()
-  const rows: BackendStaffMember[] = Array.isArray(json.data) ? json.data : []
-  const total: number = json.meta?.total ?? rows.length
+  const res = await apiClient.get<{ data: BackendStaffMember[]; meta: { total: number } }>(`/staff${query}`)
+  const rows: BackendStaffMember[] = Array.isArray(res.data) ? res.data : []
+  const total: number = res.meta?.total ?? rows.length
   return { staff: rows.map(mapStaffMember), total }
 }
 
@@ -238,4 +229,15 @@ export async function fetchMonthlySalarySummary(year: number, month: number): Pr
   total_payroll: number
 }> {
   return apiClient.get(`/staff/salary/summary/${year}/${month}`)
+}
+
+// ── Dashboard Stats ─────────────────────────────────────────────────────────────
+
+export async function fetchDashboardStats(): Promise<{
+  total: number
+  active: number
+  onLeave: number
+  presentToday: number
+}> {
+  return apiClient.get('/staff/dashboard-stats')
 }

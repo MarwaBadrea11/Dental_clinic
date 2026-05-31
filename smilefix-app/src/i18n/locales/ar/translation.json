@@ -514,7 +514,16 @@
     "shiftMorning":   "ص",
     "shiftAfternoon": "م",
     "shiftEvening":   "مساء",
-    "shiftFullDay":   "كامل"
+    "shiftFullDay":   "كامل",
+    "logAttendance":  "تسجيل الحضور",
+    "addSalaryRecord": "إضافة سجل راتب",
+    "editStaff":      "تعديل الموظف",
+    "baseSalary":     "الراتب الأساسي",
+    "shiftStart":     "بداية الوردية",
+    "shiftEnd":       "نهاية الوردية",
+    "bonus":          "مكافأة",
+    "deductions":     "خصومات",
+    "checkOut":       "تسجيل المغادرة"
   },
   "reports": {
     "title":              "التقارير",

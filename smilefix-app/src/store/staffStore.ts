@@ -15,6 +15,7 @@ import {
   updateSalaryRecord,
   deleteSalaryRecord,
   fetchMonthlySalarySummary,
+  fetchDashboardStats,
   type CreateStaffPayload,
   type UpdateStaffPayload,
   type CreateAttendancePayload,
@@ -30,6 +31,14 @@ interface StaffState {
   salaryRecords: BackendSalaryRecord[]
   loading: boolean
   error: string | null
+
+  // Dashboard stats
+  dashboardStats: {
+    total: number
+    active: number
+    onLeave: number
+    presentToday: number
+  } | null
 
   // Sync helpers
   getStaffById: (id: string) => StaffMember | undefined
@@ -53,6 +62,9 @@ interface StaffState {
   addSalaryRecord: (payload: CreateSalaryPayload) => Promise<BackendSalaryRecord>
   editSalaryRecord: (id: string, payload: Partial<CreateSalaryPayload>) => Promise<BackendSalaryRecord>
   removeSalaryRecord: (id: string) => Promise<void>
+
+  // API actions — Dashboard
+  loadDashboardStats: () => Promise<void>
 }
 
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -63,6 +75,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   salaryRecords: [],
   loading: false,
   error: null,
+  dashboardStats: null,
 
   // ── Sync helpers ───────────────────────────────────────────────────────────
 
@@ -186,6 +199,18 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     } catch (err) {
       set({ salaryRecords: previous })
       throw err
+    }
+  },
+
+  // ── Dashboard API actions ─────────────────────────────────────────────────────
+
+  loadDashboardStats: async () => {
+    set({ loading: true, error: null })
+    try {
+      const stats = await fetchDashboardStats()
+      set({ dashboardStats: stats, loading: false })
+    } catch (err) {
+      set({ loading: false, error: err instanceof Error ? err.message : 'Failed to load dashboard stats' })
     }
   },
 }))

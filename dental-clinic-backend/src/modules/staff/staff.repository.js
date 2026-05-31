@@ -172,4 +172,28 @@ export class StaffRepository {
       )
       .orderBy('staff.full_name');
   }
+
+  // ── Dashboard Stats ──────────────────────────────────────────────────────────
+
+  async getDashboardStats() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const [totalRow, activeRow, onLeaveRow, presentTodayRow] = await Promise.all([
+      this.db('staff').whereNull('deleted_at').count('id as total').first(),
+      this.db('staff').where({ status: 'active' }).whereNull('deleted_at').count('id as total').first(),
+      this.db('staff').where({ status: 'on-leave' }).whereNull('deleted_at').count('id as total').first(),
+      this.db('attendance_logs')
+        .where('log_date', today)
+        .where('status', 'present')
+        .count('id as total')
+        .first(),
+    ]);
+
+    return {
+      total: Number(totalRow.total),
+      active: Number(activeRow.total),
+      onLeave: Number(onLeaveRow.total),
+      presentToday: Number(presentTodayRow.total),
+    };
+  }
 }

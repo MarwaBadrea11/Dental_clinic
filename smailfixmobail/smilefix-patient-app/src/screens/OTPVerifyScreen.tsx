@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // OTP Verification Screen
 // 4-digit boxes | Countdown | Resend
-// Clinical Serenity | Arabic RTL
+// Clinical Serenity | Arabic RTL | Dark Mode
 // ─────────────────────────────────────────────
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
@@ -20,25 +20,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { useAppStore } from '../store/appStore';
+import { useTheme } from '../hooks/useTheme';
+import { useTranslation } from '../hooks/useTranslation';
 import Text from '../components/Text';
-
-const C = {
-  bg:        '#edf1f4',
-  surface:   '#f6fafd',
-  warm:      '#f7eee5',
-  teal:      '#61bec5',
-  tealLight: '#9acec1',
-  blue:      '#1e5979',
-  primary:   '#00696f',
-  onTeal:    '#004b4f',
-  textSub:   '#3e494a',
-  outline:   '#bdc9c9',
-  white:     '#ffffff',
-  error:     '#ba1a1a',
-  errorBg:   '#ffdad6',
-  secondary: '#b6eadd',
-  secText:   '#35675d',
-};
 
 const OTP_LENGTH = 4;
 
@@ -50,6 +34,8 @@ type Props = {
 export default function OTPVerifyScreen({ navigation, route }: Props) {
   const { phone } = route.params;
   const setAuthenticated = useAppStore((s) => s.setAuthenticated);
+  const { colors, isDark } = useTheme();
+  const { t, isRTL } = useTranslation();
 
   const [digits, setDigits]     = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading]   = useState(false);
@@ -137,7 +123,7 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
         }, 800);
       } else {
         setLoading(false);
-        setError('رمز التحقق غير صحيح. حاول مرة أخرى.');
+        setError(t('incorrectVerificationCode'));
         setDigits(Array(OTP_LENGTH).fill(''));
         shake();
         setTimeout(() => hiddenRef.current?.focus(), 200);
@@ -158,12 +144,14 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
 
   const filledCount = digits.filter(Boolean).length;
 
+  const s = makeStyles(colors, isRTL, isDark);
+
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
 
       <LinearGradient
-        colors={[C.surface, C.bg, C.warm + '70']}
+        colors={[colors.surface, colors.bg, colors.warm + (isDark ? '40' : '70')]}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -176,8 +164,8 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
           style={s.backRow}
           onPress={() => navigation.goBack()}
         >
-          <Text style={s.backArrow}>←</Text>
-          <Text style={s.backText}>تغيير الرقم</Text>
+          <Text style={s.backArrow}>{isRTL ? '←' : '→'}</Text>
+          <Text style={s.backText}>{t('changeNumber')}</Text>
         </TouchableOpacity>
 
         {/* ── Header ── */}
@@ -198,12 +186,12 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
           </Animated.View>
 
           <Text style={s.title}>
-            {success ? 'تم التحقق بنجاح!' : 'أدخل رمز التحقق'}
+            {success ? t('verificationSuccess') : t('enterVerificationCode')}
           </Text>
           <Text style={s.subtitle}>
             {success
-              ? 'جارٍ تسجيل دخولك...'
-              : `أرسلنا رمزاً مكوّناً من ${OTP_LENGTH} أرقام إلى`}
+              ? t('loggingYouIn')
+              : isRTL ? `أرسلنا رمزاً مكوّناً من ${OTP_LENGTH} أرقام إلى` : `We sent a ${OTP_LENGTH}-digit code to`}
           </Text>
           {!success && (
             <Text style={s.phoneDisplay}>{phone}</Text>
@@ -241,7 +229,7 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
                   ]}
                 >
                   {loading && isFilled ? (
-                    <ActivityIndicator color={C.teal} size="small" />
+                    <ActivityIndicator color={colors.teal} size="small" />
                   ) : (
                     <Text style={[s.digitText, isFilled && s.digitTextFilled]}>
                       {d || (isFocused ? '|' : '')}
@@ -282,7 +270,7 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
             />
           </View>
           <Text style={s.progressHint}>
-            {filledCount}/{OTP_LENGTH} أرقام
+            {filledCount}/{OTP_LENGTH} {t('digits')}
           </Text>
 
           {/* Verify button (manual) */}
@@ -299,17 +287,17 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
               <LinearGradient
                 colors={
                   loading || filledCount < OTP_LENGTH
-                    ? [C.outline, C.outline]
-                    : [C.teal, C.blue]
+                    ? [colors.outline, colors.outline]
+                    : [colors.teal, colors.blue]
                 }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={s.btnGrad}
               >
                 {loading ? (
-                  <ActivityIndicator color={C.white} size="small" />
+                  <ActivityIndicator color={colors.onPrimary} size="small" />
                 ) : (
-                  <Text style={s.btnText}>تحقق وادخل</Text>
+                  <Text style={s.btnText}>{t('verifyAndEnter')}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -321,9 +309,9 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
               {countdown > 0 ? (
                 <View style={s.countdownRow}>
                   <Text style={s.countdownText}>
-                    إعادة الإرسال بعد{' '}
+                    {t('resendAfter')}{' '}
                     <Text style={s.countdownNum}>{countdown}</Text>
-                    {' '}ثانية
+                    {' '}{t('seconds')}
                   </Text>
                   {/* Circular progress */}
                   <View style={s.countdownCircle}>
@@ -337,11 +325,11 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
                   disabled={resending}
                 >
                   {resending ? (
-                    <ActivityIndicator color={C.primary} size="small" />
+                    <ActivityIndicator color={colors.primary} size="small" />
                   ) : (
                     <>
                       <Text style={s.resendIcon}>🔄</Text>
-                      <Text style={s.resendText}>إعادة إرسال الرمز</Text>
+                      <Text style={s.resendText}>{t('resendCode')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -354,15 +342,15 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
         <View style={s.demoBox}>
           <Text style={s.demoIcon}>💡</Text>
           <Text style={s.demoText}>
-            للتجربة: أدخل أي {OTP_LENGTH} أرقام للدخول
+            {isRTL ? `للتجربة: أدخل أي ${OTP_LENGTH} أرقام للدخول` : `Demo: enter any ${OTP_LENGTH} digits to login`}
           </Text>
         </View>
 
         {/* ── Register link ── */}
         <View style={s.regRow}>
-          <Text style={s.regText}>مريض جديد؟ </Text>
+          <Text style={s.regText}>{t('newPatient')} </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={s.regLink}>أنشئ حسابك الآن</Text>
+            <Text style={s.regLink}>{t('createAccountNow')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -370,185 +358,190 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
   );
 }
 
-// ─────────────────────────────────────────────
-const BOX = 64;
+// ── Styles ────────────────────────────────────
+function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
+  const BOX = 64;
+  const textAlign = isRTL ? 'right' : 'left';
+  const flexDirection = isRTL ? 'row-reverse' : 'row';
+  const alignSelf = isRTL ? 'flex-end' : 'flex-start';
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  safe: { flex: 1, paddingHorizontal: 24 },
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.bg },
+    safe: { flex: 1, paddingHorizontal: 24 },
 
-  blob1: {
-    position: 'absolute', width: 280, height: 280, borderRadius: 140,
-    backgroundColor: C.teal + '14', top: -60, right: -60,
-  },
-  blob2: {
-    position: 'absolute', width: 200, height: 200, borderRadius: 100,
-    backgroundColor: C.tealLight + '10', bottom: 80, left: -60,
-  },
+    blob1: {
+      position: 'absolute', width: 280, height: 280, borderRadius: 140,
+      backgroundColor: isDark ? c.teal + '08' : c.teal + '14', top: -60, right: -60,
+    },
+    blob2: {
+      position: 'absolute', width: 200, height: 200, borderRadius: 100,
+      backgroundColor: isDark ? c.tealLight + '05' : c.tealLight + '10', bottom: 80, left: -60,
+    },
 
-  backRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingTop: 16, paddingBottom: 4, alignSelf: 'flex-end',
-  },
-  backArrow: { fontSize: 18, color: C.primary },
-  backText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: C.primary },
+    backRow: {
+      flexDirection: flexDirection, alignItems: 'center', gap: 6,
+      paddingTop: 16, paddingBottom: 4, alignSelf: alignSelf,
+    },
+    backArrow: { fontSize: 18, color: c.primary },
+    backText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: c.primary },
 
-  // Header
-  header: { alignItems: 'center', marginVertical: 24 },
-  iconCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: C.teal + '20',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
-  },
-  iconCircleSuccess: { backgroundColor: '#b6eadd' },
-  iconEmoji: { fontSize: 36 },
-  title: {
-    fontFamily: 'Manrope_700Bold', fontSize: 26,
-    color: C.blue, textAlign: 'center', marginBottom: 8,
-  },
-  subtitle: {
-    fontFamily: 'Inter_400Regular', fontSize: 14,
-    color: C.textSub, textAlign: 'center',
-  },
-  phoneDisplay: {
-    fontFamily: 'Manrope_700Bold', fontSize: 18,
-    color: C.primary, textAlign: 'center',
-    marginTop: 4, letterSpacing: 1,
-  },
+    // Header
+    header: { alignItems: 'center', marginVertical: 24 },
+    iconCircle: {
+      width: 80, height: 80, borderRadius: 40,
+      backgroundColor: isDark ? c.teal + '10' : c.teal + '20',
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 16,
+    },
+    iconCircleSuccess: { backgroundColor: isDark ? c.successBg : '#b6eadd' },
+    iconEmoji: { fontSize: 36 },
+    title: {
+      fontFamily: 'Manrope_700Bold', fontSize: 26,
+      color: c.blue, textAlign: 'center', marginBottom: 8,
+    },
+    subtitle: {
+      fontFamily: 'Inter_400Regular', fontSize: 14,
+      color: c.textSub, textAlign: 'center',
+    },
+    phoneDisplay: {
+      fontFamily: 'Manrope_700Bold', fontSize: 18,
+      color: c.primary, textAlign: 'center',
+      marginTop: 4, letterSpacing: 1,
+    },
 
-  // Card
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 24, padding: 24,
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.9)',
-    shadowColor: C.blue, shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.07, shadowRadius: 28, elevation: 4,
-    marginBottom: 16,
-  },
+    // Card
+    card: {
+      backgroundColor: isDark ? 'rgba(22,27,34,0.85)' : 'rgba(255,255,255,0.82)',
+      borderRadius: 24, padding: 24,
+      borderWidth: 0.5, borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.9)',
+      shadowColor: c.blue, shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: isDark ? 0.04 : 0.07, shadowRadius: 28, elevation: 4,
+      marginBottom: 16,
+    },
 
-  // OTP boxes
-  boxesRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  digitBox: {
-    width: BOX, height: BOX, borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderWidth: 2, borderColor: C.outline,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  digitBoxFocused: {
-    borderColor: C.teal,
-    shadowColor: C.teal, shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 3,
-  },
-  digitBoxFilled: { borderColor: C.blue, backgroundColor: C.blue + '08' },
-  digitBoxError:  { borderColor: C.error, backgroundColor: C.errorBg + '40' },
-  digitBoxSuccess: { borderColor: '#35675d', backgroundColor: '#b6eadd' },
-  digitText: {
-    fontFamily: 'Manrope_700Bold', fontSize: 28,
-    color: C.outline, letterSpacing: 0,
-  },
-  digitTextFilled: { color: C.blue },
+    // OTP boxes
+    boxesRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 12,
+      marginBottom: 16,
+    },
+    digitBox: {
+      width: BOX, height: BOX, borderRadius: 16,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
+      borderWidth: 2, borderColor: c.outline,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    digitBoxFocused: {
+      borderColor: c.teal,
+      shadowColor: c.teal, shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isDark ? 0.2 : 0.3, shadowRadius: 8, elevation: 3,
+    },
+    digitBoxFilled: { borderColor: c.blue, backgroundColor: c.blue + (isDark ? '10' : '08') },
+    digitBoxError:  { borderColor: c.error, backgroundColor: c.errorBg + (isDark ? '30' : '40') },
+    digitBoxSuccess: { borderColor: isDark ? c.success : '#35675d', backgroundColor: isDark ? c.successBg : '#b6eadd' },
+    digitText: {
+      fontFamily: 'Manrope_700Bold', fontSize: 28,
+      color: c.outline, letterSpacing: 0,
+    },
+    digitTextFilled: { color: c.blue },
 
-  // Hidden input
-  hiddenInput: {
-    position: 'absolute', opacity: 0,
-    width: 1, height: 1, top: 0, left: 0,
-  },
+    // Hidden input
+    hiddenInput: {
+      position: 'absolute', opacity: 0,
+      width: 1, height: 1, top: 0, left: 0,
+    },
 
-  // Error
-  errRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6, marginBottom: 12,
-  },
-  errText: {
-    fontFamily: 'Inter_400Regular', fontSize: 13,
-    color: C.error, textAlign: 'center',
-  },
-  errIcon: { fontSize: 14 },
+    // Error
+    errRow: {
+      flexDirection: flexDirection, alignItems: 'center',
+      justifyContent: 'center', gap: 6, marginBottom: 12,
+    },
+    errText: {
+      fontFamily: 'Inter_400Regular', fontSize: 13,
+      color: c.error, textAlign: 'center',
+    },
+    errIcon: { fontSize: 14 },
 
-  // Progress
-  progressTrack: {
-    height: 4, backgroundColor: C.outline + '40',
-    borderRadius: 2, overflow: 'hidden', marginBottom: 6,
-  },
-  progressFill: {
-    height: '100%', backgroundColor: C.teal,
-    borderRadius: 2,
-  },
-  progressSuccess: { backgroundColor: '#35675d' },
-  progressHint: {
-    fontFamily: 'Inter_400Regular', fontSize: 11,
-    color: C.textSub, textAlign: 'center', marginBottom: 16,
-  },
+    // Progress
+    progressTrack: {
+      height: 4, backgroundColor: c.outline + (isDark ? '30' : '40'),
+      borderRadius: 2, overflow: 'hidden', marginBottom: 6,
+    },
+    progressFill: {
+      height: '100%', backgroundColor: c.teal,
+      borderRadius: 2,
+    },
+    progressSuccess: { backgroundColor: isDark ? c.success : '#35675d' },
+    progressHint: {
+      fontFamily: 'Inter_400Regular', fontSize: 11,
+      color: c.textSub, textAlign: 'center', marginBottom: 16,
+    },
 
-  // Verify button
-  btnVerify: {
-    borderRadius: 16, overflow: 'hidden',
-    shadowColor: C.teal, shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.30, shadowRadius: 18, elevation: 5,
-    marginBottom: 16,
-  },
-  btnDisabled: { opacity: 0.45 },
-  btnGrad: { height: 56, alignItems: 'center', justifyContent: 'center' },
-  btnText: {
-    fontFamily: 'Manrope_700Bold', fontSize: 17,
-    color: C.white, letterSpacing: 0.3,
-  },
+    // Verify button
+    btnVerify: {
+      borderRadius: 16, overflow: 'hidden',
+      shadowColor: c.teal, shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: isDark ? 0.25 : 0.30, shadowRadius: 18, elevation: 5,
+      marginBottom: 16,
+    },
+    btnDisabled: { opacity: 0.45 },
+    btnGrad: { height: 56, alignItems: 'center', justifyContent: 'center' },
+    btnText: {
+      fontFamily: 'Manrope_700Bold', fontSize: 17,
+      color: c.onPrimary, letterSpacing: 0.3,
+    },
 
-  // Resend
-  resendSection: { alignItems: 'center' },
-  countdownRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-  },
-  countdownText: {
-    fontFamily: 'Inter_400Regular', fontSize: 13, color: C.textSub,
-  },
-  countdownNum: {
-    fontFamily: 'Manrope_700Bold', color: C.primary,
-  },
-  countdownCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    borderWidth: 2, borderColor: C.teal,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  countdownCircleText: {
-    fontFamily: 'Manrope_700Bold', fontSize: 13, color: C.primary,
-  },
-  resendBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 10, paddingHorizontal: 20,
-    backgroundColor: C.secondary + '60',
-    borderRadius: 12,
-  },
-  resendIcon: { fontSize: 16 },
-  resendText: {
-    fontFamily: 'Inter_600SemiBold', fontSize: 14, color: C.primary,
-  },
+    // Resend
+    resendSection: { alignItems: 'center' },
+    countdownRow: {
+      flexDirection: flexDirection, alignItems: 'center', gap: 10,
+    },
+    countdownText: {
+      fontFamily: 'Inter_400Regular', fontSize: 13, color: c.textSub,
+    },
+    countdownNum: {
+      fontFamily: 'Manrope_700Bold', color: c.primary,
+    },
+    countdownCircle: {
+      width: 36, height: 36, borderRadius: 18,
+      borderWidth: 2, borderColor: c.teal,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    countdownCircleText: {
+      fontFamily: 'Manrope_700Bold', fontSize: 13, color: c.primary,
+    },
+    resendBtn: {
+      flexDirection: flexDirection, alignItems: 'center', gap: 8,
+      paddingVertical: 10, paddingHorizontal: 20,
+      backgroundColor: isDark ? c.successBg + '30' : '#b6eadd' + '60',
+      borderRadius: 12,
+    },
+    resendIcon: { fontSize: 16 },
+    resendText: {
+      fontFamily: 'Inter_600SemiBold', fontSize: 14, color: c.primary,
+    },
 
-  // Demo
-  demoBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: C.warm, borderRadius: 12,
-    padding: 12, marginBottom: 16,
-  },
-  demoIcon: { fontSize: 16 },
-  demoText: {
-    fontFamily: 'Inter_400Regular', fontSize: 12,
-    color: C.textSub, flex: 1, textAlign: 'right',
-  },
+    // Demo
+    demoBox: {
+      flexDirection: flexDirection, alignItems: 'center', gap: 8,
+      backgroundColor: c.warm, borderRadius: 12,
+      padding: 12, marginBottom: 16,
+    },
+    demoIcon: { fontSize: 16 },
+    demoText: {
+      fontFamily: 'Inter_400Regular', fontSize: 12,
+      color: c.textSub, flex: 1, textAlign: textAlign,
+    },
 
-  // Register
-  regRow: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-  },
-  regText: { fontFamily: 'Inter_400Regular', fontSize: 14, color: C.textSub },
-  regLink: {
-    fontFamily: 'Manrope_700Bold', fontSize: 14,
-    color: C.primary, textDecorationLine: 'underline',
-  },
-});
+    // Register
+    regRow: {
+      flexDirection: flexDirection, justifyContent: 'center', alignItems: 'center',
+    },
+    regText: { fontFamily: 'Inter_400Regular', fontSize: 14, color: c.textSub },
+    regLink: {
+      fontFamily: 'Manrope_700Bold', fontSize: 14,
+      color: c.primary, textDecorationLine: 'underline',
+    },
+  });
+}

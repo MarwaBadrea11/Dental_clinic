@@ -28,6 +28,35 @@ export default function ProfileScreen() {
   const [langLoading, setLangLoading] = useState(false);
 
   const s = makeStyles(colors, isRTL);
+  
+  // Helper functions for RTL/LTR styling
+  const getDirectionStyle = () => ({
+    direction: isRTL ? 'rtl' : 'ltr' as any,
+  });
+
+  const getTextAlignment = (center = false) => ({
+    textAlign: center ? 'center' : (isRTL ? 'right' : 'left'),
+    alignSelf: center ? 'center' : (isRTL ? 'flex-end' : 'flex-start'),
+    paddingRight: center ? 0 : (isRTL ? 20 : 0),
+    paddingLeft: center ? 0 : (isRTL ? 0 : 20),
+  });
+
+  const getFlexDirection = () => ({
+    flexDirection: isRTL ? 'row-reverse' : 'row' as any,
+  });
+
+  const getIconName = (iconName: string) => {
+    if (iconName === 'chevron-forward' || iconName === 'chevron-back') {
+      return isRTL ? 'chevron-back' : 'chevron-forward';
+    }
+    return iconName;
+  };
+
+  // For better visual balance in RTL/LTR
+  const getSpacingStyle = () => ({
+    paddingLeft: isRTL ? 0 : 4,
+    paddingRight: isRTL ? 4 : 0,
+  });
 
   // ── Language toggle with RTL switch ──────────
   const handleToggleLang = () => {
@@ -58,7 +87,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={s.root}>
+    <View style={[s.root, getDirectionStyle()]}>
       <LinearGradient
         colors={[colors.gradStart, colors.gradEnd]}
         style={StyleSheet.absoluteFillObject}
@@ -70,7 +99,7 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* ── Page title ── */}
-          <Text style={s.pageTitle}>{t('myProfile')}</Text>
+          <Text style={[s.pageTitle, getTextAlignment()]}>{t('myProfile')}</Text>
 
           {/* ── Avatar card ── */}
           <View style={s.avatarCard}>
@@ -79,10 +108,10 @@ export default function ProfileScreen() {
                 {patient?.fullName?.charAt(0) ?? 'P'}
               </Text>
             </View>
-            <Text style={s.patientName}>{patient?.fullName ?? '—'}</Text>
-            <Text style={s.patientPhone}>{patient?.phone ?? '—'}</Text>
+            <Text style={[s.patientName, getTextAlignment(true)]}>{patient?.fullName ?? '—'}</Text>
+            <Text style={[s.patientPhone, getTextAlignment(true)]}>{patient?.phone ?? '—'}</Text>
             {patient?.email ? (
-              <Text style={s.patientEmail}>{patient.email}</Text>
+              <Text style={[s.patientEmail, getTextAlignment(true)]}>{patient.email}</Text>
             ) : null}
             <TouchableOpacity style={s.editBtn}>
               <Text style={s.editBtnText}>{t('editProfile')}</Text>
@@ -92,7 +121,7 @@ export default function ProfileScreen() {
           {/* ── Treatment progress ── */}
           {patient?.alignersTotal ? (
             <View style={s.card}>
-              <Text style={s.cardTitle}>{t('treatmentProg')}</Text>
+              <Text style={[s.cardTitle, getTextAlignment()]}>{t('treatmentProg')}</Text>
               <View style={s.progressTrack}>
                 <View
                   style={[
@@ -105,7 +134,7 @@ export default function ProfileScreen() {
                   ]}
                 />
               </View>
-              <Text style={s.progressLabel}>
+              <Text style={[s.progressLabel, getTextAlignment()]}>
                 {patient.alignersCurrent} / {patient.alignersTotal}{' '}
                 {t('alignersLeft')}
               </Text>
@@ -113,7 +142,7 @@ export default function ProfileScreen() {
           ) : null}
 
           {/* ── Settings section ── */}
-          <Text style={s.sectionTitle}>{t('settings')}</Text>
+          <Text style={[s.sectionTitle, getTextAlignment()]}>{t('settings')}</Text>
 
           {/* Language toggle */}
           <TouchableOpacity
@@ -125,9 +154,9 @@ export default function ProfileScreen() {
               <View style={[s.iconBox, { backgroundColor: colors.teal + '20' }]}>
                 <Ionicons name="language" size={20} color={colors.teal} />
               </View>
-              <View>
-                <Text style={s.settingLabel}>{t('language')}</Text>
-                <Text style={s.settingDesc}>
+              <View style={[{ flex: 1 }, getSpacingStyle()]}>
+                <Text style={[s.settingLabel, getTextAlignment()]}>{t('language')}</Text>
+                <Text style={[s.settingDesc, getTextAlignment()]}>
                   {locale === 'ar' ? 'العربية → English' : 'English → العربية'}
                 </Text>
               </View>
@@ -149,9 +178,9 @@ export default function ProfileScreen() {
                   color={isDark ? '#79d5dc' : '#1e5979'}
                 />
               </View>
-              <View>
-                <Text style={s.settingLabel}>{t('darkMode')}</Text>
-                <Text style={s.settingDesc}>
+              <View style={[{ flex: 1 }, getSpacingStyle()]}>
+                <Text style={[s.settingLabel, getTextAlignment()]}>{t('darkMode')}</Text>
+                <Text style={[s.settingDesc, getTextAlignment()]}>
                   {isDark ? (locale === 'ar' ? 'مفعّل' : 'Enabled') : (locale === 'ar' ? 'معطّل' : 'Disabled')}
                 </Text>
               </View>
@@ -171,9 +200,9 @@ export default function ProfileScreen() {
               <View style={[s.iconBox, { backgroundColor: colors.successBg }]}>
                 <Ionicons name="notifications-outline" size={20} color={colors.success} />
               </View>
-              <Text style={s.settingLabel}>{t('notifications')}</Text>
+              <Text style={[s.settingLabel, getTextAlignment(), getSpacingStyle()]}>{t('notifications')}</Text>
             </View>
-            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textSub} />
+            <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
           </TouchableOpacity>
 
           {/* Privacy */}
@@ -182,9 +211,9 @@ export default function ProfileScreen() {
               <View style={[s.iconBox, { backgroundColor: colors.warningBg }]}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={colors.warning} />
               </View>
-              <Text style={s.settingLabel}>{t('privacy')}</Text>
+              <Text style={[s.settingLabel, getTextAlignment(), getSpacingStyle()]}>{t('privacy')}</Text>
             </View>
-            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textSub} />
+            <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
           </TouchableOpacity>
 
           {/* Help */}
@@ -193,9 +222,9 @@ export default function ProfileScreen() {
               <View style={[s.iconBox, { backgroundColor: colors.teal + '15' }]}>
                 <Ionicons name="help-circle-outline" size={20} color={colors.teal} />
               </View>
-              <Text style={s.settingLabel}>{t('help')}</Text>
+              <Text style={[s.settingLabel, getTextAlignment(), getSpacingStyle()]}>{t('help')}</Text>
             </View>
-            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textSub} />
+            <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
           </TouchableOpacity>
 
           {/* About */}
@@ -204,13 +233,13 @@ export default function ProfileScreen() {
               <View style={[s.iconBox, { backgroundColor: colors.blue + '15' }]}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.blue} />
               </View>
-              <Text style={s.settingLabel}>{t('about')}</Text>
+              <Text style={[s.settingLabel, getTextAlignment(), getSpacingStyle()]}>{t('about')}</Text>
             </View>
-            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textSub} />
+            <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
           </TouchableOpacity>
 
           {/* ── Logout ── */}
-          <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
+          <TouchableOpacity style={[s.logoutBtn, getFlexDirection()]} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
             <Text style={s.logoutText}>{t('logout')}</Text>
           </TouchableOpacity>
@@ -225,9 +254,7 @@ export default function ProfileScreen() {
 
 // ── Dynamic styles ────────────────────────────
 function makeStyles(c: AppColors, isRTL: boolean) {
-  const dir = isRTL ? 'right' : 'left';
-  const rowDir = isRTL ? 'row-reverse' : 'row';
-
+  // Base styles without direction - direction handled by helper functions
   return StyleSheet.create({
     root:  { flex: 1, backgroundColor: c.bg },
     safe:  { flex: 1 },
@@ -235,9 +262,11 @@ function makeStyles(c: AppColors, isRTL: boolean) {
 
     pageTitle: {
       fontSize: 28, fontWeight: '700',
-      color: c.blue, textAlign: dir,
+      color: c.blue,
       marginTop: 8, marginBottom: 20,
       fontFamily: 'Manrope_700Bold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
 
     // Avatar card
@@ -288,8 +317,10 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     },
     cardTitle: {
       fontSize: 15, fontWeight: '600', color: c.text,
-      textAlign: dir, marginBottom: 12,
+      marginBottom: 12,
       fontFamily: 'Manrope_600SemiBold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
     progressTrack: {
       height: 8, backgroundColor: c.outline + '40',
@@ -299,18 +330,20 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       height: '100%', backgroundColor: c.teal, borderRadius: 4,
     },
     progressLabel: {
-      fontSize: 12, color: c.textSub, textAlign: dir,
+      fontSize: 12, color: c.textSub,
     },
 
     // Settings
     sectionTitle: {
       fontSize: 13, fontWeight: '700', color: c.textSub,
-      textAlign: dir, marginBottom: 10, marginTop: 4,
+      marginBottom: 10, marginTop: 4,
       letterSpacing: 0.8, textTransform: 'uppercase',
       fontFamily: 'Inter_600SemiBold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
     settingRow: {
-      flexDirection: rowDir,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: c.surfaceCard,
@@ -319,7 +352,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
     },
     settingLeft: {
-      flexDirection: rowDir,
+      flexDirection: 'row',
       alignItems: 'center', gap: 12, flex: 1,
     },
     iconBox: {
@@ -344,7 +377,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
 
     // Logout
     logoutBtn: {
-      flexDirection: rowDir,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,

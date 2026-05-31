@@ -11,6 +11,7 @@ import {
   FlatList,
   Alert,
   StatusBar,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +21,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
+import { CustomModal, Dropdown } from '../components/CustomModal';
 
 const MOCK_DOCTORS = [
   { id: '1', name: 'Dr. Sarah Miller', nameAr: 'د. سارة ميلر',
@@ -39,10 +41,10 @@ const TIME_SLOTS = [
   '14:00','14:30','15:00','15:30','16:00','16:30','17:00',
 ];
 
-const STEPS = ['selectDoctor','selectService','selectDate','selectTime'] as const;
+const STEPS = ['selectDoctor','selectService','selectDateTime'] as const;
 
 export default function BookingScreen({ navigation }: any) {
-  const { colors }   = useTheme();
+  const { colors, isDark }   = useTheme();
   const { t, isRTL } = useTranslation();
   const {
     bookingStep, selectedDoctor, selectedService,
@@ -53,6 +55,10 @@ export default function BookingScreen({ navigation }: any) {
   } = useAppStore();
 
   const [dates, setDates] = useState<string[]>([]);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
+  
   const s = makeStyles(colors, isRTL);
 
   useEffect(() => {
@@ -64,6 +70,42 @@ export default function BookingScreen({ navigation }: any) {
     }
     setDates(d);
   }, []);
+
+  useEffect(() => {
+    if (selectedDate && selectedDoctor) {
+      // Filter out conflicting time slots
+      const filteredSlots = TIME_SLOTS.filter(time => 
+        !hasConflict(selectedDoctor.id, selectedDate, time)
+      );
+      setAvailableTimeSlots(filteredSlots);
+    } else {
+      setAvailableTimeSlots(TIME_SLOTS);
+    }
+  }, [selectedDate, selectedDoctor, hasConflict]);
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { 
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const handleDateSelect = (date: string) => {
+    setSelectedDate(date);
+    setShowDateModal(false);
+    // Auto-open time modal if date is selected
+    if (!selectedTimeSlot) {
+      setTimeout(() => setShowTimeModal(true), 300);
+    }
+  };
+
+  const handleTimeSelect = (time: string) => {
+    setSelectedTimeSlot(time);
+    setShowTimeModal(false);
+  };
 
   const handleConfirm = () => {
     if (!selectedDoctor || !selectedService || !selectedDate || !selectedTimeSlot || !patient) return;
@@ -165,77 +207,70 @@ export default function BookingScreen({ navigation }: any) {
             </TouchableOpacity>
           ))}
 
-          {/* Step 2: Date */}
+          {/* Step 2: Date & Time Selection */}
           {bookingStep === 2 && (
-            <FlatList
-              data={dates}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(d) => d}
-              contentContainerStyle={{ paddingVertical: 8 }}
-              renderItem={({ item }) => {
-                const d = new Date(item);
-                const active = selectedDate === item;
-                return (
-                  <TouchableOpacity
-                    style={[s.dateCard, active && s.dateCardActive]}
-                    onPress={() => { setSelectedDate(item); setBookingStep(3); }}
-                  >
-                    <Text style={[s.dateName, active && s.dateTextActive]}>
-                      {d.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { weekday: 'short' })}
-                    </Text>
-                    <Text style={[s.dateNum, active && s.dateTextActive]}>
-                      {d.getDate()}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          )}
+            <View style={s.dateTimeSection}>
+              <Dropdown
+                label={t('selectDate')}
+                value={selectedDate ? formatDate(selectedDate) : null}
+                placeholder={t('selectDate')}
+                onPress={() => setShowDateModal(true)}
+                isRTL={isRTL}
+              />
 
-          {/* Step 3: Time */}
-          {bookingStep === 3 && (
-            <View style={s.timeGrid}>
-              {TIME_SLOTS.map((time) => {
-                const active   = selectedTimeSlot === time;
-                const conflict = selectedDoctor && selectedDate
-                  ? hasConflict(selectedDoctor.id, selectedDate, time) : false;
-                return (
-                  <TouchableOpacity
-                    key={time}
-                    style={[
-                      s.timeSlot,
-                      active    && s.timeSlotActive,
-                      conflict  && s.timeSlotDisabled,
-                    ]}
-                    onPress={() => {
-                      if (conflict) {
-                        Alert.alert(t('conflictErr'), t('doctorBusy'));
-                        return;
-                      }
-                      setSelectedTimeSlot(time);
-                    }}
-                    disabled={conflict}
-                  >
-                    <Text style={[
-                      s.timeText,
-                      active   && s.timeTextActive,
-                      conflict && s.timeTextDisabled,
-                    ]}>
-                      {time}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              <Dropdown
+                label={t('selectTime')}
+                value={selectedTimeSlot}
+                placeholder={t('selectTime')}
+                onPress={() => {
+                  if (!selectedDate) {
+                    Alert.alert(t('selectDateFirst'), t('pleaseSelectDateFirst'));
+                    return;
+                  }
+                  setShowTimeModal(true);
+                }}
+                isRTL={isRTL}
+              />
+
+              {/* Summary */}
+              {(selectedDate || selectedTimeSlot) && (
+                <View style={s.summaryCard}>
+                  <Text style={s.summaryTitle}>{t('appointmentSummary')}</Text>
+                  {selectedDate && (
+                    <View style={s.summaryRow}>
+                      <Ionicons name="calendar-outline" size={16} color={colors.textSub} />
+                      <Text style={s.summaryText}>{formatDate(selectedDate)}</Text>
+                    </View>
+                  )}
+                  {selectedTimeSlot && (
+                    <View style={s.summaryRow}>
+                      <Ionicons name="time-outline" size={16} color={colors.textSub} />
+                      <Text style={s.summaryText}>{selectedTimeSlot}</Text>
+                    </View>
+                  )}
+                  {selectedDoctor && (
+                    <View style={s.summaryRow}>
+                      <Ionicons name="person-outline" size={16} color={colors.textSub} />
+                      <Text style={s.summaryText}>{isRTL ? selectedDoctor.nameAr : selectedDoctor.name}</Text>
+                    </View>
+                  )}
+                  {selectedService && (
+                    <View style={s.summaryRow}>
+                      <Ionicons name="medical-outline" size={16} color={colors.textSub} />
+                      <Text style={s.summaryText}>{isRTL ? selectedService.nameAr : selectedService.name}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           )}
 
-          {/* Confirm */}
-          {selectedTimeSlot ? (
+          {/* Confirm Button */}
+          {selectedDoctor && selectedService && selectedDate && selectedTimeSlot && (
             <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm}>
               <Text style={s.confirmText}>{t('confirmBook')}</Text>
             </TouchableOpacity>
-          ) : null}
+          )}
 
           {/* Back button */}
           {bookingStep > 0 ? (
@@ -252,9 +287,176 @@ export default function BookingScreen({ navigation }: any) {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Date Selection Modal */}
+      <CustomModal
+        visible={showDateModal}
+        onClose={() => setShowDateModal(false)}
+        title={t('selectDate')}
+        isRTL={isRTL}
+      >
+        <FlatList
+          data={dates}
+          keyExtractor={(item) => item}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={modalStyles.modalList}
+          renderItem={({ item }) => {
+            const date = new Date(item);
+            const isSelected = selectedDate === item;
+            const dayName = date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { weekday: 'long' });
+            const dateStr = date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            });
+            
+            return (
+              <Pressable
+                style={[modalStyles.modalItem, isSelected && modalStyles.modalItemSelected]}
+                onPress={() => handleDateSelect(item)}
+              >
+                <View style={modalStyles.modalItemContent}>
+                  <Text style={[modalStyles.modalItemDay, { 
+                    color: isDark ? '#000' : colors.text 
+                  }]}>{dayName}</Text>
+                  <Text style={[modalStyles.modalItemDate, { color: colors.textSub }]}>{dateStr}</Text>
+                </View>
+                {isSelected && (
+                  <Ionicons name="checkmark" size={20} color={colors.teal} />
+                )}
+              </Pressable>
+            );
+          }}
+        />
+      </CustomModal>
+
+      {/* Time Selection Modal */}
+      <CustomModal
+        visible={showTimeModal}
+        onClose={() => setShowTimeModal(false)}
+        title={t('selectTime')}
+        isRTL={isRTL}
+      >
+        <FlatList
+          data={availableTimeSlots}
+          keyExtractor={(item) => item}
+          numColumns={3}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={modalStyles.modalTimeGrid}
+          columnWrapperStyle={modalStyles.modalTimeRow}
+          renderItem={({ item }) => {
+            const isSelected = selectedTimeSlot === item;
+            const isConflict = selectedDoctor && selectedDate 
+              ? hasConflict(selectedDoctor.id, selectedDate, item) 
+              : false;
+            
+            return (
+              <Pressable
+                style={[
+                  modalStyles.modalTimeItem,
+                  isSelected && modalStyles.modalTimeItemSelected,
+                  isConflict && modalStyles.modalTimeItemDisabled
+                ]}
+                onPress={() => !isConflict && handleTimeSelect(item)}
+                disabled={isConflict}
+              >
+                <Text style={[
+                  modalStyles.modalTimeText,
+                  isSelected && modalStyles.modalTimeTextSelected,
+                  isConflict && modalStyles.modalTimeTextDisabled
+                ]}>
+                  {item}
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
+        {availableTimeSlots.length === 0 && (
+          <View style={modalStyles.noSlotsContainer}>
+            <Ionicons name="time-outline" size={48} color={colors.textSub} />
+            <Text style={[modalStyles.noSlotsText, { color: colors.textSub, textAlign: 'center' }]}>
+              {t('noAvailableSlots')}
+            </Text>
+          </View>
+        )}
+      </CustomModal>
     </View>
   );
 }
+
+// Modal Styles
+const modalStyles = StyleSheet.create({
+  modalList: {
+    padding: 16,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#f8f9fa',
+  },
+  modalItemSelected: {
+    backgroundColor: '#e8f4f8',
+  },
+  modalItemContent: {
+    flex: 1,
+  },
+  modalItemDay: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  modalItemDate: {
+    fontSize: 14,
+  },
+  modalTimeGrid: {
+    padding: 16,
+  },
+  modalTimeRow: {
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  modalTimeItem: {
+    width: '30%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  modalTimeItemSelected: {
+    backgroundColor: '#1e5979',
+    borderColor: '#1e5979',
+  },
+  modalTimeItemDisabled: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.5,
+  },
+  modalTimeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalTimeTextSelected: {
+    color: 'white',
+  },
+  modalTimeTextDisabled: {
+    color: '#999',
+  },
+  noSlotsContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  noSlotsText: {
+    fontSize: 16,
+    marginTop: 12,
+  },
+});
 
 function makeStyles(c: AppColors, isRTL: boolean) {
   const align = isRTL ? 'right' : 'left';
@@ -268,6 +470,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       color: c.blue, textAlign: align,
       paddingHorizontal: 20, paddingTop: 8,
       marginBottom: 16, fontFamily: 'Manrope_700Bold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
 
     // Steps
@@ -326,34 +530,39 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     },
     srvDetail: { fontSize: 13, color: c.textSub, textAlign: align },
 
-    // Date
-    dateCard: {
-      width: 62, paddingVertical: 12,
-      marginRight: 8, borderRadius: 14,
-      backgroundColor: c.surfaceCard,
-      alignItems: 'center',
-      borderWidth: 1, borderColor: c.outline + '40',
+    // Date & Time Section
+    dateTimeSection: {
+      marginTop: 8,
     },
-    dateCardActive: { backgroundColor: c.blue, borderColor: c.blue },
-    dateName: { fontSize: 10, color: c.textSub, marginBottom: 4, fontWeight: '600' },
-    dateNum:  { fontSize: 20, color: c.text, fontWeight: '700', fontFamily: 'Manrope_700Bold' },
-    dateTextActive: { color: '#fff' },
 
-    // Time
-    timeGrid: {
-      flexDirection: 'row', flexWrap: 'wrap', gap: 10,
-    },
-    timeSlot: {
-      width: '30%', paddingVertical: 12,
-      borderRadius: 12, alignItems: 'center',
+    // Summary Card
+    summaryCard: {
       backgroundColor: c.surfaceCard,
-      borderWidth: 1, borderColor: c.outline + '40',
+      borderRadius: 18,
+      padding: 16,
+      marginTop: 20,
+      borderWidth: 0.5,
+      borderColor: c.surfaceCardBorder,
     },
-    timeSlotActive:   { backgroundColor: c.blue, borderColor: c.blue },
-    timeSlotDisabled: { opacity: 0.35 },
-    timeText:         { fontSize: 14, color: c.text, fontWeight: '600' },
-    timeTextActive:   { color: '#fff' },
-    timeTextDisabled: { color: c.textSub },
+    summaryTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: c.text,
+      marginBottom: 12,
+      textAlign: align,
+    },
+    summaryRow: {
+      flexDirection: row,
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 10,
+    },
+    summaryText: {
+      fontSize: 14,
+      color: c.text,
+      flex: 1,
+      textAlign: align,
+    },
 
     // Confirm
     confirmBtn: {

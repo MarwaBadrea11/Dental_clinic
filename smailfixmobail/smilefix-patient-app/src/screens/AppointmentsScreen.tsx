@@ -193,6 +193,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       color: c.blue, textAlign: align,
       paddingHorizontal: 20, paddingTop: 8,
       marginBottom: 14, fontFamily: 'Manrope_700Bold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
 
     // Tabs
@@ -210,7 +212,10 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       backgroundColor: c.blue,
       borderColor: c.blue,
     },
-    tabText: { fontSize: 13, color: c.textSub, fontWeight: '600' },
+    tabText: { 
+      fontSize: 13, color: c.textSub, fontWeight: '600',
+      textAlign: align,
+    },
     tabTextActive: { color: '#fff' },
     newApptBtn: {
       flexDirection: row, alignItems: 'center', gap: 4,
@@ -259,9 +264,13 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       fontSize: 15, fontWeight: '700',
       color: c.text, textAlign: align,
       fontFamily: 'Manrope_700Bold',
+      paddingRight: isRTL ? 8 : 0,
+      paddingLeft: isRTL ? 0 : 8,
     },
     specialty: {
       fontSize: 12, color: c.textSub, textAlign: align,
+      paddingRight: isRTL ? 8 : 0,
+      paddingLeft: isRTL ? 0 : 8,
     },
     badge: {
       paddingHorizontal: 10, paddingVertical: 4,
@@ -284,10 +293,14 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       fontSize: 10, color: c.textSub,
       textTransform: 'uppercase', letterSpacing: 0.5,
       marginBottom: 3, textAlign: align,
+      paddingRight: isRTL ? 8 : 0,
+      paddingLeft: isRTL ? 0 : 8,
     },
     detailValue: {
       fontSize: 13, color: c.text,
       fontWeight: '600', textAlign: align,
+      paddingRight: isRTL ? 8 : 0,
+      paddingLeft: isRTL ? 0 : 8,
     },
     actions: {
       flexDirection: row, gap: 8, marginTop: 12,

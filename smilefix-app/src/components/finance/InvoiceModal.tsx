@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Printer, Download, DollarSign, FileText } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
@@ -18,13 +18,20 @@ interface InvoiceViewModalProps {
   onClose: () => void
   onStatusChange?: (id: string, status: InvoiceStatus) => void
   onRecordPayment?: (invoiceId: string, amount: number, method: PaymentMethod) => void
+  autoOpenPayForm?: boolean
 }
 
-export function InvoiceViewModal({ invoice: inv, open, onClose, onStatusChange, onRecordPayment }: InvoiceViewModalProps) {
+export function InvoiceViewModal({ invoice: inv, open, onClose, onStatusChange, onRecordPayment, autoOpenPayForm = false }: InvoiceViewModalProps) {
   const { t } = useTranslation()
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash')
   const [showPayForm, setShowPayForm] = useState(false)
+
+  // Pre-open the payment form when autoOpenPayForm is set (e.g. from "Mark as Paid" action)
+  useEffect(() => {
+    if (open && autoOpenPayForm) setShowPayForm(true)
+    if (!open) setShowPayForm(false)
+  }, [open, autoOpenPayForm])
 
   // Built inside component so labels re-render on language change
   const STATUS_OPTIONS: { value: InvoiceStatus; label: string }[] = [
@@ -217,24 +224,43 @@ export function InvoiceViewModal({ invoice: inv, open, onClose, onStatusChange, 
 interface InvoiceFormModalProps {
   open: boolean
   onClose: () => void
-  onSave: (inv: Omit<Invoice, 'id'>) => void
+  onSave: (payload: {
+    patient_id: string
+    patientName: string
+    patientCode: string
+    due_date: string | null
+    line_items: { description: string; quantity: number; unit_cost: number; total: number }[]
+    tax_rate: number
+  }) => void
   patients?: { id: string; name: string; code: string }[]
+  isSaving?: boolean
 }
 
-export function InvoiceFormModal({ open, onClose, onSave, patients = [] }: InvoiceFormModalProps) {
+export function InvoiceFormModal({ open, onClose, onSave, patients = [], isSaving = false }: InvoiceFormModalProps) {
   const { t } = useTranslation()
   const today = new Date().toISOString().split('T')[0]
   const dueDefault = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0]
 
-  const [patientName, setPatientName] = useState('')
-  const [patientCode, setPatientCode] = useState('')
-  const [date, setDate] = useState(today)
+  const [selectedPatientId, setSelectedPatientId] = useState('')
   const [dueDate, setDueDate] = useState(dueDefault)
   const [description, setDescription] = useState('')
   const [qty, setQty] = useState('1')
   const [unitPrice, setUnitPrice] = useState('')
   const [items, setItems] = useState<Invoice['items']>([])
   const [notes, setNotes] = useState('')
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setSelectedPatientId('')
+      setDueDate(dueDefault)
+      setDescription('')
+      setQty('1')
+      setUnitPrice('')
+      setItems([])
+      setNotes('')
+    }
+  }, [open])
 
   const addItem = () => {
     if (!description || !unitPrice) return
@@ -248,17 +274,31 @@ export function InvoiceFormModal({ open, onClose, onSave, patients = [] }: Invoi
 
   const total = items.reduce((s, i) => s + i.total, 0)
 
+  const selectedPatient = patients.find((p) => p.id === selectedPatientId)
+
   const handleSave = () => {
-    if (!patientName || items.length === 0) return
-    const count = Math.floor(Math.random() * 900) + 100
+    if (!selectedPatientId || items.length === 0) return
     onSave({
-      invoiceNumber: `INV-${new Date().getFullYear()}-${count}`,
-      patientId: '', patientName, patientCode,
-      date, dueDate, items, total, paid: 0,
-      status: 'pending', notes,
+      patient_id: selectedPatientId,
+      patientName: selectedPatient?.name ?? '',
+      patientCode: selectedPatient?.code ?? '',
+      due_date: dueDate || null,
+      line_items: items.map((i) => ({
+        description: i.description,
+        quantity: i.quantity,
+        unit_cost: i.unitPrice,
+        total: i.total,
+      })),
+      tax_rate: 0,
     })
-    onClose()
+    // NOTE: do NOT call onClose() here — the parent closes the modal
+    // after the async save + re-fetch completes
   }
+
+  const patientOptions = [
+    { value: '', label: t('finance.selectPatient') },
+    ...patients.map((p) => ({ value: p.id, label: `${p.name} (${p.code})` })),
+  ]
 
   return (
     <Modal
@@ -270,14 +310,12 @@ export function InvoiceFormModal({ open, onClose, onSave, patients = [] }: Invoi
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <FormField label={t('finance.patientName')} required>
-            <Input placeholder="Sarah Miller" value={patientName} onChange={(e) => setPatientName(e.target.value)} />
-          </FormField>
-          <FormField label={t('finance.patientCode')}>
-            <Input placeholder="SF-00000" value={patientCode} onChange={(e) => setPatientCode(e.target.value)} />
-          </FormField>
-          <FormField label={t('finance.invoiceDate')}>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <FormField label={t('common.patient')} required>
+            <Select
+              options={patientOptions}
+              value={selectedPatientId}
+              onChange={(e) => setSelectedPatientId(e.target.value)}
+            />
           </FormField>
           <FormField label={t('finance.dueDate')}>
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
@@ -324,9 +362,9 @@ export function InvoiceFormModal({ open, onClose, onSave, patients = [] }: Invoi
         </FormField>
 
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-outline-variant)]/15">
-          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleSave} disabled={!patientName || items.length === 0}>
-            {t('finance.createInvoice')}
+          <Button variant="ghost" onClick={onClose} disabled={isSaving}>{t('common.cancel')}</Button>
+          <Button onClick={handleSave} disabled={!selectedPatientId || items.length === 0 || isSaving}>
+            {isSaving ? t('common.loading') : t('finance.createInvoice')}
           </Button>
         </div>
       </div>

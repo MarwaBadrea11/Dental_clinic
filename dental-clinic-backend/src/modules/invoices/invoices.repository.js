@@ -4,32 +4,43 @@ export class InvoicesRepository {
     this.db = db;
   }
 
-  findById(id) {
-    return this.db('invoices').where({ id }).first();
+  /** Parse line_items from JSON string to array if needed */
+  _parseInvoice(row) {
+    if (!row) return row;
+    if (typeof row.line_items === 'string') {
+      try { row.line_items = JSON.parse(row.line_items); } catch { row.line_items = []; }
+    }
+    return row;
+  }
+
+  async findById(id) {
+    const row = await this.db('invoices').where({ id }).first();
+    return this._parseInvoice(row);
   }
 
   async list({ patient_id, status, from, to, page, limit }) {
-    const q = this.db('invoices').orderBy('created_at', 'desc');
+    // Base query — no ORDER BY so the count clone works cleanly in PostgreSQL
+    const base = this.db('invoices');
 
-    if (patient_id) q.where({ patient_id });
-    if (status) q.where({ status });
-    if (from) q.where('created_at', '>=', from);
-    if (to) q.where('created_at', '<=', `${to}T23:59:59Z`);
+    if (patient_id) base.where({ patient_id });
+    if (status) base.where({ status });
+    if (from) base.where('created_at', '>=', from);
+    if (to) base.where('created_at', '<=', `${to}T23:59:59Z`);
 
-    const [{ count }] = await q.clone().count('id as count');
-    const data = await q.limit(limit).offset((page - 1) * limit);
+    const [{ count }] = await base.clone().count('id as count');
+    const data = await base.clone().orderBy('created_at', 'desc').limit(limit).offset((page - 1) * limit);
 
-    return { data, total: Number(count), page, limit };
+    return { data: data.map((r) => this._parseInvoice(r)), total: Number(count), page, limit };
   }
 
   async create(data) {
     const [row] = await this.db('invoices').insert(data).returning('*');
-    return row;
+    return this._parseInvoice(row);
   }
 
   async update(id, data) {
     const [row] = await this.db('invoices').where({ id }).update(data).returning('*');
-    return row;
+    return this._parseInvoice(row);
   }
 
   getPayments(invoice_id) {
@@ -139,12 +150,12 @@ export class InvoicesRepository {
 
   /** All invoices for a patient with pagination */
   async listByPatient(patient_id, { page = 1, limit = 20, status } = {}) {
-    const q = this.db('invoices').where({ patient_id }).orderBy('created_at', 'desc');
-    if (status) q.where({ status });
+    const base = this.db('invoices').where({ patient_id });
+    if (status) base.where({ status });
 
-    const [{ count }] = await q.clone().count('id as count');
-    const data = await q.limit(limit).offset((page - 1) * limit);
+    const [{ count }] = await base.clone().count('id as count');
+    const data = await base.clone().orderBy('created_at', 'desc').limit(limit).offset((page - 1) * limit);
 
-    return { data, total: Number(count), page, limit };
+    return { data: data.map((r) => this._parseInvoice(r)), total: Number(count), page, limit };
   }
 }

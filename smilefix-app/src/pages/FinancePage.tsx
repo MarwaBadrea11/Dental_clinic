@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { CreditCard, DollarSign, TrendingUp, AlertCircle, Plus, List, LayoutGrid, FileText } from 'lucide-react'
+import { CreditCard, DollarSign, TrendingUp, AlertCircle, Plus, List, LayoutGrid, FileText, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Button } from '@/components/ui/Button'
@@ -9,8 +9,11 @@ import { SearchBar } from '@/components/ui/SearchBar'
 import { Select } from '@/components/ui/Select'
 import { Avatar } from '@/components/ui/Avatar'
 import { DataTable, type DataTableColumn, type DataTableAction } from '@/components/ui/DataTable'
+import { Modal } from '@/components/ui/Modal'
 import { FinancialCard, InvoiceCard, InvoiceStatusBadge, PaymentSummary, DebtWidget, RevenueStats, InvoiceViewModal, InvoiceFormModal } from '@/components/finance'
 import { useFinanceStore } from '@/store/financeStore'
+import { fetchPatients } from '@/services/patientService'
+import type { CreateInvoicePayload } from '@/services/invoiceService'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { Invoice, InvoiceStatus, PaymentMethod } from '@/types'
@@ -28,16 +31,31 @@ const MONTHLY_DATA = [
 
 export default function FinancePage() {
   const { t } = useTranslation()
-  const { invoices, payments, updateInvoice, deleteInvoice, addInvoice, addPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading } = useFinanceStore()
+  const { invoices, payments, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading, error } = useFinanceStore()
 
   // Load real invoices on mount
   useEffect(() => { loadInvoices() }, [loadInvoices])
+
+  // Load patients for the new invoice modal
+  const [patients, setPatients] = useState<{ id: string; name: string; code: string }[]>([])
+  useEffect(() => {
+    fetchPatients({ limit: 200 })
+      .then(({ patients: list }) =>
+        setPatients(list.map((p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, code: p.patientCode })))
+      )
+      .catch(() => {/* non-critical */})
+  }, [])
+
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
   const [listMode, setListMode] = useState<'table' | 'grid'>('table')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [showNewInvoice, setShowNewInvoice] = useState(false)
+  const [isSavingInvoice, setIsSavingInvoice] = useState(false)
+  const [pendingPayInvoice, setPendingPayInvoice] = useState<Invoice | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const STATUS_FILTER = [
     { value: 'all',     label: t('common.allStatuses') },
@@ -65,12 +83,26 @@ export default function FinancePage() {
     if (selectedInvoice?.id === id) setSelectedInvoice((i) => i ? { ...i, status } : null)
   }
 
-  const handleRecordPayment = (invoiceId: string, amount: number, method: PaymentMethod) => {
-    const inv = invoices.find((i) => i.id === invoiceId)
-    if (!inv) return
-    const newPaid = Math.min(inv.paid + amount, inv.total)
-    updateInvoice(invoiceId, { paid: newPaid, status: newPaid >= inv.total ? 'paid' : 'partial', paymentMethod: method })
-    addPayment({ id: `p${Date.now()}`, invoiceId, patientId: inv.patientId, patientName: inv.patientName, amount, method, date: new Date().toISOString().split('T')[0] })
+  const handleRecordPayment = async (invoiceId: string, amount: number, method: PaymentMethod) => {
+    try {
+      await storeRecordPayment(invoiceId, amount, method)
+      setPendingPayInvoice(null)
+    } catch {
+      // reload to sync state if payment failed
+      loadInvoices()
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    setIsDeleting(true)
+    try {
+      await deleteInvoice(id)
+      setConfirmDeleteId(null)
+    } catch {
+      // error already handled in store (reloads invoices)
+    } finally {
+      setIsDeleting(false)
+    }
   }
   const columns: DataTableColumn<Invoice>[] = [
     {
@@ -96,8 +128,8 @@ export default function FinancePage() {
 
   const actions: DataTableAction<Invoice>[] = [
     { label: t('finance.invoiceNumber'), onClick: (inv) => setSelectedInvoice(inv) },
-    { label: t('finance.markAsPaid'),    onClick: (inv) => handleStatusChange(inv.id, 'paid'), hidden: (inv) => inv.status === 'paid' },
-    { label: t('common.delete'),         onClick: (inv) => deleteInvoice(inv.id), danger: true },
+    { label: t('finance.markAsPaid'),    onClick: (inv) => setPendingPayInvoice(inv), hidden: (inv) => inv.status === 'paid' || inv.status === 'draft' },
+    { label: t('common.delete'),         onClick: (inv) => setConfirmDeleteId(inv.id), danger: true, hidden: (inv) => inv.status === 'paid' },
   ]
 
   const TABS: { id: ViewMode; label: string }[] = [
@@ -108,6 +140,16 @@ export default function FinancePage() {
 
   return (
     <div>
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-error-container)]/20 border border-[var(--color-error)]/30 px-4 py-3 text-sm text-[var(--color-error)]">
+          <AlertCircle size={16} className="shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => loadInvoices()} className="flex items-center gap-1 font-medium hover:opacity-70 transition-opacity">
+            <RefreshCw size={13} /> {t('common.retry')}
+          </button>
+        </div>
+      )}
       <PageHeader
         title={t('finance.title')}
         subtitle={t('finance.subtitle')}
@@ -207,7 +249,60 @@ export default function FinancePage() {
       </AnimatePresence>
 
       <InvoiceViewModal invoice={selectedInvoice} open={!!selectedInvoice} onClose={() => setSelectedInvoice(null)} onStatusChange={handleStatusChange} onRecordPayment={handleRecordPayment} />
-      <InvoiceFormModal open={showNewInvoice} onClose={() => setShowNewInvoice(false)} onSave={(data) => { addInvoice({ ...data, id: `inv${Date.now()}` }); setShowNewInvoice(false) }} />
+
+      {/* "Mark as Paid" — opens the view modal with payment form pre-shown */}
+      <InvoiceViewModal
+        invoice={pendingPayInvoice}
+        open={!!pendingPayInvoice}
+        onClose={() => setPendingPayInvoice(null)}
+        onStatusChange={handleStatusChange}
+        onRecordPayment={handleRecordPayment}
+        autoOpenPayForm
+      />
+
+      {/* Delete / Cancel confirmation */}
+      <Modal
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        title={t('finance.cancelInvoiceTitle')}
+        description={t('finance.cancelInvoiceDesc')}
+        size="sm"
+      >
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(null)} disabled={isDeleting}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            size="sm"
+            className="bg-[var(--color-error)] hover:bg-[var(--color-error)]/90 text-white"
+            onClick={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? t('common.loading') : t('finance.cancelInvoice')}
+          </Button>
+        </div>
+      </Modal>
+      <InvoiceFormModal
+        open={showNewInvoice}
+        onClose={() => setShowNewInvoice(false)}
+        patients={patients}
+        isSaving={isSavingInvoice}
+        onSave={async (data) => {
+          setIsSavingInvoice(true)
+          try {
+            const payload: CreateInvoicePayload = {
+              patient_id: data.patient_id,
+              line_items: data.line_items,
+              tax_rate: data.tax_rate,
+              due_date: data.due_date,
+            }
+            await addInvoice(payload)
+            setShowNewInvoice(false)
+          } finally {
+            setIsSavingInvoice(false)
+          }
+        }}
+      />
     </div>
   )
 }

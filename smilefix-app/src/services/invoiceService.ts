@@ -159,7 +159,13 @@ export const METHOD_TO_BACKEND: Record<PaymentMethod, BackendPaymentMethod> = {
 // ── Mappers ───────────────────────────────────────────────────────────────────
 
 export function mapInvoice(b: BackendInvoice, patientName = ''): Invoice {
-  const lineItems = (Array.isArray(b.line_items) ? b.line_items : []).map((li, i) => ({
+  // line_items may come back as a JSON string if stored as text in the DB
+  const rawLineItems: BackendLineItem[] = Array.isArray(b.line_items)
+    ? b.line_items
+    : typeof b.line_items === 'string'
+    ? (() => { try { return JSON.parse(b.line_items as unknown as string) } catch { return [] } })()
+    : []
+  const lineItems = rawLineItems.map((li, i) => ({
     id: `${b.id}-li${i}`,
     description: li.description,
     quantity: li.quantity,
@@ -317,4 +323,9 @@ export async function fetchFinanceSummary(params: {
   if (params.to)   qs.set('to', params.to)
   const query = qs.toString() ? `?${qs}` : ''
   return apiClient.get(`/finance/summary${query}`)
+}
+
+export async function cancelInvoice(id: string): Promise<Invoice> {
+  const b = await apiClient.patch<BackendInvoice>(`/invoices/${id}`, { status: 'CANCELLED' })
+  return mapInvoice(b)
 }

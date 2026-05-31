@@ -15,6 +15,7 @@ export const ROLE_PERMISSIONS = {
     'dashboard:read',
     'patients:*',
     'appointments:*',
+    'treatments:*',
     'invoices:*',
     'payments:*',
     'inventory:read',

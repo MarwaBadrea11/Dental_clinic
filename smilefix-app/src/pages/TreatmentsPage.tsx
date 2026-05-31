@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Stethoscope, Plus, LayoutGrid, List } from 'lucide-react'
@@ -17,12 +17,36 @@ import type { Treatment, TreatmentCategory } from '@/types'
 
 export default function TreatmentsPage() {
   const { t } = useTranslation()
-  const { treatments, deleteTreatment, addTreatment } = useTreatmentStore()
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('all')
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [selected, setSelected] = useState<Treatment | null>(null)
-  const [addOpen, setAddOpen] = useState(false)
+  const {
+    treatments,
+    treatmentsLoading,
+    treatmentsError,
+    loadTreatments,
+    saveTreatment,
+    editTreatment,
+    removeTreatment,
+  } = useTreatmentStore()
+
+  const [search, setSearch]       = useState('')
+  const [category, setCategory]   = useState('all')
+  const [viewMode, setViewMode]   = useState<'grid' | 'list'>('grid')
+  const [selected, setSelected]   = useState<Treatment | null>(null)
+
+  // Add modal
+  const [addOpen, setAddOpen]     = useState(false)
+
+  // Edit modal
+  const [editTarget, setEditTarget] = useState<Treatment | null>(null)
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<Treatment | null>(null)
+  const [deleting, setDeleting]         = useState(false)
+  const [deleteError, setDeleteError]   = useState<string | null>(null)
+
+  // Load catalogue from the backend on mount
+  useEffect(() => {
+    loadTreatments()
+  }, [loadTreatments])
 
   const CATEGORIES: { value: string; label: string }[] = [
     { value: 'all', label: t('treatments.allCategories') },
@@ -43,6 +67,35 @@ export default function TreatmentsPage() {
     return acc
   }, {})
 
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
+  /** Called by the Add modal — throws on failure so the modal stays open */
+  const handleAdd = async (data: Omit<Treatment, 'id'>) => {
+    await saveTreatment(data)
+  }
+
+  /** Called by the Edit modal — throws on failure so the modal stays open */
+  const handleEdit = async (data: Omit<Treatment, 'id'>) => {
+    if (!editTarget) return
+    await editTreatment(editTarget.id, data)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await removeTreatment(deleteTarget.id)
+      setDeleteTarget(null)
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete treatment')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // ── Table config ─────────────────────────────────────────────────────────────
+
   const columns: DataTableColumn<Treatment>[] = [
     {
       key: 'name', header: t('nav.treatments'), sortable: true,
@@ -55,16 +108,29 @@ export default function TreatmentsPage() {
         </div>
       ),
     },
-    { key: 'category',    header: t('common.category'),             sortable: true, render: (tr) => <ProcedureBadge category={tr.category} /> },
-    { key: 'duration',    header: t('treatments.duration'),         sortable: true, render: (tr) => <span className="text-sm">{tr.duration} {t('treatments.minutes')}</span> },
-    { key: 'price',       header: t('treatments.price'),            sortable: true, render: (tr) => <span className="text-sm font-semibold text-[var(--color-secondary)]">{formatCurrency(tr.price)}</span> },
-    { key: 'description', header: t('treatments.description'),      render: (tr) => <span className="text-xs text-[var(--color-on-surface-variant)] line-clamp-1">{tr.description ?? '—'}</span> },
+    { key: 'category',    header: t('common.category'),        sortable: true, render: (tr) => <ProcedureBadge category={tr.category} /> },
+    { key: 'duration',    header: t('treatments.duration'),    sortable: true, render: (tr) => <span className="text-sm">{tr.duration} {t('treatments.minutes')}</span> },
+    { key: 'price',       header: t('treatments.price'),       sortable: true, render: (tr) => <span className="text-sm font-semibold text-[var(--color-secondary)]">{formatCurrency(tr.price)}</span> },
+    { key: 'description', header: t('treatments.description'), render: (tr) => <span className="text-xs text-[var(--color-on-surface-variant)] line-clamp-1">{tr.description ?? '—'}</span> },
   ]
 
   const actions: DataTableAction<Treatment>[] = [
     { label: t('treatments.viewDetails'), onClick: (tr) => setSelected(tr) },
-    { label: t('common.delete'),          onClick: (tr) => deleteTreatment(tr.id), danger: true },
+    { label: t('common.edit') ?? 'Edit',  onClick: (tr) => setEditTarget(tr) },
+    { label: t('common.delete'),          onClick: (tr) => setDeleteTarget(tr), danger: true },
   ]
+
+  // ── Stats ────────────────────────────────────────────────────────────────────
+
+  const avgDuration = treatments.length
+    ? Math.round(treatments.reduce((s, tr) => s + tr.duration, 0) / treatments.length)
+    : 0
+  const avgPrice = treatments.length
+    ? treatments.reduce((s, tr) => s + tr.price, 0) / treatments.length
+    : 0
+  const categoryCount = new Set(treatments.map((tr) => tr.category)).size
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div>
@@ -72,9 +138,14 @@ export default function TreatmentsPage() {
         title={t('treatments.title')}
         subtitle={`${treatments.length} ${t('treatments.subtitle')}`}
         breadcrumb={[{ label: t('nav.dashboard'), href: '/' }, { label: t('nav.treatments') }]}
-        actions={<Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setAddOpen(true)}>{t('treatments.addTreatment')}</Button>}
+        actions={
+          <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setAddOpen(true)}>
+            {t('treatments.addTreatment')}
+          </Button>
+        }
       />
 
+      {/* Stats row */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -82,10 +153,10 @@ export default function TreatmentsPage() {
         className="treatments-stats-grid"
       >
         {[
-          { label: t('nav.treatments'),      value: treatments.length,                                                                                                    color: 'text-[var(--color-primary)]' },
-          { label: t('treatments.avgDuration'),value: `${Math.round(treatments.reduce((s, tr) => s + tr.duration, 0) / treatments.length)}${t('treatments.minutes')}`,   color: 'text-[var(--color-secondary)]' },
-          { label: t('treatments.avgPrice'),   value: formatCurrency(treatments.reduce((s, tr) => s + tr.price, 0) / treatments.length),                                 color: 'text-[var(--color-tertiary)]' },
-          { label: t('treatments.categories'), value: new Set(treatments.map((tr) => tr.category)).size,                                                                  color: 'text-amber-600' },
+          { label: t('nav.treatments'),        value: treatments.length,                          color: 'text-[var(--color-primary)]' },
+          { label: t('treatments.avgDuration'), value: `${avgDuration}${t('treatments.minutes')}`, color: 'text-[var(--color-secondary)]' },
+          { label: t('treatments.avgPrice'),    value: formatCurrency(avgPrice),                   color: 'text-[var(--color-tertiary)]' },
+          { label: t('treatments.categories'),  value: categoryCount,                              color: 'text-amber-600' },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-lg)] border border-[var(--color-outline-variant)]/20 shadow-[var(--shadow-card)] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]">{s.label}</p>
@@ -94,6 +165,7 @@ export default function TreatmentsPage() {
         ))}
       </motion.div>
 
+      {/* Main card */}
       <SectionCard noPadding>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-5 py-4 border-b border-[var(--color-outline-variant)]/20">
           <SearchBar
@@ -116,7 +188,18 @@ export default function TreatmentsPage() {
         </div>
 
         <AnimatePresence mode="wait">
-          {viewMode === 'grid' ? (
+          {treatmentsLoading ? (
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="py-16 text-center text-sm text-[var(--color-on-surface-variant)]">
+              Loading treatments…
+            </motion.div>
+          ) : treatmentsError ? (
+            <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="py-16 text-center text-sm text-red-500">
+              {treatmentsError}
+              <button onClick={loadTreatments} className="ml-2 underline">Retry</button>
+            </motion.div>
+          ) : viewMode === 'grid' ? (
             <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-5">
               {Object.keys(grouped).length === 0 ? (
                 <div className="py-12 text-center text-sm text-[var(--color-on-surface-variant)]">{t('treatments.noTreatments')}</div>
@@ -130,7 +213,14 @@ export default function TreatmentsPage() {
                       </span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem' }} className="treatments-card-grid">
-                      {items.map((tr, i) => <TreatmentCard key={tr.id} treatment={tr} onClick={setSelected} delay={i * 0.04} />)}
+                      {items.map((tr, i) => (
+                        <TreatmentCard
+                          key={tr.id}
+                          treatment={tr}
+                          onClick={setSelected}
+                          delay={i * 0.04}
+                        />
+                      ))}
                     </div>
                   </div>
                 ))
@@ -138,17 +228,29 @@ export default function TreatmentsPage() {
             </motion.div>
           ) : (
             <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <DataTable columns={columns} data={filtered} actions={actions} searchable={false} externalSearch={search} pageSize={10} emptyTitle={t('treatments.noTreatments')} emptyIcon={<Stethoscope size={28} />} onRowClick={setSelected} />
+              <DataTable
+                columns={columns}
+                data={filtered}
+                actions={actions}
+                searchable={false}
+                externalSearch={search}
+                pageSize={10}
+                emptyTitle={t('treatments.noTreatments')}
+                emptyIcon={<Stethoscope size={28} />}
+                onRowClick={setSelected}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </SectionCard>
 
+      {/* ── Detail modal ──────────────────────────────────────────────────────── */}
       <Modal open={!!selected} onClose={() => setSelected(null)} title={selected?.name} size="md">
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center text-3xl" style={{ background: `${selected.color}20`, border: `1px solid ${selected.color}30` }}>
+              <div className="w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center text-3xl"
+                style={{ background: `${selected.color}20`, border: `1px solid ${selected.color}30` }}>
                 {selected.icon ?? '🦷'}
               </div>
               <div>
@@ -167,35 +269,57 @@ export default function TreatmentsPage() {
                 </div>
               ))}
             </div>
-            {selected.steps && selected.steps.length > 0 && (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)] mb-2">{t('treatments.steps')}</p>
-                <ol className="space-y-1">
-                  {selected.steps.map((s, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-on-surface)]">
-                      <span className="w-5 h-5 rounded-full bg-[var(--color-primary-container)]/20 text-[var(--color-primary)] text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                      {s}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end gap-2 pt-2">
+              <Button size="sm" variant="ghost" onClick={() => { setSelected(null); setEditTarget(selected) }}>
+                {t('common.edit') ?? 'Edit'}
+              </Button>
               <Button size="sm" onClick={() => setSelected(null)}>{t('common.close')}</Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Add Treatment Modal */}
+      {/* ── Add modal ─────────────────────────────────────────────────────────── */}
       <TreatmentFormModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onSave={(data) => {
-          addTreatment({ ...data, id: `t${Date.now()}` })
-          setAddOpen(false)
-        }}
+        onSave={handleAdd}
       />
+
+      {/* ── Edit modal ────────────────────────────────────────────────────────── */}
+      <TreatmentFormModal
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        onSave={handleEdit}
+        initialData={editTarget ?? undefined}
+      />
+
+      {/* ── Delete confirmation modal ─────────────────────────────────────────── */}
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => { setDeleteTarget(null); setDeleteError(null) }}
+        title={t('common.confirmDelete') ?? 'Delete Treatment'}
+        size="sm"
+      >
+        <p className="text-sm text-[var(--color-on-surface-variant)]">
+          Are you sure you want to remove <strong>{deleteTarget?.name}</strong> from the catalogue? This action cannot be undone.
+        </p>
+
+        {deleteError && (
+          <div className="mt-3 px-3 py-2 rounded-[var(--radius-DEFAULT)] bg-red-50 border border-red-200 text-red-700 text-sm">
+            {deleteError}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-[var(--color-outline-variant)]/15">
+          <Button variant="ghost" onClick={() => { setDeleteTarget(null); setDeleteError(null) }} disabled={deleting}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="danger" onClick={handleDeleteConfirm} loading={deleting}>
+            {t('common.delete')}
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

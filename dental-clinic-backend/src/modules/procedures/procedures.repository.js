@@ -24,7 +24,7 @@ export class ProceduresRepository {
     }
 
     const offset = (page - 1) * limit;
-    const [{ count }] = await q.clone().count('id as count');
+    const [{ count }] = await q.clone().clearOrder().count('id as count');
     const data = await q.limit(limit).offset(offset);
 
     return { data, total: Number(count), page, limit };

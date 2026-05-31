@@ -5,25 +5,14 @@ import {
   updateTooth,
   CONDITION_TO_STATUS,
 } from '@/services/odontogramService'
+import {
+  fetchProcedures,
+  createProcedure,
+  updateProcedure,
+  type CreateProcedurePayload,
+} from '@/services/procedureService'
 
-// ── Mock treatments catalogue ─────────────────────────────────────────────────
-
-export const MOCK_TREATMENTS: Treatment[] = [
-  { id: 't1',  name: 'Dental Cleaning',        category: 'Preventive',     duration: 60,  price: 150,  color: '#35675d', icon: '🦷', description: 'Professional prophylaxis including scaling, polishing and fluoride treatment.' },
-  { id: 't2',  name: 'Composite Filling',      category: 'Restorative',    duration: 45,  price: 220,  color: '#00696f', icon: '🔧', description: 'Tooth-colored resin filling for cavities and minor fractures.' },
-  { id: 't3',  name: 'Root Canal Therapy',     category: 'Endodontic',     duration: 90,  price: 1200, color: '#ba1a1a', icon: '⚕',  description: 'Complete removal of infected pulp tissue and canal sealing.' },
-  { id: 't4',  name: 'Periodontal Scaling',    category: 'Periodontic',    duration: 75,  price: 350,  color: '#2c6484', icon: '🔬', description: 'Deep cleaning below the gumline to treat periodontal disease.' },
-  { id: 't5',  name: 'Crown Placement',        category: 'Prosthodontic',  duration: 120, price: 1500, color: '#9d4edd', icon: '👑', description: 'Full ceramic or PFM crown fabrication and cementation.' },
-  { id: 't6',  name: 'Teeth Whitening',        category: 'Cosmetic',       duration: 60,  price: 400,  color: '#f4a261', icon: '✨', description: 'In-office bleaching with 35% hydrogen peroxide gel and LED activation.' },
-  { id: 't7',  name: 'Braces Adjustment',      category: 'Orthodontic',    duration: 30,  price: 150,  color: '#e76f51', icon: '🔩', description: 'Monthly wire tightening and bracket adjustment for orthodontic treatment.' },
-  { id: 't8',  name: 'Tooth Extraction',       category: 'Oral Surgery',   duration: 45,  price: 280,  color: '#6d6875', icon: '🦷', description: 'Simple or surgical extraction with local anesthesia.' },
-  { id: 't9',  name: 'Dental Implant',         category: 'Prosthodontic',  duration: 120, price: 3500, color: '#9d4edd', icon: '🔩', description: 'Titanium implant placement with osseointegration period.' },
-  { id: 't10', name: 'Invisalign Checkup',     category: 'Orthodontic',    duration: 20,  price: 100,  color: '#e76f51', icon: '📐', description: 'Progress evaluation and new aligner tray fitting.' },
-  { id: 't11', name: 'Full Mouth X-Ray',       category: 'Preventive',     duration: 20,  price: 180,  color: '#35675d', icon: '🩻', description: 'Complete radiographic survey of all teeth and supporting structures.' },
-  { id: 't12', name: 'Gum Contouring',         category: 'Cosmetic',       duration: 60,  price: 600,  color: '#f4a261', icon: '✂',  description: 'Laser reshaping of gum tissue for aesthetic improvement.' },
-]
-
-// ── Mock patient treatments ───────────────────────────────────────────────────
+// ── Mock patient treatments (still local — no patient-treatment API yet) ──────
 
 export const MOCK_PATIENT_TREATMENTS: PatientTreatment[] = [
   {
@@ -91,10 +80,21 @@ export const MOCK_ODONTOGRAM: OdontogramRecord = {
 
 interface TreatmentState {
   treatments: Treatment[]
+  treatmentsLoading: boolean
+  treatmentsError: string | null
   patientTreatments: PatientTreatment[]
   odontograms: OdontogramRecord[]
   odontogramLoading: boolean
 
+  /** Load the procedure catalogue from the backend. */
+  loadTreatments: () => Promise<void>
+  /** Create a new catalogue entry via POST /procedures. */
+  saveTreatment: (data: Omit<Treatment, 'id'>) => Promise<void>
+  /** Update an existing catalogue entry via PATCH /procedures/:id. */
+  editTreatment: (id: string, data: Omit<Treatment, 'id'>) => Promise<void>
+  /** Soft-delete: sets is_active=false via PATCH /procedures/:id. */
+  removeTreatment: (id: string) => Promise<void>
+  /** Legacy in-memory helpers (still used by other parts of the app). */
   addTreatment: (t: Treatment) => void
   updateTreatment: (id: string, data: Partial<Treatment>) => void
   deleteTreatment: (id: string) => void
@@ -107,10 +107,82 @@ interface TreatmentState {
 }
 
 export const useTreatmentStore = create<TreatmentState>((set, get) => ({
-  treatments: MOCK_TREATMENTS,
+  treatments: [],
+  treatmentsLoading: false,
+  treatmentsError: null,
   patientTreatments: MOCK_PATIENT_TREATMENTS,
   odontograms: [MOCK_ODONTOGRAM],
   odontogramLoading: false,
+
+  // ── Catalogue API actions ───────────────────────────────────────────────────
+
+  loadTreatments: async () => {
+    set({ treatmentsLoading: true, treatmentsError: null })
+    try {
+      const data = await fetchProcedures()
+      set({ treatments: data, treatmentsLoading: false })
+    } catch (err) {
+      console.error('[treatments] loadTreatments failed:', err)
+      set({ treatmentsLoading: false, treatmentsError: 'Failed to load treatments' })
+    }
+  },
+
+  saveTreatment: async (data) => {
+    // Build a unique code: name → uppercase slug + timestamp suffix to avoid collisions
+    const slug = data.name
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 14)
+    const code = `${slug}_${Date.now().toString(36).toUpperCase()}`.slice(0, 20)
+
+    const payload: CreateProcedurePayload = {
+      code,
+      name: data.name,
+      description: data.description ?? null,
+      default_cost: data.price,
+      category: data.category,
+      duration_minutes: data.duration,
+      icon: data.icon ?? null,
+      color: data.color ?? null,
+    }
+
+    const created = await createProcedure(payload)
+    set((s) => ({ treatments: [created, ...s.treatments] }))
+  },
+
+  editTreatment: async (id, data) => {
+    const payload: Partial<CreateProcedurePayload> = {
+      name: data.name,
+      description: data.description ?? null,
+      default_cost: data.price,
+      category: data.category,
+      duration_minutes: data.duration,
+      icon: data.icon ?? null,
+      color: data.color ?? null,
+    }
+
+    const updated = await updateProcedure(id, payload)
+    set((s) => ({
+      treatments: s.treatments.map((t) => t.id === id ? updated : t),
+    }))
+  },
+
+  removeTreatment: async (id) => {
+    // Optimistic removal from UI, then soft-delete on the backend
+    set((s) => ({ treatments: s.treatments.filter((t) => t.id !== id) }))
+    try {
+      await updateProcedure(id, { is_active: false })
+    } catch (err) {
+      // Rollback: reload the full list so the item reappears
+      console.error('[treatments] removeTreatment failed, reloading:', err)
+      const data = await fetchProcedures()
+      set({ treatments: data })
+      throw err
+    }
+  },
+
+  // ── Legacy in-memory helpers ────────────────────────────────────────────────
 
   addTreatment: (t) => set((s) => ({ treatments: [t, ...s.treatments] })),
   updateTreatment: (id, data) =>
@@ -121,6 +193,8 @@ export const useTreatmentStore = create<TreatmentState>((set, get) => ({
     get().patientTreatments.filter((pt) => pt.patientId === patientId),
   getOdontogram: (patientId) =>
     get().odontograms.find((o) => o.patientId === patientId),
+
+  // ── Odontogram actions ──────────────────────────────────────────────────────
 
   loadOdontogram: async (patientId) => {
     set({ odontogramLoading: true })
@@ -160,7 +234,6 @@ export const useTreatmentStore = create<TreatmentState>((set, get) => ({
     })),
 
   syncToothToBackend: async (patientId, toothNumber, condition, notes) => {
-    // Optimistic local update first
     get().updateToothCondition(patientId, toothNumber, condition, notes)
     await updateTooth(patientId, toothNumber, {
       status: CONDITION_TO_STATUS[condition] ?? 'HEALTHY',

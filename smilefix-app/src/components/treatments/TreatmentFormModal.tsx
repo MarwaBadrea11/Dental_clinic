@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
@@ -44,7 +44,8 @@ const COLOR_PRESETS = [
 interface TreatmentFormModalProps {
   open: boolean
   onClose: () => void
-  onSave: (data: Omit<Treatment, 'id'>) => void
+  /** Called with form data — must be async; modal stays open until it resolves/rejects. */
+  onSave: (data: Omit<Treatment, 'id'>) => Promise<void>
   initialData?: Partial<Treatment>
   loading?: boolean
 }
@@ -59,6 +60,18 @@ type FormState = {
   color: string
 }
 
+function buildInitialForm(initialData?: Partial<Treatment>): FormState {
+  return {
+    name:        initialData?.name        ?? '',
+    category:    initialData?.category    ?? 'Preventive',
+    duration:    initialData?.duration != null ? String(initialData.duration) : '',
+    price:       initialData?.price    != null ? String(initialData.price)    : '',
+    description: initialData?.description ?? '',
+    icon:        initialData?.icon        ?? '🦷',
+    color:       initialData?.color       ?? '#00696f',
+  }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function TreatmentFormModal({
@@ -70,17 +83,19 @@ export function TreatmentFormModal({
 }: TreatmentFormModalProps) {
   const { t } = useTranslation()
 
-  const [form, setForm] = useState<FormState>({
-    name:        initialData?.name        ?? '',
-    category:    initialData?.category    ?? 'Preventive',
-    duration:    String(initialData?.duration ?? ''),
-    price:       String(initialData?.price    ?? ''),
-    description: initialData?.description ?? '',
-    icon:        initialData?.icon        ?? '🦷',
-    color:       initialData?.color       ?? '#00696f',
-  })
-
+  const [form, setForm] = useState<FormState>(() => buildInitialForm(initialData))
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+
+  // Reset form whenever the modal opens (or initialData changes)
+  useEffect(() => {
+    if (open) {
+      setForm(buildInitialForm(initialData))
+      setErrors({})
+      setApiError(null)
+    }
+  }, [open, initialData])
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -89,28 +104,39 @@ export function TreatmentFormModal({
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {}
-    if (!form.name.trim())                          errs.name     = t('common.required')
-    if (!form.duration || Number(form.duration) <= 0) errs.duration = t('common.required')
-    if (!form.price    || Number(form.price)    <= 0) errs.price    = t('common.required')
+    if (!form.name.trim())                              errs.name     = t('common.required')
+    if (!form.duration || Number(form.duration) <= 0)   errs.duration = t('common.required')
+    if (!form.price    || Number(form.price)    <  0)   errs.price    = t('common.required')
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return
-    onSave({
-      name:        form.name.trim(),
-      category:    form.category,
-      duration:    Number(form.duration),
-      price:       Number(form.price),
-      description: form.description.trim() || undefined,
-      icon:        form.icon,
-      color:       form.color,
-    })
-    onClose()
+    setSubmitting(true)
+    setApiError(null)
+    try {
+      await onSave({
+        name:        form.name.trim(),
+        category:    form.category,
+        duration:    Number(form.duration),
+        price:       Number(form.price),
+        description: form.description.trim() || undefined,
+        icon:        form.icon,
+        color:       form.color,
+      })
+      // onSave resolves → close the modal
+      onClose()
+    } catch (err: unknown) {
+      // Show the error inside the modal so the user can correct and retry
+      setApiError(err instanceof Error ? err.message : 'Failed to save. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const isEdit = Boolean(initialData?.id)
+  const isBusy = submitting || loading
 
   return (
     <Modal
@@ -128,15 +154,17 @@ export function TreatmentFormModal({
             placeholder="e.g. Dental Cleaning"
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
+            disabled={isBusy}
           />
         </FormField>
 
-        {/* Category + Icon — side by side */}
+        {/* Category + Icon */}
         <FormField label={t('common.category') ?? 'Category'}>
           <Select
             options={CATEGORY_OPTIONS}
             value={form.category}
             onChange={(e) => set('category', e.target.value as TreatmentCategory)}
+            disabled={isBusy}
           />
         </FormField>
         <FormField label="Icon">
@@ -144,10 +172,11 @@ export function TreatmentFormModal({
             options={ICON_OPTIONS}
             value={form.icon}
             onChange={(e) => set('icon', e.target.value)}
+            disabled={isBusy}
           />
         </FormField>
 
-        {/* Duration + Price — side by side */}
+        {/* Duration + Price */}
         <FormField label={`${t('treatments.duration')} (min)`} required error={errors.duration}>
           <Input
             type="number"
@@ -155,6 +184,7 @@ export function TreatmentFormModal({
             placeholder="60"
             value={form.duration}
             onChange={(e) => set('duration', e.target.value)}
+            disabled={isBusy}
           />
         </FormField>
         <FormField label={`${t('treatments.price')} ($)`} required error={errors.price}>
@@ -165,10 +195,11 @@ export function TreatmentFormModal({
             placeholder="150.00"
             value={form.price}
             onChange={(e) => set('price', e.target.value)}
+            disabled={isBusy}
           />
         </FormField>
 
-        {/* Color picker — full width */}
+        {/* Color picker */}
         <FormField label="Color" className="col-span-2">
           <div className="flex items-center gap-2 flex-wrap">
             {COLOR_PRESETS.map((c) => (
@@ -177,21 +208,21 @@ export function TreatmentFormModal({
                 type="button"
                 onClick={() => set('color', c)}
                 style={{ background: c }}
+                disabled={isBusy}
                 className={`w-7 h-7 rounded-full cursor-pointer transition-transform hover:scale-110 focus:outline-none ${
                   form.color === c ? 'ring-2 ring-offset-2 ring-[var(--color-on-surface)] scale-110' : ''
                 }`}
                 aria-label={`Select color ${c}`}
               />
             ))}
-            {/* Custom color input */}
             <input
               type="color"
               value={form.color}
               onChange={(e) => set('color', e.target.value)}
+              disabled={isBusy}
               className="w-7 h-7 rounded-full cursor-pointer border border-[var(--color-outline-variant)] bg-transparent p-0"
               title="Custom color"
             />
-            {/* Preview swatch */}
             <div
               className="ml-2 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
               style={{ background: `${form.color}20`, color: form.color, border: `1px solid ${form.color}40` }}
@@ -202,21 +233,32 @@ export function TreatmentFormModal({
           </div>
         </FormField>
 
-        {/* Description — full width */}
+        {/* Description */}
         <FormField label={t('treatments.description')} className="col-span-2">
           <Textarea
             placeholder="Brief description of the procedure..."
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
             rows={3}
+            disabled={isBusy}
           />
         </FormField>
       </div>
 
+      {/* API error banner */}
+      {apiError && (
+        <div className="mt-4 px-3 py-2.5 rounded-[var(--radius-DEFAULT)] bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2">
+          <span className="shrink-0 mt-0.5">⚠</span>
+          <span>{apiError}</span>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-[var(--color-outline-variant)]/15">
-        <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-        <Button onClick={handleSave} loading={loading}>
+        <Button variant="ghost" onClick={onClose} disabled={isBusy}>
+          {t('common.cancel')}
+        </Button>
+        <Button onClick={handleSave} loading={isBusy}>
           {isEdit ? t('calendar.saveChanges') ?? 'Save Changes' : t('treatments.addTreatment')}
         </Button>
       </div>

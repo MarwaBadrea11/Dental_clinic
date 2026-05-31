@@ -6,6 +6,9 @@ export const CreateProcedureSchema = z.object({
   description: z.string().optional().nullable(),
   default_cost: z.number().min(0).default(0),
   category: z.string().optional().nullable(),
+  duration_minutes: z.number().int().min(1).optional().nullable(),
+  icon: z.string().max(10).optional().nullable(),
+  color: z.string().max(20).optional().nullable(),
 });
 
 export const UpdateProcedureSchema = CreateProcedureSchema.partial().extend({

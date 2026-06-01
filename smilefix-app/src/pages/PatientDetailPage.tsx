@@ -39,9 +39,10 @@ export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { getPatientById, getHistoryByPatientId, addHistoryEntry, loadPatientById } = usePatientStore()
+  const { getPatientById, getHistoryByPatientId, addHistoryEntry, loadPatientById, loadHistory, saveNote } = usePatientStore()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [noteModalOpen, setNoteModalOpen] = useState(false)
+  const [noteSaving, setNoteSaving] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -49,7 +50,7 @@ export default function PatientDetailPage() {
 
   const patient = getPatientById(id ?? '')
 
-  // Fetch from API if not in store (e.g. after a page refresh)
+  // Fetch patient from API if not in store (e.g. after a page refresh)
   useEffect(() => {
     if (!id) { setFetching(false); return }
     if (patient) { setFetching(false); return }
@@ -58,6 +59,13 @@ export default function PatientDetailPage() {
       .catch(() => setFetchError('Patient not found'))
       .finally(() => setFetching(false))
   }, [id])
+
+  // Load medical history timeline from the backend
+  useEffect(() => {
+    if (!id) return
+    loadHistory(id).catch(() => {/* silently ignore — timeline will be empty */})
+  }, [id])
+
   const history = getHistoryByPatientId(id ?? '')
 
   if (!patient) {
@@ -462,9 +470,25 @@ export default function PatientDetailPage() {
         open={noteModalOpen}
         onClose={() => setNoteModalOpen(false)}
         patientId={patient.id}
-        onSave={(entry) => {
-          addHistoryEntry(entry)
-          setNoteModalOpen(false)
+        onSave={async (entry) => {
+          setNoteSaving(true)
+          try {
+            await saveNote(patient.id, {
+              type:        entry.type,
+              title:       entry.title,
+              description: entry.description,
+              doctor:      entry.doctor,
+              date:        entry.date,
+              status:      entry.status ?? 'completed',
+              cost:        entry.cost ?? null,
+            })
+          } catch {
+            // Fallback: keep the entry in local state so the UI doesn't break
+            addHistoryEntry(entry)
+          } finally {
+            setNoteSaving(false)
+            setNoteModalOpen(false)
+          }
         }}
       />
 

@@ -9,6 +9,7 @@ import {
   type CreatePatientPayload,
   type UpdatePatientPayload,
 } from '@/services/patientService'
+import { fetchNotes, createNote, type CreateNotePayload } from '@/services/noteService'
 import { getQueryClient } from '@/lib/queryClient'
 import { dashboardKeys } from '@/hooks/useDashboard'
 
@@ -42,6 +43,10 @@ interface PatientState {
   createPatient: (payload: CreatePatientPayload) => Promise<Patient>
   updatePatientById: (id: string, payload: UpdatePatientPayload) => Promise<Patient>
   deletePatientById: (id: string) => Promise<void>
+  /** Fetch notes from the backend and populate the history array for a patient. */
+  loadHistory: (patientId: string) => Promise<void>
+  /** Save a note to the backend and add it to the local history array. */
+  saveNote: (patientId: string, payload: CreateNotePayload) => Promise<MedicalHistoryEntry>
 }
 
 export const usePatientStore = create<PatientState>((set, get) => ({
@@ -119,5 +124,22 @@ export const usePatientStore = create<PatientState>((set, get) => ({
       set({ patients: previous })
       throw err
     }
+  },
+
+  loadHistory: async (patientId) => {
+    const entries = await fetchNotes(patientId)
+    // Replace all entries for this patient, keep entries for other patients
+    set((s) => ({
+      history: [
+        ...s.history.filter((h) => h.patientId !== patientId),
+        ...entries,
+      ],
+    }))
+  },
+
+  saveNote: async (patientId, payload) => {
+    const entry = await createNote(patientId, payload)
+    set((s) => ({ history: [entry, ...s.history] }))
+    return entry
   },
 }))

@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { PatientForm } from '@/components/patients/PatientForm'
+import { PatientForm, type PatientFormValues } from '@/components/patients/PatientForm'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { usePatientStore } from '@/store/patientStore'
 import { ApiError } from '@/services/apiClient'
 import { ROUTES } from '@/constants/routes'
-import type { Patient } from '@/types'
 
 export default function EditPatientPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,7 +26,7 @@ export default function EditPatientPage() {
     )
   }
 
-  const handleSubmit = async (data: Omit<Patient, 'id' | 'patientCode' | 'createdAt'>) => {
+  const handleSubmit = async (data: PatientFormValues) => {
     setLoading(true)
     setApiError(null)
     try {
@@ -36,17 +35,20 @@ export default function EditPatientPage() {
         last_name: data.lastName,
         date_of_birth: data.dateOfBirth,
         gender: data.gender,
-        national_id: data.patientCode ?? patient.patientCode,
+        national_id: data.nationalId,
         phone: data.phone,
-        email: data.email ?? null,
-        address: data.address ?? null,
-        blood_type: data.bloodType ?? null,
-        allergies: data.allergies ?? [],
-        medical_history: data.notes ?? null,
-        emergency_contact_name: data.emergencyContact?.name ?? null,
-        emergency_contact_phone: data.emergencyContact?.phone ?? null,
+        email: data.email || null,
+        city: data.city || null,
+        medical_history: data.medicalHistory || null,
+        clinical_notes: data.clinicalNotes || null,
+        insurance_provider: data.insuranceProvider || null,
+        insurance_policy_number: data.insurancePolicyNumber || null,
+        emergency_contact_name: data.emergencyContactName || null,
+        emergency_contact_relationship: data.emergencyContactRelationship || null,
+        emergency_contact_phone: data.emergencyContactPhone || null,
+        status: data.status,
       })
-      navigate(`/patients/${patient.id}`)
+      navigate(`${ROUTES.PATIENTS}/${patient.id}`)
     } catch (err) {
       if (err instanceof ApiError) {
         setApiError(err.message)
@@ -66,22 +68,27 @@ export default function EditPatientPage() {
         breadcrumb={[
           { label: 'Dashboard', href: '/' },
           { label: 'Patients', href: ROUTES.PATIENTS },
-          { label: `${patient.firstName} ${patient.lastName}`, href: `/patients/${patient.id}` },
+          { label: `${patient.firstName} ${patient.lastName}`, href: `${ROUTES.PATIENTS}/${patient.id}` },
           { label: 'Edit' },
         ]}
       />
       {apiError && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--color-error-container)', color: 'var(--color-on-error-container)', borderRadius: 'var(--radius-DEFAULT)', fontSize: '0.875rem' }}>
+        <div style={{ 
+          marginBottom: '1rem', 
+          padding: '0.75rem 1rem', 
+          background: 'var(--color-error-container)', 
+          color: 'var(--color-on-error-container)', 
+          borderRadius: 'var(--radius-DEFAULT)', 
+          fontSize: '0.875rem' 
+        }}>
           {apiError}
         </div>
       )}
       <div className="max-w-4xl">
-        <PatientForm
-          mode="edit"
-          initialData={patient}
-          onSubmit={handleSubmit}
-          onCancel={() => navigate(`/patients/${patient.id}`)}
-          loading={loading}
+        <PatientForm 
+          initialData={patient} 
+          onSubmit={handleSubmit} 
+          loading={loading} 
         />
       </div>
     </div>

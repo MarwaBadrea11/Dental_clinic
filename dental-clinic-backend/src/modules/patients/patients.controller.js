@@ -3,14 +3,19 @@ import { PatientsRepository } from './patients.repository.js';
 import { CreatePatientSchema, UpdatePatientSchema } from './patients.schema.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
 
+// دالة مساعدة لتجهيز الخدمة (استخدام Singleton pattern أو Dependency Injection هنا يفضل لاحقاً)
 function getService(request) {
   return new PatientsService(new PatientsRepository(request.server.db));
 }
 
+// دالة مساعدة موحدة للتحقق من البيانات (Validation)
 function parseValidation(schema, body, reply) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    const fields = parsed.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message }));
+    const fields = parsed.error.issues.map((i) => ({ 
+      field: i.path.join('.'), 
+      message: i.message 
+    }));
     reply.status(422).send(errorResponse('Validation failed', { fields }));
     return null;
   }
@@ -20,6 +25,7 @@ function parseValidation(schema, body, reply) {
 export async function createPatientHandler(request, reply) {
   const data = parseValidation(CreatePatientSchema, request.body, reply);
   if (!data) return;
+  
   const patient = await getService(request).create(data);
   return reply.status(201).send(successResponse(patient));
 }
@@ -41,11 +47,12 @@ export async function getPatientHandler(request, reply) {
 export async function updatePatientHandler(request, reply) {
   const data = parseValidation(UpdatePatientSchema, request.body, reply);
   if (!data) return;
+  
   const patient = await getService(request).update(request.params.id, data);
   return reply.status(200).send(successResponse(patient));
 }
 
 export async function deletePatientHandler(request, reply) {
   await getService(request).delete(request.params.id);
-  return reply.status(200).send(successResponse({ id: request.params.id }));
+  return reply.status(204).send();
 }

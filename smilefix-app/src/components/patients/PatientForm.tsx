@@ -1,303 +1,231 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { useTranslation } from 'react-i18next'
-import { User, Phone, Heart, Shield, FileText } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
-import { Button } from '@/components/ui/Button'
-import { SectionCard } from '@/components/ui/SectionCard'
-import { FormField } from '@/components/ui/FormField'
-import { ImageUploadArea } from '@/components/ui/ImageUploadArea'
 import type { Patient } from '@/types'
 
-type PatientFormData = Omit<Patient, 'id' | 'patientCode' | 'createdAt'>
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface PatientFormProps {
-  initialData?: Partial<PatientFormData>
-  onSubmit: (data: PatientFormData) => void
-  onCancel?: () => void
-  loading?: boolean
-  mode?: 'create' | 'edit'
+export interface PatientFormValues {
+  firstName: string
+  lastName: string
+  dateOfBirth: string
+  gender: 'male' | 'female' | 'other'
+  nationalId: string
+  phone: string
+  city: string
+  email: string
+  status: 'active' | 'inactive' | 'pending'
+  insuranceProvider: string
+  insurancePolicyNumber: string
+  emergencyContactName: string
+  emergencyContactRelationship: string
+  emergencyContactPhone: string
+  clinicalNotes: string
+  medicalHistory: string
 }
 
-export function PatientForm({ initialData, onSubmit, onCancel, loading = false, mode = 'create' }: PatientFormProps) {
-  const { t } = useTranslation()
+interface PatientFormProps {
+  initialData?: Patient
+  onSubmit: (data: PatientFormValues) => void | Promise<void>
+  loading?: boolean
+}
 
-  // Options built inside component so labels re-render on language change
-  const GENDER_OPTIONS = [
-    { value: 'male',   label: t('patients.male') },
-    { value: 'female', label: t('patients.female') },
-    { value: 'other',  label: t('patients.other') },
-  ]
+type FormErrors = Partial<Record<keyof PatientFormValues, string>>
 
-  const BLOOD_OPTIONS = [
-    { value: '', label: t('common.unknown') },
-    ...['A+','A-','B+','B-','AB+','AB-','O+','O-'].map((v) => ({ value: v, label: v })),
-  ]
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  const STATUS_OPTIONS = [
-    { value: 'active',   label: t('status.active') },
-    { value: 'inactive', label: t('status.inactive') },
-    { value: 'pending',  label: t('status.pending') },
-  ]
+function buildDefaults(p?: Patient): PatientFormValues {
+  return {
+    firstName:                    p?.firstName ?? '',
+    lastName:                     p?.lastName ?? '',
+    dateOfBirth:                  p?.dateOfBirth ?? '',
+    gender:                       p?.gender ?? 'male',
+    nationalId:                   p?.patientCode ?? '',
+    phone:                        p?.phone ?? '',
+    city:                         p?.city ?? '',
+    email:                        p?.email ?? '',
+    status:                       p?.status === 'inactive' || p?.status === 'pending' ? p.status : 'active',
+    insuranceProvider:            p?.insuranceProvider ?? '',
+    insurancePolicyNumber:        p?.insurancePolicyNumber ?? '',
+    emergencyContactName:         p?.emergencyContactName ?? p?.emergencyContact?.name ?? '',
+    emergencyContactRelationship: p?.emergencyContactRelationship ?? p?.emergencyContact?.relation ?? '',
+    emergencyContactPhone:        p?.emergencyContactPhone ?? p?.emergencyContact?.phone ?? '',
+    clinicalNotes:                p?.clinicalNotes ?? '',
+    medicalHistory:               p?.medicalHistory ?? p?.notes ?? '',
+  }
+}
 
-  const DOCTOR_OPTIONS = [
-    { value: 'Dr. Smith',    label: 'Dr. Smith' },
-    { value: 'Dr. Peterson', label: 'Dr. Peterson' },
-    { value: 'Dr. Lee',      label: 'Dr. Lee' },
-  ]
+function validate(form: PatientFormValues): FormErrors {
+  const errs: FormErrors = {}
+  if (!form.firstName.trim())  errs.firstName   = 'Required'
+  if (!form.lastName.trim())   errs.lastName    = 'Required'
+  if (!form.dateOfBirth)       errs.dateOfBirth = 'Required'
+  if (!form.nationalId.trim()) errs.nationalId  = 'Required'
+  if (!form.phone.trim())      errs.phone       = 'Required'
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errs.email = 'Invalid email address'
+  }
+  return errs
+}
 
-  const [form, setForm] = useState<Partial<PatientFormData>>({
-    firstName: '', lastName: '', dateOfBirth: '', gender: 'male',
-    phone: '', email: '', address: '', city: '',
-    bloodType: undefined, allergies: [],
-    status: 'active', balance: 0,
-    assignedDoctor: 'Dr. Smith',
-    ...initialData,
-  })
-  const [allergyInput, setAllergyInput] = useState('')
-  const [errors, setErrors] = useState<Partial<Record<keyof PatientFormData, string>>>({})
+// ── Component ─────────────────────────────────────────────────────────────────
 
-  const set = (key: keyof PatientFormData, value: unknown) => {
+export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps) {
+  const [form, setForm] = useState<PatientFormValues>(() => buildDefaults(initialData))
+  const [errors, setErrors] = useState<FormErrors>({})
+
+  const set = <K extends keyof PatientFormValues>(key: K, value: PatientFormValues[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
     setErrors((e) => ({ ...e, [key]: undefined }))
   }
 
-  const addAllergy = () => {
-    const trimmed = allergyInput.trim()
-    if (!trimmed) return
-    set('allergies', [...(form.allergies ?? []), trimmed])
-    setAllergyInput('')
-  }
-
-  const removeAllergy = (a: string) =>
-    set('allergies', (form.allergies ?? []).filter((x) => x !== a))
-
-  const validate = (): boolean => {
-    const errs: typeof errors = {}
-    if (!form.firstName?.trim()) errs.firstName = t('patients.firstNameRequired')
-    if (!form.lastName?.trim())  errs.lastName  = t('patients.lastNameRequired')
-    if (!form.phone?.trim())     errs.phone     = t('patients.phoneRequired')
-    if (!form.dateOfBirth)       errs.dateOfBirth = t('patients.dobRequired')
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
-    onSubmit(form as PatientFormData)
+    const errs = validate(form)
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      return
+    }
+    await onSubmit(form)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Basic Information */}
-      <SectionCard title={t('patients.personalInfo')} icon={<User size={15} />} delay={0}>
-        <div className="flex flex-col sm:flex-row gap-6">
-          <ImageUploadArea
-            name={`${form.firstName || t('common.patient')} ${form.lastName || ''}`}
-            size="lg"
-            label={t('patients.photo')}
-            className="shrink-0"
+    <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* ── Personal Info ── */}
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="First Name"
+          value={form.firstName}
+          onChange={(e) => set('firstName', e.target.value)}
+          error={errors.firstName}
+          required
+        />
+        <Input
+          label="Last Name"
+          value={form.lastName}
+          onChange={(e) => set('lastName', e.target.value)}
+          error={errors.lastName}
+          required
+        />
+        <Input
+          label="Date of Birth"
+          type="date"
+          value={form.dateOfBirth}
+          onChange={(e) => set('dateOfBirth', e.target.value)}
+          error={errors.dateOfBirth}
+          required
+        />
+        <Select
+          label="Gender"
+          options={[
+            { label: 'Male',   value: 'male' },
+            { label: 'Female', value: 'female' },
+            { label: 'Other',  value: 'other' },
+          ]}
+          value={form.gender}
+          onChange={(e) => set('gender', e.target.value as PatientFormValues['gender'])}
+        />
+        <Input
+          label="National ID"
+          value={form.nationalId}
+          onChange={(e) => set('nationalId', e.target.value)}
+          error={errors.nationalId}
+          required
+        />
+        <Select
+          label="Status"
+          options={[
+            { label: 'Active',   value: 'active' },
+            { label: 'Inactive', value: 'inactive' },
+            { label: 'Pending',  value: 'pending' },
+          ]}
+          value={form.status}
+          onChange={(e) => set('status', e.target.value as PatientFormValues['status'])}
+        />
+        <Input
+          label="Phone"
+          type="tel"
+          value={form.phone}
+          onChange={(e) => set('phone', e.target.value)}
+          error={errors.phone}
+          required
+        />
+        <Input
+          label="City"
+          value={form.city}
+          onChange={(e) => set('city', e.target.value)}
+        />
+        <Input
+          label="Email"
+          type="email"
+          value={form.email}
+          onChange={(e) => set('email', e.target.value)}
+          error={errors.email}
+        />
+      </div>
+
+      {/* ── Insurance ── */}
+      <div className="border-t pt-4 space-y-4">
+        <h3 className="font-semibold text-[var(--color-on-surface)]">Insurance Information</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Insurance Provider"
+            value={form.insuranceProvider}
+            onChange={(e) => set('insuranceProvider', e.target.value)}
           />
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label={t('patients.firstName')} required error={errors.firstName}>
-              <Input
-                placeholder="Sarah"
-                value={form.firstName ?? ''}
-                onChange={(e) => set('firstName', e.target.value)}
-              />
-            </FormField>
-            <FormField label={t('patients.lastName')} required error={errors.lastName}>
-              <Input
-                placeholder="Miller"
-                value={form.lastName ?? ''}
-                onChange={(e) => set('lastName', e.target.value)}
-              />
-            </FormField>
-            <FormField label={t('patients.dateOfBirth')} required error={errors.dateOfBirth}>
-              <Input
-                type="date"
-                value={form.dateOfBirth ?? ''}
-                onChange={(e) => set('dateOfBirth', e.target.value)}
-              />
-            </FormField>
-            <FormField label={t('patients.gender')}>
-              <Select
-                options={GENDER_OPTIONS}
-                value={form.gender ?? 'male'}
-                onChange={(e) => set('gender', e.target.value)}
-              />
-            </FormField>
-            <FormField label={t('common.status')}>
-              <Select
-                options={STATUS_OPTIONS}
-                value={form.status ?? 'active'}
-                onChange={(e) => set('status', e.target.value as Patient['status'])}
-              />
-            </FormField>
-            <FormField label={t('patients.assignedDoctor')}>
-              <Select
-                options={DOCTOR_OPTIONS}
-                value={form.assignedDoctor ?? ''}
-                onChange={(e) => set('assignedDoctor', e.target.value)}
-              />
-            </FormField>
-          </div>
+          <Input
+            label="Policy Number"
+            value={form.insurancePolicyNumber}
+            onChange={(e) => set('insurancePolicyNumber', e.target.value)}
+          />
         </div>
-      </SectionCard>
+      </div>
 
-      {/* Contact Information */}
-      <SectionCard title={t('patients.contactInfo')} icon={<Phone size={15} />} delay={0.05}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label={t('common.phone')} required error={errors.phone}>
-            <Input
-              type="tel"
-              placeholder="+1 (555) 000-0000"
-              value={form.phone ?? ''}
-              onChange={(e) => set('phone', e.target.value)}
-            />
-          </FormField>
-          <FormField label={t('common.email')}>
-            <Input
-              type="email"
-              placeholder="patient@email.com"
-              value={form.email ?? ''}
-              onChange={(e) => set('email', e.target.value)}
-            />
-          </FormField>
-          <FormField label={t('common.address')}>
-            <Input
-              placeholder="123 Main Street"
-              value={form.address ?? ''}
-              onChange={(e) => set('address', e.target.value)}
-            />
-          </FormField>
-          <FormField label={t('patients.city')}>
-            <Input
-              placeholder="Los Angeles"
-              value={form.city ?? ''}
-              onChange={(e) => set('city', e.target.value)}
-            />
-          </FormField>
+      {/* ── Emergency Contact ── */}
+      <div className="border-t pt-4 space-y-4">
+        <h3 className="font-semibold text-[var(--color-on-surface)]">Emergency Contact</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <Input
+            label="Name"
+            value={form.emergencyContactName}
+            onChange={(e) => set('emergencyContactName', e.target.value)}
+          />
+          <Input
+            label="Relationship"
+            value={form.emergencyContactRelationship}
+            onChange={(e) => set('emergencyContactRelationship', e.target.value)}
+          />
+          <Input
+            label="Phone"
+            type="tel"
+            value={form.emergencyContactPhone}
+            onChange={(e) => set('emergencyContactPhone', e.target.value)}
+          />
         </div>
-      </SectionCard>
+      </div>
 
-      {/* Medical Information */}
-      <SectionCard title={t('patients.medicalInfo')} icon={<Heart size={15} />} delay={0.1}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label={t('patients.bloodType')}>
-            <Select
-              options={BLOOD_OPTIONS}
-              value={form.bloodType ?? ''}
-              onChange={(e) => set('bloodType', e.target.value || undefined)}
-            />
-          </FormField>
-          <div />
-          <FormField label={t('patients.allergies')} className="col-span-2">
-            <div className="flex gap-2">
-              <Input
-                placeholder={t('patients.allergyPlaceholder')}
-                value={allergyInput}
-                onChange={(e) => setAllergyInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAllergy() } }}
-              />
-              <Button type="button" variant="outline" size="md" onClick={addAllergy}>
-                {t('patients.addAllergy')}
-              </Button>
-            </div>
-            {(form.allergies ?? []).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {(form.allergies ?? []).map((a) => (
-                  <span
-                    key={a}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-[var(--color-error-container)] text-[var(--color-error)] text-xs font-semibold rounded-full cursor-pointer hover:opacity-80"
-                    onClick={() => removeAllergy(a)}
-                  >
-                    {a} ×
-                  </span>
-                ))}
-              </div>
-            )}
-          </FormField>
-        </div>
-      </SectionCard>
-
-      {/* Insurance */}
-      <SectionCard title={t('patients.insuranceInfo')} icon={<Shield size={15} />} delay={0.15}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label={t('patients.insuranceProvider')}>
-            <Input
-              placeholder="BlueCross, Aetna..."
-              value={form.insuranceProvider ?? ''}
-              onChange={(e) => set('insuranceProvider', e.target.value)}
-            />
-          </FormField>
-          <FormField label={t('patients.policyNumber')}>
-            <Input
-              placeholder="BC-00000"
-              value={form.insuranceNumber ?? ''}
-              onChange={(e) => set('insuranceNumber', e.target.value)}
-            />
-          </FormField>
-        </div>
-      </SectionCard>
-
-      {/* Emergency Contact */}
-      <SectionCard title={t('patients.emergencyContact')} icon={<Phone size={15} />} delay={0.2}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <FormField label={t('common.name')}>
-            <Input
-              placeholder="John Doe"
-              value={form.emergencyContact?.name ?? ''}
-              onChange={(e) => set('emergencyContact', { ...form.emergencyContact, name: e.target.value })}
-            />
-          </FormField>
-          <FormField label={t('patients.relationship')}>
-            <Input
-              placeholder="Spouse, Parent..."
-              value={form.emergencyContact?.relation ?? ''}
-              onChange={(e) => set('emergencyContact', { ...form.emergencyContact, relation: e.target.value })}
-            />
-          </FormField>
-          <FormField label={t('common.phone')}>
-            <Input
-              type="tel"
-              placeholder="+1 (555) 000-0000"
-              value={form.emergencyContact?.phone ?? ''}
-              onChange={(e) => set('emergencyContact', { ...form.emergencyContact, phone: e.target.value })}
-            />
-          </FormField>
-        </div>
-      </SectionCard>
-
-      {/* Clinical Notes */}
-      <SectionCard title={t('patients.clinicalNotes')} icon={<FileText size={15} />} delay={0.25}>
+      {/* ── Clinical ── */}
+      <div className="border-t pt-4 space-y-4">
         <Textarea
-          placeholder={t('patients.notes')}
-          value={form.notes ?? ''}
-          onChange={(e) => set('notes', e.target.value)}
+          label="Clinical Notes"
+          value={form.clinicalNotes}
+          onChange={(e) => set('clinicalNotes', e.target.value)}
           rows={3}
         />
-      </SectionCard>
+        <Textarea
+          label="Medical History"
+          value={form.medicalHistory}
+          onChange={(e) => set('medicalHistory', e.target.value)}
+          rows={3}
+        />
+      </div>
 
-      {/* Actions */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="flex items-center justify-end gap-3 pt-2"
-      >
-        {onCancel && (
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            {t('common.cancel')}
-          </Button>
-        )}
-        <Button type="submit" loading={loading}>
-          {mode === 'create' ? t('patients.registerNew') : t('common.save')}
-        </Button>
-      </motion.div>
+      <Button type="submit" loading={loading} className="w-full">
+        Save Patient
+      </Button>
     </form>
   )
 }

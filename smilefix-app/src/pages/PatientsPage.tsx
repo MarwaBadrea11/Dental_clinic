@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { UserPlus, Users, LayoutGrid, List, Filter } from 'lucide-react'
+import { UserPlus, Users, LayoutGrid, List } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable, type DataTableColumn, type DataTableAction } from '@/components/ui/DataTable'
 import { Avatar } from '@/components/ui/Avatar'
@@ -13,7 +13,7 @@ import { SearchBar } from '@/components/ui/SearchBar'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { PatientCard } from '@/components/patients/PatientCard'
 import { usePatientStore } from '@/store/patientStore'
-import { formatDate, formatCurrency } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import { ROUTES } from '@/constants/routes'
 import type { Patient } from '@/types'
 
@@ -22,11 +22,10 @@ type ViewMode = 'table' | 'grid'
 export default function PatientsPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { patients, deletePatientById, loadPatients, loading } = usePatientStore()
+  const { patients, loadPatients, loading } = usePatientStore()
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => { loadPatients() }, [])
 
@@ -48,41 +47,57 @@ export default function PatientsPage() {
 
   const columns: DataTableColumn<Patient>[] = [
     {
-      key: 'name', header: t('common.patient'), sortable: true,
+      key: 'name', header: 'Patient', sortable: true,
       render: (p) => (
         <div className="flex items-center gap-3">
           <Avatar name={`${p.firstName} ${p.lastName}`} src={p.avatar} size="sm" />
           <div className="min-w-0">
             <p className="font-semibold text-sm text-[var(--color-on-surface)] truncate">{p.firstName} {p.lastName}</p>
-            <p className="text-xs text-[var(--color-on-surface-variant)]">{p.patientCode}</p>
+            <p className="text-xs text-[var(--color-on-surface-variant)] font-mono">{p.patientCode}</p>
           </div>
         </div>
       ),
     },
     {
-      key: 'phone', header: t('common.phone'), sortable: false,
+      key: 'phone', header: 'Phone', sortable: false,
       render: (p) => <span className="text-sm">{p.phone}</span>,
     },
     {
-      key: 'assignedDoctor', header: t('common.doctor'), sortable: true,
-      render: (p) => <span className="text-sm">{p.assignedDoctor ?? '—'}</span>,
+      key: 'gender', header: 'Gender', sortable: true,
+      render: (p) => (
+        <span className="text-sm capitalize text-[var(--color-on-surface-variant)]">{p.gender}</span>
+      ),
     },
     {
-      key: 'lastVisit', header: t('patients.lastVisit'), sortable: true,
+      key: 'city', header: 'City', sortable: true,
       render: (p) => (
-        <span className="text-sm text-[var(--color-on-surface-variant)]">
-          {p.lastVisit ? formatDate(p.lastVisit) : '—'}
+        <span className="text-sm text-[var(--color-on-surface-variant)]">{p.city ?? '—'}</span>
+      ),
+    },
+    {
+      key: 'email', header: 'Email', sortable: false,
+      render: (p) => (
+        <span className="text-sm text-[var(--color-on-surface-variant)] truncate max-w-[160px] block">
+          {p.email ?? '—'}
         </span>
       ),
     },
     {
-      key: 'balance', header: t('common.total'), sortable: true,
-      render: (p) => p.balance && p.balance > 0
-        ? <Badge variant="error" size="sm">{formatCurrency(p.balance)}</Badge>
-        : <Badge variant="success" size="sm">{t('status.cleared')}</Badge>,
+      key: 'createdAt', header: 'Registered', sortable: true,
+      render: (p) => (
+        <span className="text-sm text-[var(--color-on-surface-variant)]">
+          {p.createdAt ? formatDate(p.createdAt) : '—'}
+        </span>
+      ),
     },
     {
-      key: 'status', header: t('common.status'), sortable: true,
+      key: 'bloodType', header: 'Blood Type', sortable: false,
+      render: (p) => p.bloodType
+        ? <Badge variant="neutral" size="sm">{p.bloodType}</Badge>
+        : <span className="text-sm text-[var(--color-on-surface-variant)]">—</span>,
+    },
+    {
+      key: 'status', header: 'Status', sortable: true,
       render: (p) => <StatusBadge status={p.status} />,
     },
   ]
@@ -90,21 +105,6 @@ export default function PatientsPage() {
   const actions: DataTableAction<Patient>[] = [
     { label: t('patients.viewProfile'), onClick: (p) => navigate(`/patients/${p.id}`) },
     { label: t('patients.editPatient'), onClick: (p) => navigate(`/patients/${p.id}/edit`) },
-    {
-      label: t('common.delete'),
-      danger: true,
-      onClick: async (p) => {
-        if (!confirm(`${t('common.delete')} ${p.firstName} ${p.lastName}?`)) return
-        setDeletingId(p.id)
-        try {
-          await deletePatientById(p.id)
-        } catch {
-          alert(t('patients.deleteFailed') ?? 'Failed to delete patient. Please try again.')
-        } finally {
-          setDeletingId(null)
-        }
-      },
-    },
   ]
 
   return (

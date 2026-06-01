@@ -42,13 +42,24 @@ export interface Patient {
   city?: string
   bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-'
   allergies?: string[]
+  /** Nested emergency contact (legacy shape) */
   emergencyContact?: { name: string; phone: string; relation: string }
+  /** Flat emergency contact fields (used by form & info section) */
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+  emergencyContactRelationship?: string
   avatar?: string
   lastVisit?: string
   nextAppointment?: string
   assignedDoctor?: string
   insuranceProvider?: string
+  /** @deprecated use insurancePolicyNumber */
   insuranceNumber?: string
+  insurancePolicyNumber?: string
+  /** Free-text medical history */
+  medicalHistory?: string
+  /** Clinical notes by the doctor */
+  clinicalNotes?: string
   notes?: string
   status: Status
   balance?: number

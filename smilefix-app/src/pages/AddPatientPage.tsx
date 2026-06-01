@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { PatientForm } from '@/components/patients/PatientForm'
+import { PatientForm, type PatientFormValues } from '@/components/patients/PatientForm'
 import { usePatientStore } from '@/store/patientStore'
 import { ApiError } from '@/services/apiClient'
 import { ROUTES } from '@/constants/routes'
-import type { Patient } from '@/types'
 
 export default function AddPatientPage() {
   const navigate = useNavigate()
@@ -13,7 +12,7 @@ export default function AddPatientPage() {
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
 
-  const handleSubmit = async (data: Omit<Patient, 'id' | 'patientCode' | 'createdAt'>) => {
+  const handleSubmit = async (data: PatientFormValues) => {
     setLoading(true)
     setApiError(null)
     try {
@@ -22,17 +21,23 @@ export default function AddPatientPage() {
         last_name: data.lastName,
         date_of_birth: data.dateOfBirth,
         gender: data.gender,
-        national_id: data.patientCode ?? `${data.firstName}-${Date.now()}`,
+        national_id: data.nationalId,
         phone: data.phone,
-        email: data.email ?? null,
-        address: data.address ?? null,
-        blood_type: data.bloodType ?? null,
-        allergies: data.allergies ?? [],
-        medical_history: data.notes ?? null,
-        emergency_contact_name: data.emergencyContact?.name ?? null,
-        emergency_contact_phone: data.emergencyContact?.phone ?? null,
+        email: data.email || null,
+        address: null,
+        city: data.city || null,
+        blood_type: null,
+        allergies: [],
+        medical_history: data.medicalHistory || null,
+        clinical_notes: data.clinicalNotes || null,
+        insurance_provider: data.insuranceProvider || null,
+        insurance_policy_number: data.insurancePolicyNumber || null,
+        emergency_contact_name: data.emergencyContactName || null,
+        emergency_contact_relationship: data.emergencyContactRelationship || null,
+        emergency_contact_phone: data.emergencyContactPhone || null,
+        status: data.status,
       })
-      navigate(`/patients/${patient.id}`)
+      navigate(`${ROUTES.PATIENTS}/${patient.id}`)
     } catch (err) {
       if (err instanceof ApiError) {
         setApiError(err.message)
@@ -56,17 +61,19 @@ export default function AddPatientPage() {
         ]}
       />
       {apiError && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--color-error-container)', color: 'var(--color-on-error-container)', borderRadius: 'var(--radius-DEFAULT)', fontSize: '0.875rem' }}>
+        <div style={{ 
+          marginBottom: '1rem', 
+          padding: '0.75rem 1rem', 
+          background: 'var(--color-error-container)', 
+          color: 'var(--color-on-error-container)', 
+          borderRadius: 'var(--radius-DEFAULT)', 
+          fontSize: '0.875rem' 
+        }}>
           {apiError}
         </div>
       )}
       <div className="max-w-4xl">
-        <PatientForm
-          mode="create"
-          onSubmit={handleSubmit}
-          onCancel={() => navigate(ROUTES.PATIENTS)}
-          loading={loading}
-        />
+        <PatientForm onSubmit={handleSubmit} loading={loading} />
       </div>
     </div>
   )

@@ -4,8 +4,12 @@ export class PatientsRepository {
     this.db = db;
   }
 
+  // جلب جميع المرضى مع تصفية المحذوفين
   findAll({ search, limit = 20, offset = 0 } = {}) {
-    const q = this.db('patients').whereNull('deleted_at').orderBy('created_at', 'desc');
+    const q = this.db('patients')
+      .whereNull('deleted_at')
+      .orderBy('created_at', 'desc');
+
     if (search) {
       q.where((b) =>
         b
@@ -18,6 +22,7 @@ export class PatientsRepository {
     return q.limit(limit).offset(offset);
   }
 
+  // حساب العدد الكلي مع دعم البحث
   count({ search } = {}) {
     const q = this.db('patients').whereNull('deleted_at').count('id as total');
     if (search) {
@@ -40,26 +45,32 @@ export class PatientsRepository {
     return this.db('patients').where({ national_id }).whereNull('deleted_at').first();
   }
 
+  // إنشاء مريض جديد مع إرجاع البيانات المحفوظة
   async create(data) {
-    const [patient] = await this.db('patients').insert(data).returning('*');
+    const [patient] = await this.db('patients')
+      .insert(data)
+      .returning('*');
     return patient;
   }
 
+  // تحديث بيانات المريض مع تحديث طابع الـ updated_at تلقائياً
   async update(id, data) {
     const [patient] = await this.db('patients')
       .where({ id })
-      .whereNull('deleted_at')
-      .update(data)
+      .update({
+        ...data,
+        updated_at: this.db.fn.now(),
+      })
       .returning('*');
     return patient;
   }
 
-  async softDelete(id) {
-    const [patient] = await this.db('patients')
+  // الحذف المنطقي (Soft Delete)
+  async delete(id) {
+    return this.db('patients')
       .where({ id })
-      .whereNull('deleted_at')
-      .update({ deleted_at: this.db.fn.now() })
-      .returning('*');
-    return patient;
+      .update({
+        deleted_at: this.db.fn.now(),
+      });
   }
 }

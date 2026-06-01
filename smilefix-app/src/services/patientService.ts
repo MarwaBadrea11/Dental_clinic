@@ -17,11 +17,20 @@ export interface BackendPatient {
   phone: string
   email: string | null
   address: string | null
+  city: string | null
   blood_type: string | null
   allergies: string[]
   medical_history: string | null
+  clinical_notes: string | null
+  insurance_provider: string | null
+  insurance_policy_number: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  emergency_contact_relationship: string | null
+  assigned_doctor: string | null
+  last_visit: string | null
+  next_appointment: string | null
+  status: 'active' | 'inactive' | 'pending'
   deleted_at: string | null
   created_at: string
   updated_at: string
@@ -45,11 +54,17 @@ export interface CreatePatientPayload {
   phone: string
   email?: string | null
   address?: string | null
+  city?: string | null
   blood_type?: string | null
   allergies?: string[]
   medical_history?: string | null
+  clinical_notes?: string | null
+  insurance_provider?: string | null
+  insurance_policy_number?: string | null
   emergency_contact_name?: string | null
   emergency_contact_phone?: string | null
+  emergency_contact_relationship?: string | null
+  status?: 'active' | 'inactive' | 'pending'
 }
 
 export type UpdatePatientPayload = Partial<CreatePatientPayload>
@@ -67,13 +82,28 @@ export function mapPatient(p: BackendPatient): Patient {
     phone: p.phone,
     email: p.email ?? undefined,
     address: p.address ?? undefined,
+    city: p.city ?? undefined,
     bloodType: (p.blood_type as Patient['bloodType']) ?? undefined,
     allergies: p.allergies ?? [],
+    medicalHistory: p.medical_history ?? undefined,
+    clinicalNotes: p.clinical_notes ?? undefined,
+    insuranceProvider: p.insurance_provider ?? undefined,
+    insurancePolicyNumber: p.insurance_policy_number ?? undefined,
     emergencyContact: p.emergency_contact_name
-      ? { name: p.emergency_contact_name, phone: p.emergency_contact_phone ?? '', relation: '' }
+      ? {
+          name: p.emergency_contact_name,
+          phone: p.emergency_contact_phone ?? '',
+          relation: p.emergency_contact_relationship ?? '',
+        }
       : undefined,
+    emergencyContactName: p.emergency_contact_name ?? undefined,
+    emergencyContactPhone: p.emergency_contact_phone ?? undefined,
+    emergencyContactRelationship: p.emergency_contact_relationship ?? undefined,
+    assignedDoctor: p.assigned_doctor ?? undefined,
+    lastVisit: p.last_visit?.split('T')[0] ?? undefined,
+    nextAppointment: p.next_appointment?.split('T')[0] ?? undefined,
     notes: p.medical_history ?? undefined,
-    status: 'active',
+    status: (p.status ?? 'active') as Patient['status'],
     createdAt: p.created_at.split('T')[0],
   }
 }

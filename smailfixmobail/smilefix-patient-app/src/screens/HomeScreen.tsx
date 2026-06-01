@@ -179,11 +179,15 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     greeting: {
       fontSize: 13, color: c.textSub,
       textAlign: align, marginBottom: 2,
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
     patientName: {
       fontSize: 26, fontWeight: '700',
       color: c.blue, textAlign: align,
       fontFamily: 'Manrope_700Bold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
     avatarBtn: {
       width: 48, height: 48, borderRadius: 24,
@@ -212,11 +216,15 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       color: c.textSub, textAlign: align,
       letterSpacing: 0.6, textTransform: 'uppercase',
       marginBottom: 12, fontFamily: 'Inter_600SemiBold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
     cardTitle: {
       fontSize: 15, fontWeight: '600',
       color: c.text, textAlign: align,
       marginBottom: 12, fontFamily: 'Manrope_600SemiBold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
 
     // Appointment
@@ -238,15 +246,21 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       fontSize: 16, fontWeight: '700',
       color: c.text, textAlign: align,
       fontFamily: 'Manrope_700Bold',
+      paddingRight: isRTL ? 8 : 0,
+      paddingLeft: isRTL ? 0 : 8,
     },
     apptService: {
       fontSize: 13, color: c.textSub,
       textAlign: align, marginTop: 2,
+      paddingRight: isRTL ? 8 : 0,
+      paddingLeft: isRTL ? 0 : 8,
     },
     apptDateTime: {
       fontSize: 13, color: c.teal,
       fontWeight: '600', textAlign: align,
       marginTop: 4, fontFamily: 'Inter_600SemiBold',
+      paddingRight: isRTL ? 8 : 0,
+      paddingLeft: isRTL ? 0 : 8,
     },
     detailsBtn: {
       backgroundColor: c.primary,
@@ -293,6 +307,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       fontSize: 17, fontWeight: '700',
       color: c.text, textAlign: align,
       marginBottom: 12, fontFamily: 'Manrope_700Bold',
+      paddingRight: isRTL ? 20 : 0,
+      paddingLeft: isRTL ? 0 : 20,
     },
     actionsGrid: {
       flexDirection: 'row', flexWrap: 'wrap', gap: 12,

@@ -19,7 +19,6 @@ import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
-import { register as apiRegister } from '../services/authService';
 
 // ─────────────────────────────────────────────
 // Types
@@ -108,35 +107,26 @@ export default function RegisterScreen({ navigation }: any) {
     Animated.timing(progressAnim, { toValue: 0.5, duration: 300, useNativeDriver: false }).start();
   };
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     if (!validateStep2()) return;
     setLoading(true);
-    try {
-      const result = await apiRegister({
-        username: fullName.trim(),
-        email: email.trim(),
-        password,
-        role: 'RECEPTIONIST', // default role for patient-facing registration
-      });
+    setTimeout(() => {
       setAuthenticated(
         {
-          id: result.id,
-          fullName: result.username,
+          id: Date.now().toString(),
+          fullName,
           phone: phone.replace(/\s/g, ''),
           nationalId: natId,
           dateOfBirth: dob,
           gender: gender as 'male' | 'female',
-          email: result.email,
+          email,
           alignersTotal: 24,
           alignersCurrent: 0,
         },
-        'registered'
+        'token-' + Date.now()
       );
-    } catch (err: any) {
-      setErrors({ confirm: err.message ?? 'Registration failed. Please try again.' });
-    } finally {
       setLoading(false);
-    }
+    }, 1200);
   };
 
   const step1Fields: Omit<FieldConfig, 'rightIcon'>[] = [
@@ -444,10 +434,10 @@ function makeStyles(c: AppColors, isRTL: boolean, isDark: boolean) {
     logoCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: c.teal, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 10 },
     logoShine: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%', backgroundColor: 'rgba(255,255,255,0.22)', borderTopLeftRadius: 32, borderTopRightRadius: 32 },
     logoLetters: { fontSize: 26, color: c.onPrimaryContainer, fontWeight: '700' },
-    brandName: { fontSize: 22, color: c.blue, fontWeight: '800' },
+    brandName: { fontSize: 22, color: c.blue, fontWeight: '800', textAlign: align, paddingRight: isRTL ? 20 : 0, paddingLeft: isRTL ? 0 : 20 },
 
-    stepTitle: { fontSize: 22, fontWeight: '700', color: c.blue, textAlign: align, marginBottom: 4 },
-    stepSub: { fontSize: 13, color: c.textSub, textAlign: align, marginBottom: 16, lineHeight: 20 },
+    stepTitle: { fontSize: 22, fontWeight: '700', color: c.blue, textAlign: align, marginBottom: 4, paddingRight: isRTL ? 20 : 0, paddingLeft: isRTL ? 0 : 20 },
+    stepSub: { fontSize: 13, color: c.textSub, textAlign: align, marginBottom: 16, lineHeight: 20, paddingRight: isRTL ? 20 : 0, paddingLeft: isRTL ? 0 : 20 },
 
     progressSection: { marginBottom: 20 },
     progressMeta: { flexDirection: row, justifyContent: 'space-between', marginBottom: 8 },

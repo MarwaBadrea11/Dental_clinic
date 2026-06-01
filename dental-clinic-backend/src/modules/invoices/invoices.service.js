@@ -7,7 +7,6 @@ export class InvoicesService {
   }
 
   async list(query) {
-    // Refresh overdue statuses on every list call
     await this.repo.markOverdue();
     return this.repo.list(query);
   }
@@ -36,6 +35,7 @@ export class InvoicesService {
       amount_paid: 0,
       status: 'DRAFT',
       due_date: dto.due_date ?? null,
+      notes: dto.notes ?? null, // الحقل المضاف لدعم حفظ ملاحظات الفاتورة الجديدة
       issued_by: actorId,
     });
   }
@@ -50,7 +50,6 @@ export class InvoicesService {
 
     const updateData = { ...dto };
 
-    // Recalculate totals if line items changed
     if (dto.line_items) {
       const subtotal = dto.line_items.reduce((sum, li) => sum + li.total, 0);
       const taxRate = dto.tax_rate ?? Number(invoice.tax_rate);
@@ -61,7 +60,6 @@ export class InvoicesService {
       updateData.line_items = JSON.stringify(dto.line_items);
     }
 
-    // Set issued_at when transitioning to ISSUED (trigger will assign invoice_number)
     if (dto.status === 'ISSUED' && invoice.status === 'DRAFT') {
       updateData.issued_at = new Date().toISOString();
     }
@@ -92,7 +90,6 @@ export class InvoicesService {
       recorded_by: actorId,
     });
 
-    // Recalculate amount_paid and update status
     const totalPaid = await this.repo.sumPayments(invoiceId);
     const newStatus = totalPaid >= Number(invoice.total_amount) - 0.001 ? 'PAID' : 'PARTIALLY_PAID';
 
@@ -115,7 +112,6 @@ export class InvoicesService {
     const payment = payments.find((p) => p.id === paymentId);
     if (!payment) throw new NotFoundError('Payment not found on this invoice');
 
-    // Ensure refund doesn't exceed what was paid minus already-refunded amounts
     const alreadyRefunded = await this.repo.sumRefunds(paymentId);
     const refundable = Number(payment.amount) - alreadyRefunded;
 
@@ -131,7 +127,6 @@ export class InvoicesService {
       refunded_by: actorId,
     });
 
-    // Recalculate amount_paid: sum payments minus sum all refunds for this invoice
     const totalPaid = await this.repo.sumPayments(invoiceId);
     const allRefunds = await this.repo.sumAllRefundsForInvoice(invoiceId);
 
@@ -156,6 +151,32 @@ export class InvoicesService {
 
   async getFinanceSummary(query) {
     await this.repo.markOverdue();
-    return this.repo.financeSummary(query);
+    
+    // جلب الحسابات والرسوم البيانية المحسنة
+    const summary = await this.repo.financeSummary(query);
+    
+    // جلب آخر 5 فواتير وعرضها بشكل مباشر في الواجهة
+    const recentInvoices = await this.repo.list({ page: 1, limit: 5 });
+    
+    // جلب بيانات الحسابات المعلقة والمستحقة للمرضى للجدول السفلي المالي
+    const outstandingDebts = await this.repo.db('invoices as i')
+      .join('patients as p', 'i.patient_id', 'p.id')
+      .whereIn('i.status', ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'])
+      .orderBy('i.total_amount', 'desc')
+      .limit(5)
+      .select(
+        'i.id as invoice_id',
+        this.repo.db.raw("p.first_name || ' ' || p.last_name as patient_name"),
+        'i.total_amount',
+        'i.amount_paid',
+        this.repo.db.raw('(i.total_amount - i.amount_paid) as balance'),
+        'i.status'
+      );
+
+    return {
+      ...summary,
+      recent_invoices: recentInvoices.data,
+      outstanding_debts: outstandingDebts
+    };
   }
 }

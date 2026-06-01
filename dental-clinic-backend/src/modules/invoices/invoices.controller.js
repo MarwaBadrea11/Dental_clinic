@@ -36,10 +36,18 @@ const PatientInvoicesQuerySchema = z.object({
 });
 
 export async function listInvoicesHandler(request, reply) {
+  // هنا تم تمرير مخطط الفلترة المحدث الذي يحتوي على حقل الـ search الجديد
   const query = parseValidation(ListInvoicesSchema, request.query, reply);
   if (!query) return;
+
   const result = await getService(request).list(query);
-  return reply.status(200).send(successResponse(result.data, { total: result.total, page: result.page, limit: result.limit }));
+  return reply.status(200).send(
+    successResponse(result.data, {
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    })
+  );
 }
 
 export async function getInvoiceHandler(request, reply) {
@@ -48,8 +56,10 @@ export async function getInvoiceHandler(request, reply) {
 }
 
 export async function createInvoiceHandler(request, reply) {
+  // مخطط الإنشاء هنا يقوم بالتحقق من حقل الملاحظات notes المدخل من الـ Modal تلقائياً
   const data = parseValidation(CreateInvoiceSchema, request.body, reply);
   if (!data) return;
+
   const invoice = await getService(request).create(data, request.user.sub);
   return reply.status(201).send(successResponse(invoice));
 }
@@ -57,6 +67,7 @@ export async function createInvoiceHandler(request, reply) {
 export async function updateInvoiceHandler(request, reply) {
   const data = parseValidation(UpdateInvoiceSchema, request.body, reply);
   if (!data) return;
+
   const invoice = await getService(request).update(request.params.id, data);
   return reply.status(200).send(successResponse(invoice));
 }
@@ -64,6 +75,7 @@ export async function updateInvoiceHandler(request, reply) {
 export async function recordPaymentHandler(request, reply) {
   const data = parseValidation(RecordPaymentSchema, request.body, reply);
   if (!data) return;
+
   const payment = await getService(request).recordPayment(request.params.id, data, request.user.sub);
   return reply.status(201).send(successResponse(payment));
 }
@@ -100,6 +112,7 @@ export async function listPatientInvoicesHandler(request, reply) {
 export async function getFinanceSummaryHandler(request, reply) {
   const query = parseValidation(FinanceSummarySchema, request.query, reply);
   if (!query) return;
+
   const summary = await getService(request).getFinanceSummary(query);
   return reply.status(200).send(successResponse(summary));
 }

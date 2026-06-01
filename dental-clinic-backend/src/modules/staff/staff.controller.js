@@ -6,6 +6,7 @@ import {
   CreateAttendanceSchema,
   UpdateAttendanceSchema,
   CreateSalaryRecordSchema,
+  UpdateSalaryRecordSchema,
 } from './staff.schema.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
 
@@ -62,9 +63,10 @@ export async function deleteStaffMemberHandler(request, reply) {
 
 export async function listAttendanceHandler(request, reply) {
   const result = await getService(request).listAttendance(request.query);
-  return reply.status(200).send(successResponse(result.attendance, {
+  return reply.status(200).send(successResponse({
+    attendance: result.attendance,
     limit: result.limit,
-    offset: result.offset,
+    offset: result.offset
   }));
 }
 
@@ -83,17 +85,18 @@ export async function updateAttendanceHandler(request, reply) {
 }
 
 export async function deleteAttendanceHandler(request, reply) {
-  await getService(request).deleteAttendance(request.params.id);
-  return reply.status(200).send(successResponse({ id: request.params.id }));
+  const result = await getService(request).deleteAttendance(request.params.id);
+  return reply.status(200).send(successResponse(result));
 }
 
 // ── Salary Records ────────────────────────────────────────────────────────────
 
 export async function listSalaryRecordsHandler(request, reply) {
   const result = await getService(request).listSalaryRecords(request.query);
-  return reply.status(200).send(successResponse(result.records, {
+  return reply.status(200).send(successResponse({
+    records: result.records,
     limit: result.limit,
-    offset: result.offset,
+    offset: result.offset
   }));
 }
 
@@ -105,7 +108,7 @@ export async function createSalaryRecordHandler(request, reply) {
 }
 
 export async function updateSalaryRecordHandler(request, reply) {
-  const data = parseValidation(CreateSalaryRecordSchema.partial(), request.body, reply);
+  const data = parseValidation(UpdateSalaryRecordSchema, request.body, reply);
   if (!data) return;
   const record = await getService(request).updateSalaryRecord(request.params.id, data);
   return reply.status(200).send(successResponse(record));

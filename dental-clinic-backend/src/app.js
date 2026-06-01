@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
@@ -34,6 +35,10 @@ mkdirSync(UPLOADS_DIR, { recursive: true });
 export async function buildApp(opts = {}) {
   const fastify = Fastify({ logger: env.NODE_ENV !== 'test', ...opts });
 
+  // ✅ ضبط الكومبيلر الخاص بـ Zod داخل دالة البناء ليعمل على مستوى السيرفر الفعلي
+  fastify.setValidatorCompiler(validatorCompiler);
+  fastify.setSerializerCompiler(serializerCompiler);
+
   // ─── Plugins ────────────────────────────────────────────────────────────────
   await fastify.register(knexPlugin);
   await fastify.register(jwtPlugin);
@@ -49,7 +54,7 @@ export async function buildApp(opts = {}) {
     keyGenerator: (request) => request.user?.sub ?? request.ip,
   });
   await fastify.register(multipart, {
-    limits: { fileSize: 50 * 1024 * 1024, files: 1 }, // 50 MB, 1 file per request
+    limits: { fileSize: 50 * 1024 * 1024, files: 1 },
   });
   await fastify.register(staticFiles, {
     root: UPLOADS_DIR,
@@ -66,6 +71,10 @@ export async function buildApp(opts = {}) {
 
     if (error instanceof ValidationError) {
       return reply.status(422).send(errorResponse('Validation failed', { fields: error.fields }));
+    }
+    // معالجة أخطاء التحقق التلقائية القادمة من Zod ونقلها لـ Format متناسق مع فرونت إند العيادة
+    if (error.hasValidationError) {
+      return reply.status(400).send(errorResponse('Validation failed', { fields: error.validation }));
     }
     if (error instanceof AppError) {
       return reply.status(error.statusCode).send(errorResponse(error.message));

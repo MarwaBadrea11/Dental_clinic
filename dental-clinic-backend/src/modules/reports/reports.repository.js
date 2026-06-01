@@ -1,7 +1,6 @@
 /**
  * ReportsRepository
  * All heavy, multi-table Knex queries for the reporting system.
- * Each method returns plain JS objects — no business logic here.
  */
 export class ReportsRepository {
   /** @param {import('knex').Knex} db */
@@ -11,34 +10,27 @@ export class ReportsRepository {
 
   // ─── Financial Report ──────────────────────────────────────────────────────
 
-  /**
-   * Income summary: total invoiced, total collected, outstanding, by month.
-   * @param {{ from?: string, to?: string }} range
-   */
   async financialSummary({ from, to } = {}) {
     const base = this.db('invoices').whereNotIn('status', ['DRAFT', 'CANCELLED']);
     if (from) base.where('created_at', '>=', from);
     if (to)   base.where('created_at', '<=', `${to}T23:59:59Z`);
 
-    // Totals
     const [totals] = await base.clone().select(
-      this.db.raw('COALESCE(SUM(total_amount), 0)  AS total_invoiced'),
-      this.db.raw('COALESCE(SUM(amount_paid),  0)  AS total_collected'),
-      this.db.raw('COALESCE(SUM(total_amount - amount_paid), 0) AS total_outstanding'),
-      this.db.raw('COUNT(*) AS invoice_count'),
+      this.db.raw('COALESCE(SUM(total_amount), 0)::float AS total_invoiced'),
+      this.db.raw('COALESCE(SUM(amount_paid), 0)::float AS total_collected'),
+      this.db.raw('COALESCE(SUM(total_amount - amount_paid), 0)::float AS total_outstanding'),
+      this.db.raw('COUNT(*)::int AS invoice_count')
     );
 
-    // Monthly breakdown
     const monthly = await base.clone()
       .select(
         this.db.raw(`TO_CHAR(created_at, 'YYYY-MM') AS month`),
-        this.db.raw('COALESCE(SUM(total_amount), 0)  AS invoiced'),
-        this.db.raw('COALESCE(SUM(amount_paid),  0)  AS collected'),
+        this.db.raw('COALESCE(SUM(total_amount), 0)::float AS invoiced'),
+        this.db.raw('COALESCE(SUM(amount_paid), 0)::float AS collected')
       )
       .groupByRaw(`TO_CHAR(created_at, 'YYYY-MM')`)
       .orderByRaw(`TO_CHAR(created_at, 'YYYY-MM') ASC`);
 
-    // Payment method breakdown
     const byMethod = await this.db('payments as p')
       .join('invoices as i', 'p.invoice_id', 'i.id')
       .modify((q) => {
@@ -46,12 +38,11 @@ export class ReportsRepository {
         if (to)   q.where('p.paid_at', '<=', `${to}T23:59:59Z`);
       })
       .select('p.method')
-      .sum('p.amount as total')
-      .count('p.id as count')
+      .select(this.db.raw('SUM(p.amount)::float as total'))
+      .select(this.db.raw('COUNT(p.id)::int as count'))
       .groupBy('p.method')
       .orderBy('total', 'desc');
 
-    // Top 10 procedures by revenue
     const topProcedures = await this.db('invoices as i')
       .modify((q) => {
         if (from) q.where('i.created_at', '>=', from);
@@ -61,8 +52,8 @@ export class ReportsRepository {
       .crossJoin(this.db.raw(`jsonb_array_elements(i.line_items) AS li`))
       .select(
         this.db.raw(`li->>'description' AS procedure_name`),
-        this.db.raw(`SUM((li->>'total')::numeric) AS revenue`),
-        this.db.raw(`COUNT(*) AS occurrences`),
+        this.db.raw(`SUM((li->>'total')::numeric)::float AS revenue`),
+        this.db.raw(`COUNT(*)::int AS occurrences`)
       )
       .groupByRaw(`li->>'description'`)
       .orderBy('revenue', 'desc')
@@ -73,33 +64,30 @@ export class ReportsRepository {
 
   // ─── Inventory Report ──────────────────────────────────────────────────────
 
-  /**
-   * Current stock levels with low-stock flagging.
-   * @param {{ category?: string, lowStockOnly?: boolean }} opts
-   */
   async inventorySummary({ category, lowStockOnly } = {}) {
-    const q = this.db('inventory_items as ii')
-      .leftJoin('inventory_categories as ic', 'ii.category_id', 'ic.id')
+    const q = this.db('inventory as ii')
       .select(
-        'ii.id', 'ii.name', 'ii.sku', 'ii.quantity', 'ii.unit',
-        'ii.reorder_level', 'ii.unit_cost',
-        this.db.raw('ii.quantity * ii.unit_cost AS stock_value'),
-        this.db.raw('ii.quantity <= ii.reorder_level AS is_low_stock'),
-        'ic.name as category',
+        'ii.id', 'ii.material_name as name', 'ii.quantity', 'ii.unit',
+        'ii.min_stock_alert as reorder_level', 'ii.unit_price as unit_cost',
+        'ii.category',
+        this.db.raw('(ii.quantity * ii.unit_price)::float AS stock_value'),
+        this.db.raw('ii.quantity <= ii.min_stock_alert AS is_low_stock')
       )
-      .orderBy('ii.name');
+      .whereNull('ii.deleted_at')
+      .orderBy('ii.material_name');
 
-    if (category)    q.where('ic.name', category);
-    if (lowStockOnly) q.whereRaw('ii.quantity <= ii.reorder_level');
+    if (category) q.where('ii.category', category);
+    if (lowStockOnly) q.whereRaw('ii.quantity <= ii.min_stock_alert');
 
     const items = await q;
 
-    const [summary] = await this.db('inventory_items')
+    const [summary] = await this.db('inventory')
+      .whereNull('deleted_at')
       .select(
-        this.db.raw('COUNT(*) AS total_items'),
-        this.db.raw('SUM(quantity * unit_cost) AS total_stock_value'),
-        this.db.raw('COUNT(*) FILTER (WHERE quantity <= reorder_level) AS low_stock_count'),
-        this.db.raw('COUNT(*) FILTER (WHERE quantity = 0) AS out_of_stock_count'),
+        this.db.raw('COUNT(*)::int AS total_items'),
+        this.db.raw('COALESCE(SUM(quantity * unit_price), 0)::float AS total_stock_value'),
+        this.db.raw('COUNT(*) FILTER (WHERE quantity <= min_stock_alert)::int AS low_stock_count'),
+        this.db.raw('COUNT(*) FILTER (WHERE quantity = 0)::int AS out_of_stock_count')
       );
 
     return { summary, items };
@@ -107,43 +95,37 @@ export class ReportsRepository {
 
   // ─── Payroll Report ────────────────────────────────────────────────────────
 
-  /**
-   * Staff salary summary for a given month (YYYY-MM).
-   * Joins staff_profiles → payroll_records.
-   * @param {{ month: string }} opts  e.g. { month: '2026-05' }
-   */
   async payrollSummary({ month }) {
     const [year, mon] = month.split('-');
 
-    const records = await this.db('payroll_records as pr')
-      .join('users as u', 'pr.user_id', 'u.id')
-      .leftJoin('staff_profiles as sp', 'pr.user_id', 'sp.user_id')
+    const records = await this.db('salary_records as sr')
+      .join('staff as s', 'sr.staff_id', 's.id')
       .select(
-        'u.id as user_id',
-        'u.username',
-        'u.email',
-        'u.role',
-        this.db.raw(`CONCAT(sp.first_name, ' ', sp.last_name) AS full_name`),
-        'pr.base_salary',
-        'pr.bonuses',
-        'pr.deductions',
-        this.db.raw('pr.base_salary + pr.bonuses - pr.deductions AS net_salary'),
-        'pr.payment_date',
-        'pr.status',
+        's.id as staff_id',
+        's.full_name',
+        's.email',
+        's.role',
+        'sr.base_salary',
+        'sr.bonus as bonuses',
+        'sr.deductions',
+        this.db.raw('(sr.base_salary + sr.bonus - sr.deductions)::float AS net_salary'),
+        'sr.month',
+        'sr.year'
       )
-      .whereRaw(`EXTRACT(YEAR  FROM pr.payment_date) = ?`, [year])
-      .whereRaw(`EXTRACT(MONTH FROM pr.payment_date) = ?`, [mon])
-      .orderBy('u.role').orderBy('full_name');
+      .whereNull('s.deleted_at')
+      .where('sr.year', parseInt(year, 10))
+      .where('sr.month', parseInt(mon, 10))
+      .orderBy('s.role').orderBy('s.full_name');
 
-    const [totals] = await this.db('payroll_records as pr')
-      .whereRaw(`EXTRACT(YEAR  FROM pr.payment_date) = ?`, [year])
-      .whereRaw(`EXTRACT(MONTH FROM pr.payment_date) = ?`, [mon])
+    const [totals] = await this.db('salary_records')
+      .where('year', parseInt(year, 10))
+      .where('month', parseInt(mon, 10))
       .select(
-        this.db.raw('COALESCE(SUM(base_salary), 0) AS total_base'),
-        this.db.raw('COALESCE(SUM(bonuses), 0)     AS total_bonuses'),
-        this.db.raw('COALESCE(SUM(deductions), 0)  AS total_deductions'),
-        this.db.raw('COALESCE(SUM(base_salary + bonuses - deductions), 0) AS total_net'),
-        this.db.raw('COUNT(*) AS headcount'),
+        this.db.raw('COALESCE(SUM(base_salary), 0)::float AS total_base'),
+        this.db.raw('COALESCE(SUM(bonus), 0)::float     AS total_bonuses'),
+        this.db.raw('COALESCE(SUM(deductions), 0)::float  AS total_deductions'),
+        this.db.raw('COALESCE(SUM(base_salary + bonus - deductions), 0)::float AS total_net'),
+        this.db.raw('COUNT(*)::int AS headcount')
       );
 
     return { month, totals, records };
@@ -151,10 +133,6 @@ export class ReportsRepository {
 
   // ─── Audit Log Query ───────────────────────────────────────────────────────
 
-  /**
-   * Paginated audit log for the reports UI.
-   * Delegates to AuditService.query() — kept here for consistency.
-   */
   async auditLogs({ resource, resourceId, userId, action, from, to, page = 1, limit = 50 }) {
     const q = this.db('audit_logs as al')
       .leftJoin('users as u', 'al.user_id', 'u.id')
@@ -162,7 +140,7 @@ export class ReportsRepository {
         'al.id', 'al.action', 'al.resource', 'al.resource_id',
         'al.previous_value', 'al.new_value',
         'al.ip_address', 'al.created_at',
-        'u.username as actor', 'u.role as actor_role',
+        'u.username as actor', 'u.role as actor_role'
       )
       .orderBy('al.created_at', 'desc');
 
@@ -173,7 +151,7 @@ export class ReportsRepository {
     if (from)       q.where('al.created_at', '>=', from);
     if (to)         q.where('al.created_at', '<=', `${to}T23:59:59Z`);
 
-    const [{ count }] = await q.clone().clearSelect().count('al.id as count');
+    const [{ count }] = await q.clone().clearSelect().clearOrder().count('al.id as count');
     const data = await q.limit(limit).offset((page - 1) * limit);
 
     return { data, total: Number(count), page, limit };

@@ -3,34 +3,40 @@ import { authorize } from '../../middleware/authorize.js';
 import {
   CreateProcedureSchema,
   UpdateProcedureSchema,
-  ListProceduresSchema
 } from './procedures.schema.js';
 import {
-  listProceduresHandler,
   getProcedureHandler,
+  listProceduresHandler,
   createProcedureHandler,
   updateProcedureHandler,
+  deleteProcedureHandler,
 } from './procedures.controller.js';
 
 export async function proceduresRoutes(fastify) {
-  const fastifyZod = fastify.withTypeProvider();
-
-  fastifyZod.get('/', { 
-    schema: { querystring: ListProceduresSchema },
-    preHandler: [authenticate, authorize('treatments:read')] 
+  // جلب قائمة العمليات (الكتالوج)
+  fastify.get('/', {
+    preHandler: [authenticate, authorize('invoices:read')],
   }, listProceduresHandler);
 
-  fastifyZod.get('/:id', { 
-    preHandler: [authenticate, authorize('treatments:read')] 
+  // جلب عملية محددة بناءً على الـ ID
+  fastify.get('/:id', {
+    preHandler: [authenticate, authorize('invoices:read')],
   }, getProcedureHandler);
 
-  fastifyZod.post('/', { 
+  // إضافة عملية جديدة للكتالوج
+  fastify.post('/', {
+    preHandler: [authenticate, authorize('invoices:*')],
     schema: { body: CreateProcedureSchema },
-    preHandler: [authenticate, authorize('treatments:*')] 
   }, createProcedureHandler);
 
-  fastifyZod.patch('/:id', { 
+  // تعديل بيانات عملية
+  fastify.patch('/:id', {
+    preHandler: [authenticate, authorize('invoices:*')],
     schema: { body: UpdateProcedureSchema },
-    preHandler: [authenticate, authorize('treatments:*')] 
   }, updateProcedureHandler);
+
+  // حذف عملية من الكتالوج
+  fastify.delete('/:id', {
+    preHandler: [authenticate, authorize('invoices:*')],
+  }, deleteProcedureHandler);
 }

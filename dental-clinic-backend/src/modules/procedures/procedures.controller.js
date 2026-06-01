@@ -1,33 +1,61 @@
-import { ProceduresService } from './procedures.service.js';
 import { ProceduresRepository } from './procedures.repository.js';
 import { successResponse } from '../../utils/response.js';
 
-function getService(request) {
-  return new ProceduresService(new ProceduresRepository(request.server.db));
+function getRepository(request) {
+  return new ProceduresRepository(request.db || request.server.db);
 }
 
 export async function listProceduresHandler(request, reply) {
-  const result = await getService(request).list(request.query);
-  return reply.status(200).send(
-    successResponse(result.data, { 
-      total: result.total, 
-      page: result.page, 
-      limit: result.limit 
-    })
-  );
+  const { category, is_active, search, page = 1, limit = 50 } = request.query;
+  
+  // تحويل النصوص القادمة كـ Query parameters إلى أنواعها الصحيحة
+  const filters = {
+    category,
+    is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
+    search,
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+  };
+
+  const result = await getRepository(request).list(filters);
+  return reply.send(successResponse(result.data, { total: result.total, page: filters.page, limit: filters.limit }));
 }
 
 export async function getProcedureHandler(request, reply) {
-  const proc = await getService(request).getById(request.params.id);
-  return reply.status(200).send(successResponse(proc));
+  const { id } = request.params;
+  const procedure = await getRepository(request).findById(id);
+  
+  if (!procedure) {
+    return reply.status(404).send({ success: false, message: 'Procedure not found' });
+  }
+  
+  return reply.send(successResponse(procedure));
 }
 
 export async function createProcedureHandler(request, reply) {
-  const proc = await getService(request).create(request.body);
-  return reply.status(201).send(successResponse(proc));
+  // البيانات مصفاة وجاهزة تماماً بفضل الـ Schema المربوطة بالـ Route
+  const procedure = await getRepository(request).create(request.body);
+  return reply.status(21).send(successResponse(procedure, { message: 'Procedure created successfully' }));
 }
 
 export async function updateProcedureHandler(request, reply) {
-  const proc = await getService(request).update(request.params.id, request.body);
-  return reply.status(200).send(successResponse(proc));
+  const { id } = request.params;
+  const procedure = await getRepository(request).update(id, request.body);
+  
+  if (!procedure) {
+    return reply.status(404).send({ success: false, message: 'Procedure not found or could not be updated' });
+  }
+  
+  return reply.send(successResponse(procedure, { message: 'Procedure updated successfully' }));
+}
+
+export async function deleteProcedureHandler(request, reply) {
+  const { id } = request.params;
+  const deleted = await getRepository(request).delete(id);
+  
+  if (!deleted) {
+    return reply.status(404).send({ success: false, message: 'Procedure not found' });
+  }
+  
+  return reply.send(successResponse(null, { message: 'Procedure deleted successfully' }));
 }

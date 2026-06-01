@@ -1,19 +1,17 @@
-import { createWriteStream, mkdirSync } from 'node:fs';
+import { createWriteStream, mkdirSync, existsSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { pipeline } from 'node:stream/promises';
 import { NotFoundError } from '../../utils/errors.js';
 import { env } from '../../config/env.js';
 
-// Ensure uploads directory exists at startup
 const UPLOADS_DIR = join(process.cwd(), env.UPLOAD_DIR);
 mkdirSync(UPLOADS_DIR, { recursive: true });
 
+// قائمة أنواع الملفات المسموحة
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff',
-  'application/pdf',
-  'application/dicom', 'application/octet-stream',
+  'application/pdf', 'application/dicom', 'application/octet-stream',
 ]);
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -39,9 +37,7 @@ export class AttachmentsService {
     const { filename, mimetype, file: stream } = file;
 
     if (!ALLOWED_MIME_TYPES.has(mimetype)) {
-      const err = new Error(`File type '${mimetype}' is not allowed`);
-      err.statusCode = 400;
-      throw err;
+      throw Object.assign(new Error(`File type '${mimetype}' is not allowed`), { statusCode: 400 });
     }
 
     const ext = extname(filename) || '';
@@ -51,47 +47,53 @@ export class AttachmentsService {
     let bytesWritten = 0;
     const dest = createWriteStream(filePath);
 
-    // Track size while streaming
-    stream.on('data', (chunk) => {
-      bytesWritten += chunk.length;
-      if (bytesWritten > MAX_FILE_SIZE) {
-        stream.destroy(new Error('File too large'));
-      }
-    });
-
     try {
-      await pipeline(stream, dest);
+      // استخدام stream مع مراقبة الحجم بدقة
+      for await (const chunk of stream) {
+        bytesWritten += chunk.length;
+        if (bytesWritten > MAX_FILE_SIZE) {
+          throw new Error('File exceeds the 50 MB limit');
+        }
+        dest.write(chunk);
+      }
+      dest.end();
     } catch (err) {
-      // Clean up partial file
       await unlink(filePath).catch(() => {});
-      const sizeErr = new Error('File exceeds the 50 MB limit');
-      sizeErr.statusCode = 413;
-      throw sizeErr;
+      throw Object.assign(new Error(err.message), { statusCode: 413 });
     }
 
-    const record = await this.repo.create({
-      patient_id:        patientId,
-      treatment_plan_id: treatmentPlanId ?? null,
-      appointment_id:    appointmentId ?? null,
-      tooth_number:      toothNumber ?? null,
-      type:              inferImageType(mimetype, filename),
-      file_name:         filename,
-      storage_key:       storageKey,
-      mime_type:         mimetype,
-      file_size_bytes:   bytesWritten,
-      uploaded_by:       uploadedBy ?? null,
-      notes:             notes ?? null,
-    });
-
-    return record;
+    // محاولة الحفظ في قاعدة البيانات، إذا فشلت نحذف الملف الفيزيائي
+    try {
+      return await this.repo.create({
+        patient_id:        patientId,
+        treatment_plan_id: treatmentPlanId ?? null,
+        appointment_id:    appointmentId ?? null,
+        tooth_number:      toothNumber ?? null,
+        type:              inferImageType(mimetype, filename),
+        file_name:         filename,
+        storage_key:       storageKey,
+        mime_type:         mimetype,
+        file_size_bytes:   bytesWritten,
+        uploaded_by:       uploadedBy ?? null,
+        notes:             notes ?? null,
+      });
+    } catch (dbErr) {
+      await unlink(filePath).catch(() => {});
+      throw new Error('Database operation failed: unable to link file');
+    }
   }
 
   async delete(id) {
     const record = await this.repo.findById(id);
     if (!record) throw new NotFoundError('Attachment not found');
 
+    // حذف الملف فيزيائياً
     const filePath = join(UPLOADS_DIR, record.storage_key);
-    await unlink(filePath).catch(() => {}); // best-effort file removal
+    if (existsSync(filePath)) {
+        await unlink(filePath);
+    }
+    
+    // تنفيذ الحذف المنطقي (Soft Delete)
     await this.repo.deleteById(id);
   }
 }

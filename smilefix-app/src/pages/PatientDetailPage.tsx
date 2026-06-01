@@ -1,11 +1,11 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, Edit, Phone, Mail, Calendar,
   FileText, Clock, DollarSign, Paperclip, Download,
-  ClipboardList, Activity, CreditCard, Plus,
+  ClipboardList, Activity, CreditCard, Plus, Trash2,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
@@ -21,7 +21,12 @@ import { AddTimelineNoteModal } from '@/components/patients/AddTimelineNoteModal
 import { UploadFilesModal } from '@/components/patients/UploadFilesModal'
 import type { Attachment } from '@/types'
 import { usePatientStore } from '@/store/patientStore'
-import { downloadAttachment } from '@/services/patientService'
+import {
+  fetchAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  downloadAttachmentFile,
+} from '@/services/attachmentService'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { ROUTES } from '@/constants/routes'
@@ -44,7 +49,9 @@ export default function PatientDetailPage() {
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [noteSaving, setNoteSaving] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
-  const [localAttachments, setLocalAttachments] = useState<Attachment[]>([])
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(true)
 
@@ -65,6 +72,24 @@ export default function PatientDetailPage() {
     if (!id) return
     loadHistory(id).catch(() => {/* silently ignore — timeline will be empty */})
   }, [id])
+
+  // Load attachments from the backend
+  const loadAttachments = useCallback(async () => {
+    if (!id) return
+    setAttachmentsLoading(true)
+    try {
+      const data = await fetchAttachments(id)
+      setAttachments(data)
+    } catch {
+      // silently ignore — attachments list will be empty
+    } finally {
+      setAttachmentsLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    loadAttachments()
+  }, [loadAttachments])
 
   const history = getHistoryByPatientId(id ?? '')
 
@@ -89,7 +114,7 @@ export default function PatientDetailPage() {
     ? Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000))
     : null
 
-  const allAttachments = [...history.flatMap((h) => h.attachments ?? []), ...localAttachments]
+  const allAttachments = attachments
   const totalSpent = history.reduce((sum, h) => sum + (h.cost ?? 0), 0)
   const completedTreatments = history.filter((h) => h.status === 'completed').length
 
@@ -361,7 +386,9 @@ export default function PatientDetailPage() {
               }
               delay={0}
             >
-              {allAttachments.length === 0 ? (
+              {attachmentsLoading ? (
+                <div className="flex justify-center py-8"><Loader /></div>
+              ) : allAttachments.length === 0 ? (
                 <EmptyState
                   icon={<Paperclip size={28} />}
                   title={t('patients.noAttachments')}
@@ -389,14 +416,37 @@ export default function PatientDetailPage() {
                         <p className="text-sm font-medium text-[var(--color-on-surface)] truncate">{att.name}</p>
                         <p className="text-xs text-[var(--color-on-surface-variant)]">{att.size} · {formatDate(att.uploadedAt)}</p>
                       </div>
-                      <button
-                        onClick={() => downloadAttachment(patient.id, att.id, att.name)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded text-[var(--color-primary)] hover:bg-[var(--color-primary-container)]/20"
-                        title="Download file"
-                        aria-label="Download file"
-                      >
-                        <Download size={14} />
-                      </button>
+                      {/* Action buttons — visible on hover */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => downloadAttachmentFile(patient.id, att.id, att.name)}
+                          className="p-1.5 rounded text-[var(--color-primary)] hover:bg-[var(--color-primary-container)]/20"
+                          title="Download file"
+                          aria-label="Download file"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Delete "${att.name}"?`)) return
+                            setDeletingId(att.id)
+                            try {
+                              await deleteAttachment(patient.id, att.id)
+                              setAttachments((prev) => prev.filter((a) => a.id !== att.id))
+                            } catch {
+                              alert('Failed to delete attachment. Please try again.')
+                            } finally {
+                              setDeletingId(null)
+                            }
+                          }}
+                          disabled={deletingId === att.id}
+                          className="p-1.5 rounded text-[var(--color-error)] hover:bg-[var(--color-error-container)]/20 disabled:opacity-40"
+                          title="Delete file"
+                          aria-label="Delete file"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -496,8 +546,9 @@ export default function PatientDetailPage() {
       <UploadFilesModal
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
-        onUpload={(attachments) => {
-          setLocalAttachments((prev) => [...prev, ...attachments])
+        uploadFile={(file) => uploadAttachment(patient.id, file)}
+        onUpload={(newAttachments) => {
+          setAttachments((prev) => [...newAttachments, ...prev])
           setUploadModalOpen(false)
         }}
         uploadedBy={patient.assignedDoctor ?? 'Dr. Smith'}

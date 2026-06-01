@@ -199,7 +199,19 @@ export const useTreatmentStore = create<TreatmentState>((set, get) => ({
   loadOdontogram: async (patientId) => {
     set({ odontogramLoading: true })
     try {
-      const record = await fetchOdontogram(patientId)
+      let record: OdontogramRecord
+      try {
+        record = await fetchOdontogram(patientId)
+      } catch (err: unknown) {
+        // 404 means no chart exists yet — auto-initialise a blank one
+        const status = (err as { status?: number })?.status
+        if (status === 404) {
+          const { createOdontogram } = await import('@/services/odontogramService')
+          record = await createOdontogram(patientId)
+        } else {
+          throw err
+        }
+      }
       set((s) => ({
         odontogramLoading: false,
         odontograms: [
@@ -234,7 +246,7 @@ export const useTreatmentStore = create<TreatmentState>((set, get) => ({
     })),
 
   syncToothToBackend: async (patientId, toothNumber, condition, notes) => {
-    get().updateToothCondition(patientId, toothNumber, condition, notes)
+    // Persist to the backend only — local state is already updated by updateToothCondition
     await updateTooth(patientId, toothNumber, {
       status: CONDITION_TO_STATUS[condition] ?? 'HEALTHY',
       notes: notes ?? null,

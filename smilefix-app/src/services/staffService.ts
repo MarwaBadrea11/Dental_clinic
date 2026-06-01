@@ -2,7 +2,8 @@
 // Staff Service — /api/v1/staff
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from './apiClient'
+import { apiClient, API_BASE } from './apiClient'
+import { getAccessToken } from './authService'
 import type { StaffMember, AttendanceRecord, EmployeeRole, EmployeeStatus } from '@/types'
 
 // ── Backend shapes ────────────────────────────────────────────────────────────
@@ -135,9 +136,18 @@ export async function fetchStaff(params?: {
 
   const query = qs.toString() ? `?${qs}` : ''
 
-  const res = await apiClient.get<{ data: BackendStaffMember[]; meta: { total: number } }>(`/staff${query}`)
-  const rows: BackendStaffMember[] = Array.isArray(res.data) ? res.data : []
-  const total: number = res.meta?.total ?? rows.length
+  // Use raw fetch to access both json.data (array) and json.meta (total),
+  // since apiClient already unwraps json.data and discards json.meta.
+  const token = getAccessToken()
+  const res = await fetch(`${API_BASE}/staff${query}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  const json = await res.json()
+  const rows: BackendStaffMember[] = Array.isArray(json.data) ? json.data : []
+  const total: number = json.meta?.total ?? rows.length
   return { staff: rows.map(mapStaffMember), total }
 }
 

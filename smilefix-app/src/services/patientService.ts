@@ -160,10 +160,11 @@ export async function deletePatient(id: string): Promise<void> {
 
 export async function downloadAttachment(patientId: string, attachmentId: string, fileName: string): Promise<void> {
   const { getAccessToken } = await import('./authService')
+  const { API_BASE } = await import('./apiClient')
   const token = getAccessToken()
 
   const res = await fetch(
-    `http://localhost:3000/api/v1/patients/${patientId}/attachments/${attachmentId}/download`,
+    `${API_BASE}/patients/${patientId}/attachments/${attachmentId}/download`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} },
   )
 

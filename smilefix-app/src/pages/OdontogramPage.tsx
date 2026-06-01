@@ -20,23 +20,47 @@ export default function OdontogramPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { getPatientById } = usePatientStore()
-  const { getOdontogram, syncToothToBackend, loadOdontogram, getPatientTreatments } = useTreatmentStore()
+  const { getPatientById, loadPatientById } = usePatientStore()
+  const { getOdontogram, syncToothToBackend, loadOdontogram, getPatientTreatments, updateToothCondition } = useTreatmentStore()
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [patientLoading, setPatientLoading] = useState(false)
+  const [patientError, setPatientError] = useState(false)
   // Track which teeth have been changed locally but not yet confirmed saved
   const pendingRef = useRef<Map<number, { condition: ToothCondition; notes?: string }>>(new Map())
 
-  const patient = getPatientById(id ?? '')
-  const odontogram = getOdontogram(id ?? '')
-  const patientTreatments = getPatientTreatments(id ?? '')
+  // On hard refresh the Zustand store is empty — fetch the patient by ID directly
+  useEffect(() => {
+    if (!id) return
+    const already = getPatientById(id)
+    if (already) return          // already in store from normal navigation
+    setPatientLoading(true)
+    loadPatientById(id)
+      .catch(() => setPatientError(true))
+      .finally(() => setPatientLoading(false))
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load real odontogram data on mount
   useEffect(() => {
     if (id) loadOdontogram(id)
   }, [id, loadOdontogram])
 
-  if (!patient) {
+  const patient = getPatientById(id ?? '')
+  const odontogram = getOdontogram(id ?? '')
+  const patientTreatments = getPatientTreatments(id ?? '')
+
+  // Still fetching the patient — show a neutral loading state
+  if (patientLoading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-[var(--color-on-surface-variant)]">
+        Loading patient…
+      </div>
+    )
+  }
+
+  // Fetch finished but patient genuinely doesn't exist
+  if (patientError || !patient) {
     return (
       <EmptyState
         title="Patient not found"
@@ -48,31 +72,39 @@ export default function OdontogramPage() {
   const handleUpdate = (toothNumber: number, condition: ToothCondition, notes?: string) => {
     // Queue the change locally — will be flushed on Save
     pendingRef.current.set(toothNumber, { condition, notes })
-    // Also update local store immediately so the chart re-renders
-    syncToothToBackend(patient.id, toothNumber, condition, notes).catch(console.error)
+    // Update local store immediately so the chart re-renders without waiting for the API
+    updateToothCondition(patient.id, toothNumber, condition, notes)
     setSaved(false)
   }
 
   const handleSave = async () => {
     if (!id || saving) return
     setSaving(true)
+    setSaveError(null)
     try {
-      // Flush all pending changes that haven't been confirmed yet
       const pending = Array.from(pendingRef.current.entries())
-      if (pending.length > 0) {
-        await Promise.all(
-          pending.map(([toothNumber, { condition, notes }]) =>
-            syncToothToBackend(id, toothNumber, condition, notes)
-          )
-        )
-        pendingRef.current.clear()
+      if (pending.length === 0) {
+        // Nothing changed — still reload to confirm DB state
+        await loadOdontogram(id)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+        return
       }
+      // Persist every pending change to the backend (one PATCH per tooth)
+      await Promise.all(
+        pending.map(([toothNumber, { condition, notes }]) =>
+          syncToothToBackend(id, toothNumber, condition, notes)
+        )
+      )
+      pendingRef.current.clear()
       // Reload from DB to confirm what was actually persisted
       await loadOdontogram(id)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Save failed. Please try again.'
       console.error('[odontogram] save failed:', err)
+      setSaveError(msg)
     } finally {
       setSaving(false)
     }
@@ -117,12 +149,20 @@ export default function OdontogramPage() {
             </Button>
             <Button size="sm" leftIcon={<Save size={14} />} onClick={handleSave}
               disabled={saving}
-              className={saved ? 'bg-[var(--color-secondary)]' : ''}>
-              {saving ? 'Saving…' : saved ? `${t('odontogram.saved')} ✓` : t('odontogram.saveChanges')}
+              className={saved ? 'bg-[var(--color-secondary)]' : saveError ? 'bg-[var(--color-error)]' : ''}>
+              {saving ? 'Saving…' : saved ? `${t('odontogram.saved')} ✓` : saveError ? 'Retry Save' : t('odontogram.saveChanges')}
             </Button>
           </div>
         }
       />
+
+      {/* Save error banner */}
+      {saveError && (
+        <div className="mb-4 px-4 py-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-error)] text-sm flex items-center justify-between">
+          <span>⚠ {saveError}</span>
+          <button onClick={() => setSaveError(null)} className="ml-4 text-xs opacity-70 hover:opacity-100">✕</button>
+        </div>
+      )}
 
       {/* Patient banner */}
       <motion.div

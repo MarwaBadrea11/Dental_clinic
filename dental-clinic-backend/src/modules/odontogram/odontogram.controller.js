@@ -1,6 +1,7 @@
 import { OdontogramService } from './odontogram.service.js';
 import { OdontogramRepository } from './odontogram.repository.js';
-import { UpdateToothSchema } from './odontogram.schema.js';
+import { UpdateToothSchema, VALID_FDI_TEETH } from './odontogram.schema.js';
+import { z } from 'zod';
 import { successResponse, errorResponse } from '../../utils/response.js';
 
 function getService(request) {
@@ -98,4 +99,42 @@ export async function getOdontogramHistoryHandler(request, reply) {
   request.log.info({ patientId, count: history.length }, '[odontogram] history fetched');
 
   return reply.status(200).send(successResponse(history));
+}
+
+// ── Batch update ──────────────────────────────────────────────────────────────
+// PATCH /api/v1/patients/:patientId/odontogram/batch
+// Body: { teeth: { "11": { status, notes?, surfaces? }, ... } }
+
+const BatchUpdateSchema = z.object({
+  teeth: z.record(
+    z.string().regex(/^[1-4][1-8]$/, 'Invalid FDI tooth number'),
+    UpdateToothSchema,
+  ).refine(
+    (teeth) => Object.keys(teeth).every((k) => VALID_FDI_TEETH.includes(k)),
+    { message: 'One or more tooth numbers are invalid' },
+  ),
+});
+
+export async function updateBatchHandler(request, reply) {
+  const { patientId } = request.params;
+
+  request.log.info({ patientId, body: request.body }, '[odontogram] PATCH batch — request received');
+
+  const parsed = BatchUpdateSchema.safeParse(request.body);
+  if (!parsed.success) {
+    const fields = parsed.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message }));
+    return reply.status(422).send(errorResponse('Validation failed', { fields }));
+  }
+
+  const service = getService(request);
+  const results = [];
+
+  for (const [toothNumber, dto] of Object.entries(parsed.data.teeth)) {
+    const result = await service.updateTooth(patientId, toothNumber, dto, request.user.sub);
+    results.push(result);
+  }
+
+  request.log.info({ patientId, updated: results.length }, '[odontogram] batch update complete');
+
+  return reply.status(200).send(successResponse({ updated: results.length, teeth: results }));
 }

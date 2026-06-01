@@ -22,6 +22,7 @@ export const ROLE_PERMISSIONS = {
     'inventory:read',
     'odontogram:read',
     'odontogram:create',
+    'odontogram:update',
     'staff:read',
     'staff:update',
   ],

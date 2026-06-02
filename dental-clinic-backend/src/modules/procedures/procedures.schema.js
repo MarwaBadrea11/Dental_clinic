@@ -14,8 +14,8 @@ export const CreateProcedureSchema = z.object({
     .min(0, 'Cost cannot be negative')
     .default(0),
   category: z.enum([
-    'Restorative', 'Consumables', 'Instruments', 'Medications', 
-    'Protective Equipment', 'Impression Materials', 'Sterilization', 'Equipment'
+    'Preventive', 'Restorative', 'Endodontic', 'Periodontic',
+    'Prosthodontic', 'Orthodontic', 'Oral Surgery', 'Cosmetic',
   ], { errorMap: () => ({ message: 'Invalid category specified' }) }),
   duration_minutes: z.number().int().min(1, 'Duration must be at least 1 minute').default(30),
   icon: z.string().max(50).optional().nullable(),

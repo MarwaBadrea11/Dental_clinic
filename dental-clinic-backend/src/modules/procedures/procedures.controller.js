@@ -35,7 +35,7 @@ export async function getProcedureHandler(request, reply) {
 export async function createProcedureHandler(request, reply) {
   // البيانات مصفاة وجاهزة تماماً بفضل الـ Schema المربوطة بالـ Route
   const procedure = await getRepository(request).create(request.body);
-  return reply.status(21).send(successResponse(procedure, { message: 'Procedure created successfully' }));
+  return reply.status(201).send(successResponse(procedure, { message: 'Procedure created successfully' }));
 }
 
 export async function updateProcedureHandler(request, reply) {

@@ -1,6 +1,12 @@
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
 import {
+  FinancialReportSchema,
+  InventoryReportSchema,
+  PayrollReportSchema,
+  AuditLogQuerySchema,
+} from './reports.schema.js';
+import {
   getFinancialReportHandler,
   exportFinancialReportHandler,
   getInventoryReportHandler,
@@ -10,30 +16,43 @@ import {
   getAuditLogsHandler,
 } from './reports.controller.js';
 
-/**
- * All routes are prefixed with /api/v1/reports (registered in app.js).
- *
- * GET  /reports/financial              → JSON financial summary
- * GET  /reports/financial/export       → PDF or XLSX (?format=pdf|xlsx)
- * GET  /reports/inventory              → JSON inventory summary
- * GET  /reports/inventory/export       → PDF or XLSX
- * GET  /reports/payroll                → JSON payroll summary (?month=YYYY-MM)
- * GET  /reports/payroll/export         → PDF or XLSX
- * GET  /reports/audit-logs             → paginated audit log
- */
 export async function reportsRoutes(fastify) {
   // Financial
-  fastify.get('/financial',        { preHandler: [authenticate, authorize('finance:*')] }, getFinancialReportHandler);
-  fastify.get('/financial/export', { preHandler: [authenticate, authorize('finance:*')] }, exportFinancialReportHandler);
+  fastify.get('/financial', { 
+    preHandler: [authenticate, authorize('finance:*')],
+    schema: { query: FinancialReportSchema }
+  }, getFinancialReportHandler);
+
+  fastify.get('/financial/export', { 
+    preHandler: [authenticate, authorize('finance:*')],
+    schema: { query: FinancialReportSchema }
+  }, exportFinancialReportHandler);
 
   // Inventory
-  fastify.get('/inventory',        { preHandler: [authenticate, authorize('inventory:read')] }, getInventoryReportHandler);
-  fastify.get('/inventory/export', { preHandler: [authenticate, authorize('inventory:read')] }, exportInventoryReportHandler);
+  fastify.get('/inventory', { 
+    preHandler: [authenticate, authorize('inventory:read')],
+    schema: { query: InventoryReportSchema }
+  }, getInventoryReportHandler);
+
+  fastify.get('/inventory/export', { 
+    preHandler: [authenticate, authorize('inventory:read')],
+    schema: { query: InventoryReportSchema }
+  }, exportInventoryReportHandler);
 
   // Payroll
-  fastify.get('/payroll',          { preHandler: [authenticate, authorize('staff:*')] }, getPayrollReportHandler);
-  fastify.get('/payroll/export',   { preHandler: [authenticate, authorize('staff:*')] }, exportPayrollReportHandler);
+  fastify.get('/payroll', { 
+    preHandler: [authenticate, authorize('staff:*')],
+    schema: { query: PayrollReportSchema }
+  }, getPayrollReportHandler);
+
+  fastify.get('/payroll/export', { 
+    preHandler: [authenticate, authorize('staff:*')],
+    schema: { query: PayrollReportSchema }
+  }, exportPayrollReportHandler);
 
   // Audit logs — ADMIN only
-  fastify.get('/audit-logs',       { preHandler: [authenticate, authorize('*')] }, getAuditLogsHandler);
+  fastify.get('/audit-logs', { 
+    preHandler: [authenticate, authorize('*')],
+    schema: { query: AuditLogQuerySchema }
+  }, getAuditLogsHandler);
 }

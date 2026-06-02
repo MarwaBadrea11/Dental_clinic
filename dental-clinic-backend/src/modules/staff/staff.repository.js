@@ -1,13 +1,10 @@
 export class StaffRepository {
-  /** @param {import('knex').Knex} db */
   constructor(db) {
     this.db = db;
   }
 
-  // ── Staff CRUD ──────────────────────────────────────────────────────────────
-
   findAll({ search, role, status, limit = 50, offset = 0 } = {}) {
-    const q = this.db('staff').whereNull('deleted_at').orderBy('created_at', 'desc');
+    const q = this.db('staff').orderBy('created_at', 'desc');
 
     if (search) {
       q.where((b) =>
@@ -17,14 +14,15 @@ export class StaffRepository {
           .orWhereILike('phone', `%${search}%`)
       );
     }
+    
     if (role && role !== 'all') q.where('role', role);
     if (status && status !== 'all') q.where('status', status);
 
     return q.limit(limit).offset(offset);
   }
 
-  count({ search, role, status } = {}) {
-    const q = this.db('staff').whereNull('deleted_at').count('id as total');
+  async count({ search, role, status } = {}) {
+    const q = this.db('staff').count('id as total');
 
     if (search) {
       q.where((b) =>
@@ -37,15 +35,16 @@ export class StaffRepository {
     if (role && role !== 'all') q.where('role', role);
     if (status && status !== 'all') q.where('status', status);
 
-    return q.first();
+    const result = await q.first();
+    return result;
   }
 
   findById(id) {
-    return this.db('staff').where({ id }).whereNull('deleted_at').first();
+    return this.db('staff').where({ id }).first();
   }
 
   findByEmail(email) {
-    return this.db('staff').where({ email }).whereNull('deleted_at').first();
+    return this.db('staff').where({ email }).first();
   }
 
   async create(data) {
@@ -54,33 +53,22 @@ export class StaffRepository {
   }
 
   async update(id, data) {
-    const [member] = await this.db('staff')
-      .where({ id })
-      .whereNull('deleted_at')
-      .update(data)
-      .returning('*');
+    const [member] = await this.db('staff').where({ id }).update(data).returning('*');
     return member;
   }
 
   async softDelete(id) {
-    const rows = await this.db('staff')
+    const [member] = await this.db('staff')
       .where({ id })
-      .whereNull('deleted_at')
-      .update({ deleted_at: this.db.fn.now() })
+      .update({ status: 'inactive' })
       .returning('*');
-    return rows[0] ?? null;
+    return member;
   }
-
-  // ── Attendance ──────────────────────────────────────────────────────────────
 
   findAttendance({ staff_id, date, from_date, to_date, limit = 50, offset = 0 } = {}) {
     const q = this.db('attendance_logs')
       .join('staff', 'attendance_logs.staff_id', 'staff.id')
-      .select(
-        'attendance_logs.*',
-        'staff.full_name',
-        'staff.role'
-      )
+      .select('attendance_logs.*', 'staff.full_name', 'staff.role')
       .orderBy('attendance_logs.log_date', 'desc');
 
     if (staff_id) q.where('attendance_logs.staff_id', staff_id);
@@ -105,10 +93,7 @@ export class StaffRepository {
   }
 
   async updateAttendance(id, data) {
-    const [log] = await this.db('attendance_logs')
-      .where({ id })
-      .update(data)
-      .returning('*');
+    const [log] = await this.db('attendance_logs').where({ id }).update(data).returning('*');
     return log;
   }
 
@@ -116,17 +101,12 @@ export class StaffRepository {
     await this.db('attendance_logs').where({ id }).delete();
   }
 
-  // ── Salary Records ──────────────────────────────────────────────────────────
-
   findSalaryRecords({ staff_id, month, year, limit = 50, offset = 0 } = {}) {
     const q = this.db('salary_records')
       .join('staff', 'salary_records.staff_id', 'staff.id')
-      .select(
-        'salary_records.*',
-        'staff.full_name',
-        'staff.role'
-      )
-      .orderBy([{ column: 'salary_records.year', order: 'desc' }, { column: 'salary_records.month', order: 'desc' }]);
+      .select('salary_records.*', 'staff.full_name', 'staff.role')
+      .orderBy('salary_records.year', 'desc')
+      .orderBy('salary_records.month', 'desc');
 
     if (staff_id) q.where('salary_records.staff_id', staff_id);
     if (month) q.where('salary_records.month', month);
@@ -164,24 +144,18 @@ export class StaffRepository {
     return this.db('salary_records')
       .where({ year, month })
       .join('staff', 'salary_records.staff_id', 'staff.id')
-      .select(
-        'salary_records.*',
-        'staff.full_name',
-        'staff.role',
-        'staff.status'
-      )
+      .select('salary_records.*', 'staff.full_name', 'staff.role', 'staff.status')
       .orderBy('staff.full_name');
   }
 
-  // ── Dashboard Stats ──────────────────────────────────────────────────────────
-
   async getDashboardStats() {
-    const today = new Date().toISOString().split('T')[0];
+    const localTime = new Date(new Date().getTime() + 3 * 3600 * 1000);
+    const today = localTime.toISOString().split('T')[0];
     
     const [totalRow, activeRow, onLeaveRow, presentTodayRow] = await Promise.all([
-      this.db('staff').whereNull('deleted_at').count('id as total').first(),
-      this.db('staff').where({ status: 'active' }).whereNull('deleted_at').count('id as total').first(),
-      this.db('staff').where({ status: 'on-leave' }).whereNull('deleted_at').count('id as total').first(),
+      this.db('staff').count('id as total').first(),
+      this.db('staff').where({ status: 'active' }).count('id as total').first(),
+      this.db('staff').where({ status: 'on-leave' }).count('id as total').first(),
       this.db('attendance_logs')
         .where('log_date', today)
         .where('status', 'present')
@@ -190,10 +164,10 @@ export class StaffRepository {
     ]);
 
     return {
-      total: Number(totalRow.total),
-      active: Number(activeRow.total),
-      onLeave: Number(onLeaveRow.total),
-      presentToday: Number(presentTodayRow.total),
+      total: Number(totalRow?.total || 0),
+      active: Number(activeRow?.total || 0),
+      onLeave: Number(onLeaveRow?.total || 0),
+      presentToday: Number(presentTodayRow?.total || 0),
     };
   }
 }

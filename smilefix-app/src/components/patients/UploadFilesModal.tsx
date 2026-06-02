@@ -48,18 +48,22 @@ interface PendingFile {
 interface UploadFilesModalProps {
   open: boolean
   onClose: () => void
+  /** Called with the newly created Attachment records after a successful upload */
   onUpload: (attachments: Attachment[]) => void
+  /** If provided, files are uploaded to the backend via this function */
+  uploadFile?: (file: File) => Promise<Attachment>
   uploadedBy?: string
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function UploadFilesModal({ open, onClose, onUpload, uploadedBy = 'Dr. Smith' }: UploadFilesModalProps) {
+export function UploadFilesModal({ open, onClose, onUpload, uploadFile, uploadedBy = 'Dr. Smith' }: UploadFilesModalProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [pending, setPending] = useState<PendingFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [done, setDone] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   // ── File ingestion ─────────────────────────────────────────────────────────
 
@@ -96,27 +100,40 @@ export function UploadFilesModal({ open, onClose, onUpload, uploadedBy = 'Dr. Sm
     })
   }
 
-  // ── Upload simulation ──────────────────────────────────────────────────────
+  // ── Upload ─────────────────────────────────────────────────────────────────
 
   const handleUpload = async () => {
     if (!pending.length) return
     setUploading(true)
-    await new Promise((r) => setTimeout(r, 900))   // simulate network
+    setUploadError(null)
 
-    const today = new Date().toISOString().split('T')[0]
-    const attachments: Attachment[] = pending.map((p) => ({
-      id:         p.id,
-      name:       p.file.name,
-      type:       p.type,
-      url:        p.preview ?? '',
-      size:       formatBytes(p.file.size),
-      uploadedAt: today,
-      uploadedBy,
-    }))
+    try {
+      let attachments: Attachment[]
 
-    onUpload(attachments)
-    setUploading(false)
-    setDone(true)
+      if (uploadFile) {
+        // Real backend upload — upload files sequentially
+        attachments = await Promise.all(pending.map((p) => uploadFile(p.file)))
+      } else {
+        // Fallback: build local-only Attachment objects (no backend)
+        const today = new Date().toISOString().split('T')[0]
+        attachments = pending.map((p) => ({
+          id:         p.id,
+          name:       p.file.name,
+          type:       p.type,
+          url:        p.preview ?? '',
+          size:       formatBytes(p.file.size),
+          uploadedAt: today,
+          uploadedBy,
+        }))
+      }
+
+      onUpload(attachments)
+      setDone(true)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleClose = () => {
@@ -125,6 +142,7 @@ export function UploadFilesModal({ open, onClose, onUpload, uploadedBy = 'Dr. Sm
     setPending([])
     setUploading(false)
     setDone(false)
+    setUploadError(null)
     onClose()
   }
 
@@ -267,10 +285,12 @@ export function UploadFilesModal({ open, onClose, onUpload, uploadedBy = 'Dr. Sm
             paddingTop: '1rem',
             borderTop: '1px solid rgba(189,201,201,0.15)',
           }}>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-on-surface-variant)' }}>
-              {pending.length === 0
-                ? 'No files selected'
-                : `${pending.length} file${pending.length > 1 ? 's' : ''} ready to upload`}
+            <p style={{ fontSize: '0.8125rem', color: uploadError ? 'var(--color-error)' : 'var(--color-on-surface-variant)' }}>
+              {uploadError
+                ? uploadError
+                : pending.length === 0
+                  ? 'No files selected'
+                  : `${pending.length} file${pending.length > 1 ? 's' : ''} ready to upload`}
             </p>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Button variant="ghost" onClick={handleClose}>Cancel</Button>

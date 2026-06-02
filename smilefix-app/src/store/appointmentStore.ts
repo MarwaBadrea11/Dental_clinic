@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 import type { Appointment, AppointmentStatus } from '@/types'
-import { fetchAppointments, bookAppointment, type CreateAppointmentPayload } from '@/services/appointmentService'
+import {
+  fetchAppointments,
+  bookAppointment,
+  updateAppointment as apiUpdateAppointment,
+  deleteAppointment as apiDeleteAppointment,
+  type CreateAppointmentPayload,
+  type UpdateAppointmentPayload,
+  type AppointmentStats,
+} from '@/services/appointmentService'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -32,6 +40,7 @@ export const MOCK_APPOINTMENTS: Appointment[] = [
 
 interface AppointmentState {
   appointments: Appointment[]
+  stats: AppointmentStats | null
   selectedDate: string
   viewMode: 'day' | 'week' | 'list'
   loading: boolean
@@ -47,12 +56,34 @@ interface AppointmentState {
   getByWeek: (startDate: string) => Appointment[]
 
   // API actions
-  loadAppointments: (params?: { date?: string; dentist_id?: string; patient_id?: string }) => Promise<void>
+  loadAppointments: (params?: {
+    date?: string
+    start_date?: string
+    end_date?: string
+    dentist_id?: string
+    patient_id?: string
+  }) => Promise<void>
   bookAppointment: (payload: CreateAppointmentPayload) => Promise<Appointment>
+  updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<void>
+  removeAppointment: (id: string) => Promise<void>
+}
+
+// Map frontend status (kebab-case) → backend status (UPPER_SNAKE)
+const toBackendStatus = (s: AppointmentStatus): string => {
+  const map: Record<AppointmentStatus, string> = {
+    'scheduled':   'SCHEDULED',
+    'confirmed':   'CONFIRMED',
+    'in-progress': 'IN_PROGRESS',
+    'completed':   'COMPLETED',
+    'cancelled':   'CANCELLED',
+    'no-show':     'NO_SHOW',
+  }
+  return map[s] ?? s.toUpperCase()
 }
 
 export const useAppointmentStore = create<AppointmentState>((set, get) => ({
-  appointments: MOCK_APPOINTMENTS,
+  appointments: [],
+  stats: null,
   selectedDate: d(0),
   viewMode: 'week',
   loading: false,
@@ -82,16 +113,44 @@ export const useAppointmentStore = create<AppointmentState>((set, get) => ({
   loadAppointments: async (params) => {
     set({ loading: true, error: null })
     try {
-      const appointments = await fetchAppointments(params)
-      set({ appointments, loading: false })
+      const { appointments, stats } = await fetchAppointments(params)
+      set({ appointments, stats, loading: false })
     } catch (err) {
-      set({ loading: false, error: err instanceof Error ? err.message : 'Failed to load appointments' })
+      const message = err instanceof Error ? err.message : 'Failed to load appointments'
+      set({ appointments: [], loading: false, error: message })
     }
   },
 
   bookAppointment: async (payload) => {
     const appointment = await bookAppointment(payload)
-    set((s) => ({ appointments: [appointment, ...s.appointments] }))
+    // Reload full list so patient/doctor names (joined fields) are accurate
+    // and stats stay in sync with the new record
+    await get().loadAppointments()
     return appointment
+  },
+
+  updateAppointmentStatus: async (id, status) => {
+    // Optimistic update
+    get().updateAppointment(id, { status })
+    try {
+      const payload: UpdateAppointmentPayload = { status: toBackendStatus(status) }
+      await apiUpdateAppointment(id, payload)
+    } catch (err) {
+      // Revert on failure — reload from server
+      get().loadAppointments()
+      throw err
+    }
+  },
+
+  removeAppointment: async (id) => {
+    // Optimistic remove
+    get().deleteAppointment(id)
+    try {
+      await apiDeleteAppointment(id)
+    } catch (err) {
+      // Revert on failure — reload from server
+      get().loadAppointments()
+      throw err
+    }
   },
 }))

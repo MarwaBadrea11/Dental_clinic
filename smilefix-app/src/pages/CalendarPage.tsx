@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { CalendarDays, List, LayoutGrid, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -24,9 +24,11 @@ export default function CalendarPage() {
   const { t } = useTranslation()
   const DAYS = [t('common.today')[0], 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const {
-    appointments, selectedDate, viewMode,
+    appointments, stats, selectedDate, viewMode,
     setSelectedDate, setViewMode,
     addAppointment, updateAppointment, deleteAppointment, getByDate, getByWeek,
+    loadAppointments, updateAppointmentStatus, removeAppointment,
+    error: loadError,
   } = useAppointmentStore()
 
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null)
@@ -35,6 +37,11 @@ export default function CalendarPage() {
   const [listSearch, setListSearch] = useState('')
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [bookingLoading, setBookingLoading] = useState(false)
+
+  // Load real appointments from the backend on mount
+  useEffect(() => {
+    loadAppointments()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Week grid helpers
   const getWeekStart = (dateStr: string) => {
@@ -63,51 +70,43 @@ export default function CalendarPage() {
   const weekAppts = getByWeek(weekStart.toISOString().split('T')[0])
 
   const handleStatusChange = (id: string, status: AppointmentStatus) => {
-    updateAppointment(id, { status })
+    // Optimistic local update + persist to backend
+    updateAppointmentStatus(id, status).catch(() => {/* error handled in store */})
     if (viewAppt?.id === id) setViewAppt((a) => a ? { ...a, status } : null)
   }
 
   const handleSaveNew = async (data: Omit<Appointment, 'id'>) => {
     setBookingError(null)
+    setBookingLoading(true)
+    try {
+      // Build ISO datetime from date + startTime
+      const scheduledAt = `${data.date}T${data.startTime}:00+00:00`
+      // Derive duration from start/end times
+      const [sh, sm] = data.startTime.split(':').map(Number)
+      const [eh, em] = data.endTime.split(':').map(Number)
+      const duration_minutes = (eh * 60 + em) - (sh * 60 + sm)
 
-    // If patientId and doctorId look like UUIDs, call the real API
-    const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v)
-    if (isUuid(data.patientId) && isUuid(data.doctorId)) {
-      setBookingLoading(true)
-      try {
-        // Build ISO datetime from date + startTime
-        const scheduledAt = `${data.date}T${data.startTime}:00+00:00`
-        // Derive duration from start/end times
-        const [sh, sm] = data.startTime.split(':').map(Number)
-        const [eh, em] = data.endTime.split(':').map(Number)
-        const duration_minutes = (eh * 60 + em) - (sh * 60 + sm)
+      await useAppointmentStore.getState().bookAppointment({
+        patient_id:       data.patientId,
+        dentist_id:       data.doctorId,
+        scheduled_at:     scheduledAt,
+        duration_minutes: duration_minutes > 0 ? duration_minutes : 30,
+        chair_number:     data.chair ? String(data.chair) : '1',
+        treatment_name:   data.treatment || null,
+        notes:            data.notes ?? null,
+      })
 
-        await useAppointmentStore.getState().bookAppointment({
-          patient_id: data.patientId,
-          dentist_id: data.doctorId,
-          scheduled_at: scheduledAt,
-          duration_minutes: duration_minutes > 0 ? duration_minutes : 30,
-          notes: data.notes ?? null,
-        })
-      } catch (err) {
-        if (err instanceof ApiError) {
-          setBookingError(err.message)
-          setBookingLoading(false)
-          return // keep modal open so user sees the error
-        }
+      setShowForm(false)
+      setEditAppt(undefined)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setBookingError(err.message)
+      } else {
         setBookingError('Failed to book appointment. Please try again.')
-        setBookingLoading(false)
-        return
-      } finally {
-        setBookingLoading(false)
       }
-    } else {
-      // Fallback: add locally (mock mode — no UUIDs available yet)
-      addAppointment({ ...data, id: `a${Date.now()}` })
+    } finally {
+      setBookingLoading(false)
     }
-
-    setShowForm(false)
-    setEditAppt(undefined)
   }
 
   const handleSlotAdd = (startTime: string) => {
@@ -143,8 +142,8 @@ export default function CalendarPage() {
   const actions: DataTableAction<Appointment>[] = [
     { label: 'View Details', onClick: (a) => setViewAppt(a) },
     { label: 'Edit',         onClick: (a) => { setEditAppt(a); setShowForm(true) } },
-    { label: 'Cancel',       onClick: (a) => updateAppointment(a.id, { status: 'cancelled' }), hidden: (a) => a.status === 'cancelled' },
-    { label: 'Delete',       onClick: (a) => deleteAppointment(a.id), danger: true },
+    { label: 'Cancel',       onClick: (a) => handleStatusChange(a.id, 'cancelled'), hidden: (a) => a.status === 'cancelled' },
+    { label: 'Delete',       onClick: (a) => removeAppointment(a.id), danger: true },
   ]
 
   const monthLabel = weekStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -182,6 +181,11 @@ export default function CalendarPage() {
       />
 
       {/* Stats row */}
+      {loadError && (
+        <div className="mb-4 px-4 py-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-on-error-container)] text-sm font-medium">
+          Failed to load appointments: {loadError}
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -189,10 +193,10 @@ export default function CalendarPage() {
         className="calendar-stats-grid"
       >
         {[
-          { label: t('calendar.today'),    value: getByDate(todayStr).length,                                                  color: 'text-[var(--color-primary)]' },
-          { label: t('calendar.thisWeek'), value: weekAppts.length,                                                             color: 'text-[var(--color-secondary)]' },
-          { label: t('calendar.confirmed'),value: appointments.filter((a) => a.status === 'confirmed').length,                  color: 'text-[var(--color-secondary)]' },
-          { label: t('status.pending'),    value: appointments.filter((a) => a.status === 'scheduled').length,                  color: 'text-amber-600' },
+          { label: t('calendar.today'),    value: stats?.today    ?? getByDate(todayStr).length,                               color: 'text-[var(--color-primary)]' },
+          { label: t('calendar.thisWeek'), value: stats?.thisWeek ?? weekAppts.length,                                          color: 'text-[var(--color-secondary)]' },
+          { label: t('calendar.confirmed'),value: stats?.confirmed ?? appointments.filter((a) => a.status === 'confirmed').length, color: 'text-[var(--color-secondary)]' },
+          { label: t('status.pending'),    value: stats?.pending   ?? appointments.filter((a) => a.status === 'scheduled').length, color: 'text-amber-600' },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-lg)] border border-[var(--color-outline-variant)]/20 shadow-[var(--shadow-card)] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]">{s.label}</p>
@@ -352,7 +356,7 @@ export default function CalendarPage() {
         open={!!viewAppt}
         onClose={() => setViewAppt(null)}
         onEdit={(a) => { setEditAppt(a); setShowForm(true) }}
-        onDelete={deleteAppointment}
+        onDelete={(id) => { removeAppointment(id); setViewAppt(null) }}
         onStatusChange={handleStatusChange}
       />
       <AppointmentFormModal

@@ -54,6 +54,12 @@ const USERS = [
     password: 'Doctor@1234',
     role:     'DENTIST',
   },
+  {
+    username: 'dr.jones',
+    email:    'dr.jones@smilefix.com',
+    password: 'Dentist@5678',
+    role:     'DENTIST',
+  },
 ]
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS ?? '12', 10)

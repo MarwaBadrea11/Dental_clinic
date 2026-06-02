@@ -31,6 +31,53 @@ export class AppointmentsService {
   }
 
   /**
+   * جلب موعد واحد بالمعرف
+   */
+  async getById(id) {
+    return this.repo.findById(id);
+  }
+
+  /**
+   * تحديث موعد قائم مع التحقق من التعارض إذا تغير الوقت أو الكرسي
+   */
+  async updateById(id, dto) {
+    // إذا تغير الوقت أو الكرسي، نتحقق من التعارض
+    if (dto.scheduled_at || dto.chair_number || dto.duration_minutes) {
+      const existing = await this.repo.findById(id);
+      if (!existing) return null;
+
+      const conflict = await this.repo.findConflict({
+        dentist_id: dto.dentist_id ?? existing.dentist_id,
+        chair_number: dto.chair_number ?? existing.chair_number,
+        scheduled_at: dto.scheduled_at ?? existing.scheduled_at,
+        duration_minutes: dto.duration_minutes ?? existing.duration_minutes,
+        excludeId: id,
+      });
+
+      if (conflict) {
+        const conflictType = conflict.dentist_id === (dto.dentist_id ?? existing.dentist_id) ? 'Dentist' : 'Chair';
+        throw new AppError(
+          400,
+          `${conflictType} is already booked for this time. Please choose a different slot.`,
+          'APPOINTMENT_CONFLICT'
+        );
+      }
+    }
+
+    return this.repo.update(id, dto);
+  }
+
+  /**
+   * حذف موعد بالمعرف
+   */
+  async deleteById(id) {
+    const existing = await this.repo.findById(id);
+    if (!existing) return null;
+    await this.repo.delete(id);
+    return true;
+  }
+
+  /**
    * جلب قائمة المواعيد مع حساب الإحصائيات المطلوبة لواجهة التقويم (Stats Cards)
    */
   async list(query = {}) {

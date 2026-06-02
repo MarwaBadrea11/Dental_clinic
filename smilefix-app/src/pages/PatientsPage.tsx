@@ -6,7 +6,7 @@ import { UserPlus, Users, LayoutGrid, List } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable, type DataTableColumn, type DataTableAction } from '@/components/ui/DataTable'
 import { Avatar } from '@/components/ui/Avatar'
-import { Badge, StatusBadge } from '@/components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { SearchBar } from '@/components/ui/SearchBar'
@@ -95,10 +95,6 @@ export default function PatientsPage() {
       render: (p) => p.bloodType
         ? <Badge variant="neutral" size="sm">{p.bloodType}</Badge>
         : <span className="text-sm text-[var(--color-on-surface-variant)]">—</span>,
-    },
-    {
-      key: 'status', header: 'Status', sortable: true,
-      render: (p) => <StatusBadge status={p.status} />,
     },
   ]
 

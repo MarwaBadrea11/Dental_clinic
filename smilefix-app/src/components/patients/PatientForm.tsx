@@ -135,16 +135,6 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
           error={errors.nationalId}
           required
         />
-        <Select
-          label="Status"
-          options={[
-            { label: 'Active',   value: 'active' },
-            { label: 'Inactive', value: 'inactive' },
-            { label: 'Pending',  value: 'pending' },
-          ]}
-          value={form.status}
-          onChange={(e) => set('status', e.target.value as PatientFormValues['status'])}
-        />
         <Input
           label="Phone"
           type="tel"

@@ -37,7 +37,7 @@ export class InvoicesRepository {
       });
     }
 
-    const [{ count }] = await q.clone().clearSelect().count('i.id as count');
+    const [{ count }] = await q.clone().clearSelect().clearOrder().count('i.id as count');
     const data = await q.limit(limit).offset((page - 1) * limit);
 
     return { data: data.map((r) => this._parseInvoice(r)), total: Number(count), page, limit };

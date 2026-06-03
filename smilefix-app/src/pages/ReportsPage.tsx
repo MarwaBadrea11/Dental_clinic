@@ -46,7 +46,17 @@ const TABS: { id: ReportTab; label: string; icon: React.ReactNode }[] = [
 export default function ReportsPage() {
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState<ReportTab>('overview')
+
+  // Persist active tab in URL so refresh restores the correct tab
+  const tabParam = searchParams.get('tab') as ReportTab | null
+  const [activeTab, setActiveTab] = useState<ReportTab>(
+    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview'
+  )
+
+  const handleTabChange = (tab: ReportTab) => {
+    setActiveTab(tab)
+    setSearchParams((prev) => { prev.set('tab', tab); return prev }, { replace: true })
+  }
 
   const { patients }      = usePatientStore()
   const { appointments }  = useAppointmentStore()
@@ -99,7 +109,7 @@ export default function ReportsPage() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={[
               'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px',
               activeTab === tab.id
@@ -150,8 +160,8 @@ export default function ReportsPage() {
               {visibleReports.map((r, i) => (
                 <ReportCard
                   key={r.title} {...r} delay={0.2 + i * 0.04}
-                  onGenerate={LIVE_TAB_MAP[r.title] ? () => setActiveTab(LIVE_TAB_MAP[r.title]) : undefined}
-                  onDownload={LIVE_TAB_MAP[r.title] ? () => setActiveTab(LIVE_TAB_MAP[r.title]) : undefined}
+                  onGenerate={LIVE_TAB_MAP[r.title] ? () => handleTabChange(LIVE_TAB_MAP[r.title]) : undefined}
+                  onDownload={LIVE_TAB_MAP[r.title] ? () => handleTabChange(LIVE_TAB_MAP[r.title]) : undefined}
                 />
               ))}
             </div>

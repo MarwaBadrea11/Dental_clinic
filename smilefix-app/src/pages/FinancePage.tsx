@@ -20,21 +20,27 @@ import type { Invoice, InvoiceStatus, PaymentMethod } from '@/types'
 
 type ViewMode = 'overview' | 'invoices' | 'payments'
 
-const MONTHLY_DATA = [
-  { month: 'May', revenue: 3200, target: 4000 },
-  { month: 'Jun', revenue: 4100, target: 4000 },
-  { month: 'Jul', revenue: 3750, target: 4000 },
-  { month: 'Aug', revenue: 4800, target: 4500 },
-  { month: 'Sep', revenue: 4200, target: 4500 },
-  { month: 'Oct', revenue: 4870, target: 5000 },
+// Fallback chart data shown while finance summary loads
+const FALLBACK_MONTHLY_DATA = [
+  { month: 'Jan', revenue: 0, target: 0 },
+  { month: 'Feb', revenue: 0, target: 0 },
+  { month: 'Mar', revenue: 0, target: 0 },
+  { month: 'Apr', revenue: 0, target: 0 },
+  { month: 'May', revenue: 0, target: 0 },
+  { month: 'Jun', revenue: 0, target: 0 },
 ]
 
 export default function FinancePage() {
   const { t } = useTranslation()
-  const { invoices, payments, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading, error } = useFinanceStore()
+  const { invoices, payments, financeSummary, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading, error } = useFinanceStore()
 
-  // Load real invoices on mount
+  // Load real invoices on mount (also loads payments internally)
   useEffect(() => { loadInvoices() }, [loadInvoices])
+
+  // Load finance summary (for revenue chart + accurate KPI cards)
+  useEffect(() => {
+    useFinanceStore.getState().loadFinanceSummaryData?.()
+  }, [])
 
   // Load patients for the new invoice modal
   const [patients, setPatients] = useState<{ id: string; name: string; code: string }[]>([])
@@ -73,13 +79,17 @@ export default function FinancePage() {
     return matchStatus && matchSearch
   })
 
-  const totalRevenue = getTotalRevenue()
-  const totalOutstanding = getTotalOutstanding()
+  const totalRevenue = financeSummary?.total_revenue ?? getTotalRevenue()
+  const totalOutstanding = financeSummary?.total_outstanding ?? getTotalOutstanding()
   const overdueAmount = getOverdueAmount()
-  const collectionRate = totalRevenue + totalOutstanding > 0 ? Math.round((totalRevenue / (totalRevenue + totalOutstanding)) * 100) : 0
+  const collectionRate = financeSummary?.collection_rate ?? (totalRevenue + totalOutstanding > 0 ? Math.round((totalRevenue / (totalRevenue + totalOutstanding)) * 100) : 0)
+  const monthlyChartData = financeSummary?.monthly_revenue?.length ? financeSummary.monthly_revenue : FALLBACK_MONTHLY_DATA
 
   const handleStatusChange = (id: string, status: InvoiceStatus) => {
-    updateInvoice(id, { status, ...(status === 'paid' ? { paid: invoices.find((i) => i.id === id)?.total ?? 0 } : {}) })
+    // Only forward patchable statuses (draft ↔ pending/ISSUED).
+    // 'paid', 'partial', 'overdue' are set by the backend via payment logic — don't PATCH them.
+    if (status === 'paid' || status === 'partial' || status === 'overdue') return
+    updateInvoice(id, { status })
     if (selectedInvoice?.id === id) setSelectedInvoice((i) => i ? { ...i, status } : null)
   }
 
@@ -178,7 +188,7 @@ export default function FinancePage() {
         {viewMode === 'overview' && (
           <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-12 lg:col-span-8"><RevenueStats data={MONTHLY_DATA} delay={0.1} /></div>
+              <div className="col-span-12 lg:col-span-8"><RevenueStats data={monthlyChartData} delay={0.1} /></div>
               <div className="col-span-12 lg:col-span-4"><PaymentSummary payments={payments} delay={0.15} /></div>
               <div className="col-span-12 lg:col-span-6"><DebtWidget invoices={invoices} delay={0.2} onViewInvoice={setSelectedInvoice} /></div>
               <div className="col-span-12 lg:col-span-6">

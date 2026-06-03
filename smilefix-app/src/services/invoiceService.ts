@@ -36,6 +36,7 @@ export interface BackendInvoice {
   id: string
   invoice_number: string | null
   patient_id: string
+  patient_name?: string          // returned by list() JOIN with patients table
   appointment_id: string | null
   treatment_plan_id: string | null
   line_items: BackendLineItem[]
@@ -78,10 +79,35 @@ export interface BackendDebt {
   outstanding_balance: number
 }
 
+export interface BackendMonthlyRevenue {
+  month: string
+  revenue: number
+  target: number
+}
+
+export interface BackendPaymentMethodBreakdown {
+  method: BackendPaymentMethod
+  total: number
+  count: number
+}
+
 export interface BackendFinanceSummary {
   total_revenue: number
   total_outstanding: number
-  payment_methods: { method: BackendPaymentMethod; total: number }[]
+  open_invoices_count: number
+  overdue_invoices_count: number
+  collection_rate: number
+  monthly_revenue: BackendMonthlyRevenue[]
+  payment_methods: BackendPaymentMethodBreakdown[]
+  recent_invoices?: BackendInvoice[]
+  outstanding_debts?: {
+    invoice_id: string
+    patient_name: string
+    total_amount: string
+    amount_paid: string
+    balance: string
+    status: BackendInvoiceStatus
+  }[]
 }
 
 export interface BackendPaginatedResponse<T> {
@@ -159,6 +185,8 @@ export const METHOD_TO_BACKEND: Record<PaymentMethod, BackendPaymentMethod> = {
 // ── Mappers ───────────────────────────────────────────────────────────────────
 
 export function mapInvoice(b: BackendInvoice, patientName = ''): Invoice {
+  // patient_name is included when the list endpoint JOINs with the patients table
+  const resolvedName = patientName || b.patient_name || ''
   // line_items may come back as a JSON string if stored as text in the DB
   const rawLineItems: BackendLineItem[] = Array.isArray(b.line_items)
     ? b.line_items
@@ -178,7 +206,7 @@ export function mapInvoice(b: BackendInvoice, patientName = ''): Invoice {
     id: b.id,
     invoiceNumber: b.invoice_number ?? `DRAFT-${b.id.slice(0, 8)}`,
     patientId: b.patient_id,
-    patientName,
+    patientName: resolvedName,
     date: b.issued_at ? b.issued_at.split('T')[0] : b.created_at.split('T')[0],
     dueDate: b.due_date ?? '',
     items: lineItems,
@@ -256,7 +284,7 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<Invo
 export async function fetchInvoiceById(id: string): Promise<Invoice & { payments: Payment[] }> {
   const b = await apiClient.get<BackendInvoice & { payments: BackendPayment[] }>(`/invoices/${id}`)
   const invoice = mapInvoice(b)
-  const payments = (b.payments ?? []).map((p) => mapPayment(p, b.patient_id))
+  const payments = (b.payments ?? []).map((p) => mapPayment(p, b.patient_id, invoice.patientName))
   return { ...invoice, payments }
 }
 
@@ -328,4 +356,30 @@ export async function fetchFinanceSummary(params: {
 export async function cancelInvoice(id: string): Promise<Invoice> {
   const b = await apiClient.patch<BackendInvoice>(`/invoices/${id}`, { status: 'CANCELLED' })
   return mapInvoice(b)
+}
+
+/**
+ * Fetches payments for a list of invoice IDs in parallel.
+ * Only fetches invoices that have amount_paid > 0 to avoid unnecessary calls.
+ */
+export async function fetchPaymentsForInvoices(
+  invoices: { id: string; patientId: string; patientName: string; paid: number }[],
+): Promise<Payment[]> {
+  const withPayments = invoices.filter((i) => i.paid > 0)
+  if (withPayments.length === 0) return []
+
+  const results = await Promise.allSettled(
+    withPayments.map((inv) =>
+      apiClient
+        .get<BackendPayment[]>(`/invoices/${inv.id}/payments`)
+        .then((payments) =>
+          payments.map((p) => mapPayment(p, inv.patientId, inv.patientName)),
+        ),
+    ),
+  )
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<Payment[]> => r.status === 'fulfilled')
+    .flatMap((r) => r.value)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }

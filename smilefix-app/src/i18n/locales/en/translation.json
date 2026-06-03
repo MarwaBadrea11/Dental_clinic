@@ -78,6 +78,7 @@
     "location":      "Location",
     "supplier":      "Supplier",
     "doctor":        "Doctor",
+    "system":        "System",
     "patient":       "Patient",
     "role":          "Role",
     "department":    "Department",
@@ -417,7 +418,8 @@
     "noOutstandingDebts": "No outstanding debts",
     "target":             "Target",
     "due":                "Due",
-    "selectPatient":      "Select a patient..."
+    "selectPatient":      "Select a patient...",
+    "staffId":            "Staff"
   },
   "inventory": {
     "title":          "Inventory",

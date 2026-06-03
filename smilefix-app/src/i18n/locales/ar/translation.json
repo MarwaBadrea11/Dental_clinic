@@ -78,6 +78,7 @@
     "location":      "الموقع",
     "supplier":      "المورد",
     "doctor":        "الطبيب",
+    "system":        "النظام",
     "patient":       "المريض",
     "role":          "الدور",
     "department":    "القسم",
@@ -416,7 +417,8 @@
     "noOutstandingDebts": "لا توجد ديون مستحقة",
     "target":             "الهدف",
     "due":                "الاستحقاق",
-    "selectPatient":      "اختر مريضاً..."
+    "selectPatient":      "اختر مريضاً...",
+    "staffId":            "موظف"
   },
   "inventory": {
     "title":          "المخزون",

@@ -71,6 +71,7 @@ export class PatientsRepository {
       .where({ id })
       .update({
         deleted_at: this.db.fn.now(),
+        status: 'inactive',
       });
   }
 }

@@ -10,7 +10,7 @@ import { formatCurrency } from '@/utils/format'
 import type { InventoryItem } from '@/services/reportService'
 
 export function InventoryReportPanel() {
-  const { inventory, inventoryLoading, inventoryError, exportLoading, loadInventory, exportReport } = useReportStore()
+  const { inventory, inventoryLoading, inventoryError, exportLoading, exportError, loadInventory, exportReport } = useReportStore()
   const [search, setSearch]           = useState('')
   const [lowStockOnly, setLowStockOnly] = useState(false)
 
@@ -71,6 +71,11 @@ export function InventoryReportPanel() {
       {inventoryError && (
         <div className="flex items-center gap-2 p-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)]/20 text-[var(--color-error)] text-sm">
           <AlertTriangle size={15} /> {inventoryError}
+        </div>
+      )}
+      {exportError && (
+        <div className="flex items-center gap-2 p-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)]/20 text-[var(--color-error)] text-sm">
+          <AlertTriangle size={15} /> Export failed: {exportError}
         </div>
       )}
 

@@ -2,6 +2,18 @@
  * Formatting utilities — dates, currency, names, etc.
  */
 
+/**
+ * Returns today's date as YYYY-MM-DD in the **local** timezone.
+ * Use this instead of new Date().toISOString().split('T')[0] which returns UTC
+ * and can be off by one day when the local timezone is ahead of UTC.
+ */
+export function localDateStr(date: Date = new Date()): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOptions): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString('en-US', {

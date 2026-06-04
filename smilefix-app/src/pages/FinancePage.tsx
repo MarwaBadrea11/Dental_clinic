@@ -32,7 +32,7 @@ const FALLBACK_MONTHLY_DATA = [
 
 export default function FinancePage() {
   const { t } = useTranslation()
-  const { invoices, payments, financeSummary, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading, error } = useFinanceStore()
+  const { invoices, payments, financeSummary, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, loadPayments, isLoading, isLoadingPayments, error } = useFinanceStore()
 
   // Load real invoices on mount (also loads payments internally)
   useEffect(() => { loadInvoices() }, [loadInvoices])
@@ -53,6 +53,13 @@ export default function FinancePage() {
   }, [])
 
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
+
+  // Reload payments whenever the user switches to the payments tab
+  useEffect(() => {
+    if (viewMode === 'payments') {
+      loadPayments()
+    }
+  }, [viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
   const [listMode, setListMode] = useState<'table' | 'grid'>('table')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -239,7 +246,11 @@ export default function FinancePage() {
           <motion.div key="payments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 lg:col-span-8">
-                <SectionCard noPadding>
+                <SectionCard noPadding action={
+                  <Button variant="ghost" size="xs" leftIcon={<RefreshCw size={12} />} loading={isLoadingPayments} onClick={() => loadPayments()}>
+                    {t('common.refresh')}
+                  </Button>
+                }>
                   <DataTable
                     columns={[
                       { key: 'patientName', header: t('common.patient'), sortable: true, render: (p) => <div className="flex items-center gap-2"><Avatar name={p.patientName} size="xs" /><span className="text-sm">{p.patientName}</span></div> },

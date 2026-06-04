@@ -29,7 +29,14 @@ export class StaffService {
   async create(dto) {
     const existing = await this.repo.findByEmail(dto.email);
     if (existing) throw new ConflictError('A staff member with this email already exists');
-    return this.repo.create(dto);
+    try {
+      return await this.repo.create(dto);
+    } catch (err) {
+      if (err.code === '23505' && err.constraint === 'staff_email_unique') {
+        throw new ConflictError('A staff member with this email already exists');
+      }
+      throw err;
+    }
   }
 
   async update(id, dto) {
@@ -41,7 +48,14 @@ export class StaffService {
       if (existing) throw new ConflictError('A staff member with this email already exists');
     }
 
-    return this.repo.update(id, dto);
+    try {
+      return await this.repo.update(id, dto);
+    } catch (err) {
+      if (err.code === '23505' && err.constraint === 'staff_email_unique') {
+        throw new ConflictError('A staff member with this email already exists');
+      }
+      throw err;
+    }
   }
 
   async delete(id) {
@@ -64,7 +78,10 @@ export class StaffService {
 
   async logAttendance(dto) {
     const existing = await this.repo.findAttendanceByStaffAndDate(dto.staff_id, dto.log_date);
-    if (existing) throw new ConflictError('Attendance log for this staff member and date already exists');
+    if (existing) {
+      // Already has a log for this day — update it instead of rejecting
+      return this.repo.updateAttendance(existing.id, dto);
+    }
     return this.repo.createAttendance(dto);
   }
 

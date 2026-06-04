@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { UserPlus, Users, LayoutGrid, List, Pencil, Trash2, Calendar, DollarSign } from 'lucide-react'
+import { UserPlus, Users, LayoutGrid, List, Pencil, Trash2, Calendar, DollarSign, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Button } from '@/components/ui/Button'
@@ -16,7 +16,7 @@ import { InfoGrid } from '@/components/ui/InfoGrid'
 import { DataTable, type DataTableColumn, type DataTableAction } from '@/components/ui/DataTable'
 import { EmployeeCard, AttendanceWidget, SalaryCard, ShiftTable } from '@/components/staff'
 import { useStaffStore } from '@/store/staffStore'
-import { formatDate, formatCurrency } from '@/utils/format'
+import { formatDate, formatCurrency, localDateStr } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { StaffMember, EmployeeRole, EmployeeStatus, AttendanceRecord } from '@/types'
 import type { CreateStaffPayload, CreateAttendancePayload, CreateSalaryPayload, BackendSalaryRecord } from '@/services/staffService'
@@ -56,7 +56,7 @@ function StaffModal({
   const [form, setForm] = useState<StaffFormState>(EMPTY_STAFF_FORM)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Partial<StaffFormState>>({})
-
+  const [submitError, setSubmitError] = useState<string | null>(null)
   useEffect(() => {
     if (open) {
       if (editMember) {
@@ -74,6 +74,7 @@ function StaffModal({
         setForm(EMPTY_STAFF_FORM)
       }
       setErrors({})
+      setSubmitError(null)
     }
   }, [open, editMember])
 
@@ -91,6 +92,7 @@ function StaffModal({
   const handleSave = async () => {
     if (!validate()) return
     setSaving(true)
+    setSubmitError(null)
     try {
       await onSave({
         full_name: form.full_name.trim(),
@@ -103,6 +105,9 @@ function StaffModal({
         status: form.status,
       })
       onClose()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save staff member'
+      setSubmitError(msg)
     } finally {
       setSaving(false)
     }
@@ -139,6 +144,11 @@ function StaffModal({
           <Input type="number" placeholder="0.00" value={form.base_salary} onChange={(e) => set('base_salary', e.target.value)} />
         </FormField>
       </div>
+      {submitError && (
+        <p className="mt-3 text-xs text-[var(--color-error)] bg-[var(--color-error-container)] rounded-[var(--radius-DEFAULT)] px-3 py-2">
+          {submitError}
+        </p>
+      )}
       <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-[var(--color-outline-variant)]/15">
         <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
         <Button onClick={handleSave} loading={saving}>
@@ -160,7 +170,7 @@ function AttendanceModal({
   staff: StaffMember[]
 }) {
   const { t } = useTranslation()
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr()
   const [form, setForm] = useState({ staff_id: '', log_date: today, check_in: '', check_out: '', status: 'present' as const, notes: '' })
   const [saving, setSaving] = useState(false)
 
@@ -289,7 +299,6 @@ export default function StaffPage() {
     loadAttendance, addAttendance,
     loadSalaryRecords, addSalaryRecord,
     loadDashboardStats,
-    getTodayAttendance,
   } = useStaffStore()
 
   const [viewMode, setViewMode] = useState<ViewMode>('team')
@@ -303,6 +312,7 @@ export default function StaffPage() {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [showSalaryModal, setShowSalaryModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadStaff({ search, role: roleFilter === 'all' ? undefined : roleFilter, status: statusFilter === 'all' ? undefined : statusFilter })
@@ -310,11 +320,11 @@ export default function StaffPage() {
   }, [search, roleFilter, statusFilter])
 
   useEffect(() => {
-    if (viewMode === 'attendance') loadAttendance({ date: new Date().toISOString().split('T')[0] })
+    if (viewMode === 'attendance') loadAttendance({ date: localDateStr() })
     if (viewMode === 'payroll') loadSalaryRecords()
   }, [viewMode])
 
-  const todayAttendance = getTodayAttendance()
+  const todayAttendance = attendance.filter((a) => a.date === localDateStr())
 
   const ROLE_OPTIONS = [
     { value: 'all', label: t('staff.allRoles') },
@@ -335,14 +345,13 @@ export default function StaffPage() {
   }
 
   const handleDelete = async (m: StaffMember) => {
-    if (!confirm(`Delete ${m.firstName} ${m.lastName}?`)) return
     setDeletingId(m.id)
     try {
       await removeStaff(m.id)
       loadDashboardStats()
     }
     catch { alert('Failed to delete staff member.') }
-    finally { setDeletingId(null) }
+    finally { setDeletingId(null); setConfirmDeleteId(null) }
   }
 
   const columns: DataTableColumn<StaffMember>[] = [
@@ -374,7 +383,7 @@ export default function StaffPage() {
   const actions: DataTableAction<StaffMember>[] = [
     { label: t('patients.viewProfile'), onClick: (m) => setSelected(m) },
     { label: t('common.edit'), icon: <Pencil size={13} />, onClick: (m) => { setEditTarget(m); setShowStaffModal(true) } },
-    { label: t('common.delete'), icon: <Trash2 size={13} />, danger: true, onClick: handleDelete },
+    { label: t('common.delete'), icon: <Trash2 size={13} />, danger: true, onClick: (m) => setConfirmDeleteId(m.id) },
   ]
 
   const TABS = [
@@ -457,7 +466,7 @@ export default function StaffPage() {
                             <EmployeeCard member={m} onClick={setSelected} delay={i * 0.04} />
                             <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1 bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-DEFAULT)] shadow-[var(--shadow-card)] p-1">
                               <button onClick={(e) => { e.stopPropagation(); setEditTarget(m); setShowStaffModal(true) }} className="p-1 rounded hover:bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)]"><Pencil size={12} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDelete(m) }} className="p-1 rounded hover:bg-[var(--color-error-container)] text-[var(--color-error)]"><Trash2 size={12} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(m.id) }} disabled={deletingId === m.id} className="p-1 rounded hover:bg-[var(--color-error-container)] text-[var(--color-error)] disabled:opacity-50"><Trash2 size={12} /></button>
                             </div>
                           </div>
                         ))}
@@ -477,7 +486,10 @@ export default function StaffPage() {
         {/* ── Attendance Tab ── */}
         {viewMode === 'attendance' && (
           <motion.div key="attendance" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-end mb-4 gap-2">
+              <Button size="sm" variant="ghost" leftIcon={<RefreshCw size={14} />} onClick={() => loadAttendance({ date: localDateStr() })}>
+                {t('common.refresh')}
+              </Button>
               <Button size="sm" leftIcon={<Calendar size={14} />} onClick={() => setShowAttendanceModal(true)}>
                 {t('staff.logAttendance')}
               </Button>
@@ -498,7 +510,10 @@ export default function StaffPage() {
         {/* ── Payroll Tab ── */}
         {viewMode === 'payroll' && (
           <motion.div key="payroll" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-end mb-4 gap-2">
+              <Button size="sm" variant="ghost" leftIcon={<RefreshCw size={14} />} onClick={() => loadSalaryRecords()}>
+                {t('common.refresh')}
+              </Button>
               <Button size="sm" leftIcon={<DollarSign size={14} />} onClick={() => setShowSalaryModal(true)}>
                 {t('staff.addSalaryRecord')}
               </Button>
@@ -522,7 +537,12 @@ export default function StaffPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {staff.filter((m) => m.salary).map((m, i) => <SalaryCard key={m.id} member={m} delay={i * 0.04} />)}
+                  {salaryRecords.map((r, i) => {
+                    const member = staff.find((m) => m.id === r.staff_id)
+                    if (!member) return null
+                    const enriched = { ...member, salary: Number(r.net_salary) }
+                    return <SalaryCard key={r.id} member={enriched} delay={i * 0.04} />
+                  })}
                 </div>
               )}
             </div>
@@ -576,6 +596,7 @@ export default function StaffPage() {
         onClose={() => setShowAttendanceModal(false)}
         onSave={async (payload) => {
           await addAttendance(payload)
+          loadAttendance({ date: localDateStr() })
           loadDashboardStats()
         }}
         staff={staff}
@@ -585,9 +606,40 @@ export default function StaffPage() {
       <SalaryModal
         open={showSalaryModal}
         onClose={() => setShowSalaryModal(false)}
-        onSave={addSalaryRecord}
+        onSave={async (payload) => {
+          const record = await addSalaryRecord(payload)
+          loadSalaryRecords()
+          return record
+        }}
         staff={staff}
       />
+
+      {/* Delete Confirmation Modal */}
+      {(() => {
+        const target = staff.find((m) => m.id === confirmDeleteId)
+        return (
+          <Modal open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)} title={t('common.confirmDelete', { defaultValue: 'Confirm Delete' })} size="sm">
+            {target && (
+              <div className="space-y-4">
+                <p className="text-sm text-[var(--color-on-surface-variant)]">
+                  Are you sure you want to delete <span className="font-semibold text-[var(--color-on-surface)]">{target.firstName} {target.lastName}</span>? This action cannot be undone.
+                </p>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-outline-variant)]/15">
+                  <Button variant="ghost" onClick={() => setConfirmDeleteId(null)} disabled={!!deletingId}>{t('common.cancel')}</Button>
+                  <Button
+                    variant="danger"
+                    loading={!!deletingId}
+                    onClick={() => handleDelete(target)}
+                    leftIcon={<Trash2 size={13} />}
+                  >
+                    {t('common.delete')}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        )
+      })()}
     </div>
   )
 }

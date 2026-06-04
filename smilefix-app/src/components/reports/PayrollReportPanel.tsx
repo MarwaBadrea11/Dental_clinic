@@ -13,7 +13,7 @@ function currentMonth(): string {
 }
 
 export function PayrollReportPanel() {
-  const { payroll, payrollLoading, payrollError, exportLoading, loadPayroll, exportReport } = useReportStore()
+  const { payroll, payrollLoading, payrollError, exportLoading, exportError, loadPayroll, exportReport } = useReportStore()
   const [month, setMonth] = useState(currentMonth())
 
   useEffect(() => { loadPayroll(month) }, [])  // eslint-disable-line react-hooks/exhaustive-deps
@@ -69,6 +69,11 @@ export function PayrollReportPanel() {
       {payrollError && (
         <div className="flex items-center gap-2 p-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)]/20 text-[var(--color-error)] text-sm">
           <AlertCircle size={15} /> {payrollError}
+        </div>
+      )}
+      {exportError && (
+        <div className="flex items-center gap-2 p-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)]/20 text-[var(--color-error)] text-sm">
+          <AlertCircle size={15} /> Export failed: {exportError}
         </div>
       )}
 

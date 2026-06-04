@@ -10,17 +10,46 @@
 //   GET  /reports/audit-logs         → paginated AuditLog[]
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { API_BASE } from './apiClient'
-import { getAccessToken } from './authService'
+import { API_BASE, apiClient } from './apiClient'
+import { getAccessToken, getRefreshToken, saveTokens } from './authService'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-function authHeaders(): Record<string, string> {
+/**
+ * Returns a valid (non-expired) Bearer token, refreshing it first if needed.
+ * Falls back to the stored access token if refresh is not possible.
+ */
+async function getFreshToken(): Promise<string | null> {
   const token = getAccessToken()
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  if (token) {
+    // Check if it's still valid (exp > now + 30s)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      if (typeof payload.exp === 'number' && payload.exp * 1000 > Date.now() + 30_000) {
+        return token
+      }
+    } catch { /* ignore parse errors, fall through to refresh */ }
   }
+
+  // Token missing or expiring soon — try refresh
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return token  // return whatever we have
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+    if (res.ok) {
+      const json = await res.json()
+      const { accessToken, refreshToken: newRefresh } = json.data
+      saveTokens(accessToken, newRefresh)
+      return accessToken as string
+    }
+  } catch { /* ignore, fall through */ }
+
+  return token
 }
 
 function buildQs(params: Record<string, string | number | boolean | undefined>): string {
@@ -32,10 +61,7 @@ function buildQs(params: Record<string, string | number | boolean | undefined>):
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() })
-  const json = await res.json()
-  if (!res.ok) throw new Error(json?.error ?? 'Request failed')
-  return json.data as T
+  return apiClient.get<T>(path)
 }
 
 // ── Backend shapes ────────────────────────────────────────────────────────────
@@ -162,7 +188,7 @@ export type ExportFormat = 'pdf' | 'xlsx'
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 export async function fetchFinancialReport(params: DateRangeParams = {}): Promise<FinancialReport> {
-  return getJson(`/reports/financial${buildQs(params)}`)
+  return getJson(`/reports/financial${buildQs(params as Record<string, string | undefined>)}`)
 }
 
 export async function fetchInventoryReport(params: InventoryParams = {}): Promise<InventoryReport> {
@@ -176,9 +202,10 @@ export async function fetchPayrollReport(month: string): Promise<PayrollReport> 
 export async function fetchAuditLogs(
   params: AuditLogParams = {},
 ): Promise<{ data: AuditLog[]; total: number; page: number; limit: number }> {
+  const token = await getFreshToken()
   const raw = await fetch(
     `${API_BASE}/reports/audit-logs${buildQs(params as Record<string, string | number | undefined>)}`,
-    { headers: authHeaders() },
+    { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
   )
   const json = await raw.json()
   if (!raw.ok) throw new Error(json?.error ?? 'Request failed')
@@ -198,23 +225,44 @@ export async function downloadReport(
   format: ExportFormat,
   params: Record<string, string | undefined> = {},
 ): Promise<void> {
-  const qs = buildQs({ ...params, format })
+  const qs  = buildQs({ ...params, format })
   const url = `${API_BASE}/reports/${type}/export${qs}`
 
-  const res = await fetch(url, { headers: authHeaders() })
+  // Get a fresh (non-expired) token — this is the key fix.
+  // If we send an expired token the server returns a 401 JSON response
+  // which would otherwise get saved as a corrupt .xlsx file.
+  const token = await getFreshToken()
 
+  const res = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  // Non-2xx → parse JSON error and throw a readable message
   if (!res.ok) {
-    const json = await res.json().catch(() => ({}))
-    throw new Error((json as { error?: string }).error ?? 'Export failed')
+    const text = await res.text()
+    let message = `Export failed (${res.status})`
+    try { message = (JSON.parse(text) as { error?: string }).error ?? message } catch { /* raw text */ }
+    throw new Error(message)
   }
 
-  const blob = await res.blob()
-  const ext  = format === 'xlsx' ? 'xlsx' : 'pdf'
-  const mime = format === 'xlsx'
+  // Safety: if the server returned JSON instead of a file body, show a real error
+  const contentType = res.headers.get('Content-Type') ?? ''
+  if (contentType.includes('application/json')) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error((json as { error?: string }).error ?? 'Server returned JSON instead of a file')
+  }
+
+  const expectedMime = format === 'xlsx'
     ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     : 'application/pdf'
 
-  const objectUrl = URL.createObjectURL(new Blob([blob], { type: mime }))
+  const buffer = await res.arrayBuffer()
+  const blob   = new Blob([buffer], { type: expectedMime })
+  const ext    = format === 'xlsx' ? 'xlsx' : 'pdf'
+
+  const objectUrl = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href     = objectUrl
   a.download = `${type}-report.${ext}`

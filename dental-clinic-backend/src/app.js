@@ -41,14 +41,16 @@ export async function buildApp(opts = {}) {
   fastify.setSerializerCompiler(serializerCompiler);
 
   // ─── Plugins ────────────────────────────────────────────────────────────────
-  await fastify.register(knexPlugin);
-  await fastify.register(jwtPlugin);
-  await fastify.register(securityHeadersPlugin);
+  // CORS must be registered first so preflight OPTIONS requests are handled
+  // before any other hooks (e.g. security headers) can intercept the response.
   await fastify.register(cors, {
     origin: env.CORS_ORIGIN.split(',').map(o => o.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
+  await fastify.register(knexPlugin);
+  await fastify.register(jwtPlugin);
+  await fastify.register(securityHeadersPlugin);
   await fastify.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: '1 minute',

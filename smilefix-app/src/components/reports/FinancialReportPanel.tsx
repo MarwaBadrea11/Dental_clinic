@@ -9,7 +9,7 @@ import { formatCurrency } from '@/utils/format'
 import type { MonthlyBreakdown, TopProcedure } from '@/services/reportService'
 
 export function FinancialReportPanel() {
-  const { financial, financialLoading, financialError, exportLoading, loadFinancial, exportReport } = useReportStore()
+  const { financial, financialLoading, financialError, exportLoading, exportError, loadFinancial, exportReport } = useReportStore()
   const [dateRange, setDateRange] = useState<{ from?: string; to?: string }>({})
 
   useEffect(() => { loadFinancial(dateRange) }, [])  // eslint-disable-line react-hooks/exhaustive-deps
@@ -61,6 +61,11 @@ export function FinancialReportPanel() {
       {financialError && (
         <div className="flex items-center gap-2 p-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)]/20 text-[var(--color-error)] text-sm">
           <AlertCircle size={15} /> {financialError}
+        </div>
+      )}
+      {exportError && (
+        <div className="flex items-center gap-2 p-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)]/20 text-[var(--color-error)] text-sm">
+          <AlertCircle size={15} /> Export failed: {exportError}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import {
   InventoryReportSchema,
   PayrollReportSchema,
   AuditLogQuerySchema,
+  ExportQuerySchema,
 } from './reports.schema.js';
 import {
   getFinancialReportHandler,
@@ -25,7 +26,7 @@ export async function reportsRoutes(fastify) {
 
   fastify.get('/financial/export', { 
     preHandler: [authenticate, authorize('finance:*')],
-    schema: { query: FinancialReportSchema }
+    schema: { query: FinancialReportSchema.merge(ExportQuerySchema) }
   }, exportFinancialReportHandler);
 
   // Inventory
@@ -36,7 +37,7 @@ export async function reportsRoutes(fastify) {
 
   fastify.get('/inventory/export', { 
     preHandler: [authenticate, authorize('inventory:read')],
-    schema: { query: InventoryReportSchema }
+    schema: { query: InventoryReportSchema.merge(ExportQuerySchema) }
   }, exportInventoryReportHandler);
 
   // Payroll
@@ -47,7 +48,7 @@ export async function reportsRoutes(fastify) {
 
   fastify.get('/payroll/export', { 
     preHandler: [authenticate, authorize('staff:*')],
-    schema: { query: PayrollReportSchema }
+    schema: { query: PayrollReportSchema.merge(ExportQuerySchema) }
   }, exportPayrollReportHandler);
 
   // Audit logs — ADMIN only

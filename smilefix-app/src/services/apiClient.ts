@@ -105,7 +105,11 @@ async function request<T>(
     throw new ApiError(401, 'Session expired. Please log in again.')
   }
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  // Only set Content-Type when we actually have a body to send.
+  // Fastify v5 rejects DELETE/GET requests that advertise application/json
+  // but send an empty body (FST_ERR_CTP_EMPTY_JSON_BODY).
+  const headers: Record<string, string> = {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   const res = await fetch(`${API_BASE}${path}`, {

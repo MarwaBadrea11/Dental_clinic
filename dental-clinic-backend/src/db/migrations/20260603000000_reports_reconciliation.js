@@ -114,7 +114,7 @@ export async function up(knex) {
         WHEN 'salary_records'  THEN v_report_type := 'PAYROLL';
         WHEN 'invoices'        THEN v_report_type := 'FINANCIAL';
         WHEN 'payments'        THEN v_report_type := 'FINANCIAL';
-        ELSE RETURN NEW;
+        ELSE RETURN NULL;
       END CASE;
 
       UPDATE report_snapshots
@@ -122,7 +122,7 @@ export async function up(knex) {
       WHERE report_type = v_report_type
         AND expires_at  > NOW();
 
-      RETURN NEW;
+      RETURN NULL;
     END;
     $$ LANGUAGE plpgsql
   `);

@@ -360,16 +360,16 @@ export async function cancelInvoice(id: string): Promise<Invoice> {
 
 /**
  * Fetches payments for a list of invoice IDs in parallel.
- * Only fetches invoices that have amount_paid > 0 to avoid unnecessary calls.
+ * Fetches all invoices regardless of paid amount so the Payments tab always
+ * reflects the true state after a refresh.
  */
 export async function fetchPaymentsForInvoices(
   invoices: { id: string; patientId: string; patientName: string; paid: number }[],
 ): Promise<Payment[]> {
-  const withPayments = invoices.filter((i) => i.paid > 0)
-  if (withPayments.length === 0) return []
+  if (invoices.length === 0) return []
 
   const results = await Promise.allSettled(
-    withPayments.map((inv) =>
+    invoices.map((inv) =>
       apiClient
         .get<BackendPayment[]>(`/invoices/${inv.id}/payments`)
         .then((payments) =>

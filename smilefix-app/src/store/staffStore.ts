@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { StaffMember, AttendanceRecord } from '@/types'
+import { localDateStr } from '@/utils/format'
 import {
   fetchStaff,
   fetchStaffById,
@@ -67,7 +68,7 @@ interface StaffState {
   loadDashboardStats: () => Promise<void>
 }
 
-const todayStr = () => new Date().toISOString().split('T')[0]
+const todayStr = () => localDateStr()
 
 export const useStaffStore = create<StaffState>((set, get) => ({
   staff: [],

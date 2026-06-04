@@ -4,7 +4,9 @@ export class StaffRepository {
   }
 
   findAll({ search, role, status, limit = 50, offset = 0 } = {}) {
-    const q = this.db('staff').orderBy('created_at', 'desc');
+    const q = this.db('staff')
+      .whereNull('deleted_at')
+      .orderBy('created_at', 'desc');
 
     if (search) {
       q.where((b) =>
@@ -22,7 +24,7 @@ export class StaffRepository {
   }
 
   async count({ search, role, status } = {}) {
-    const q = this.db('staff').count('id as total');
+    const q = this.db('staff').whereNull('deleted_at').count('id as total');
 
     if (search) {
       q.where((b) =>
@@ -40,11 +42,11 @@ export class StaffRepository {
   }
 
   findById(id) {
-    return this.db('staff').where({ id }).first();
+    return this.db('staff').where({ id }).whereNull('deleted_at').first();
   }
 
   findByEmail(email) {
-    return this.db('staff').where({ email }).first();
+    return this.db('staff').where({ email }).whereNull('deleted_at').first();
   }
 
   async create(data) {
@@ -60,7 +62,7 @@ export class StaffRepository {
   async softDelete(id) {
     const [member] = await this.db('staff')
       .where({ id })
-      .update({ status: 'inactive' })
+      .update({ deleted_at: new Date().toISOString(), status: 'inactive' })
       .returning('*');
     return member;
   }
@@ -88,7 +90,12 @@ export class StaffRepository {
   }
 
   async createAttendance(data) {
-    const [log] = await this.db('attendance_logs').insert(data).returning('*');
+    // Use an upsert so a duplicate (staff_id, log_date) updates instead of failing
+    const [log] = await this.db('attendance_logs')
+      .insert(data)
+      .onConflict(['staff_id', 'log_date'])
+      .merge()
+      .returning('*');
     return log;
   }
 
@@ -153,9 +160,9 @@ export class StaffRepository {
     const today = localTime.toISOString().split('T')[0];
     
     const [totalRow, activeRow, onLeaveRow, presentTodayRow] = await Promise.all([
-      this.db('staff').count('id as total').first(),
-      this.db('staff').where({ status: 'active' }).count('id as total').first(),
-      this.db('staff').where({ status: 'on-leave' }).count('id as total').first(),
+      this.db('staff').whereNull('deleted_at').count('id as total').first(),
+      this.db('staff').whereNull('deleted_at').where({ status: 'active' }).count('id as total').first(),
+      this.db('staff').whereNull('deleted_at').where({ status: 'on-leave' }).count('id as total').first(),
       this.db('attendance_logs')
         .where('log_date', today)
         .where('status', 'present')

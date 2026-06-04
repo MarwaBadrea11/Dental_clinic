@@ -26,7 +26,7 @@ export interface BackendStaffMember {
 export interface BackendAttendanceLog {
   id: string
   staff_id: string
-  log_date: string
+  log_date: string | Date
   check_in: string | null
   check_out: string | null
   status: AttendanceRecord['status']
@@ -107,10 +107,24 @@ export function mapStaffMember(b: BackendStaffMember): StaffMember {
 }
 
 export function mapAttendanceLog(b: BackendAttendanceLog): AttendanceRecord {
+  // log_date can come back as a JS Date object from Knex (PostgreSQL DATE column)
+  // or as an ISO string — normalize it to plain YYYY-MM-DD either way
+  const rawDate = b.log_date as unknown
+  let dateStr: string
+  if (rawDate instanceof Date) {
+    // Use local date parts to avoid UTC-offset shifting the day
+    const y = rawDate.getFullYear()
+    const m = String(rawDate.getMonth() + 1).padStart(2, '0')
+    const d = String(rawDate.getDate()).padStart(2, '0')
+    dateStr = `${y}-${m}-${d}`
+  } else {
+    // Already a string — take only the date portion (handles "2026-06-04T00:00:00.000Z")
+    dateStr = String(rawDate).slice(0, 10)
+  }
   return {
     id: b.id,
     employeeId: b.staff_id,
-    date: b.log_date,
+    date: dateStr,
     checkIn: b.check_in ?? undefined,
     checkOut: b.check_out ?? undefined,
     status: b.status,
@@ -185,7 +199,9 @@ export async function fetchAttendance(params?: {
   if (params?.to_date)   qs.set('to_date',   params.to_date)
 
   const query = qs.toString() ? `?${qs}` : ''
-  const rows = await apiClient.get<BackendAttendanceLog[]>(`/staff/attendance${query}`)
+  // Backend wraps the list in { attendance: [...] }
+  const res = await apiClient.get<{ attendance: BackendAttendanceLog[] } | BackendAttendanceLog[]>(`/staff/attendance${query}`)
+  const rows = Array.isArray(res) ? res : (res as { attendance: BackendAttendanceLog[] }).attendance ?? []
   return Array.isArray(rows) ? rows.map(mapAttendanceLog) : []
 }
 
@@ -216,7 +232,9 @@ export async function fetchSalaryRecords(params?: {
   if (params?.year)     qs.set('year',     String(params.year))
 
   const query = qs.toString() ? `?${qs}` : ''
-  const rows = await apiClient.get<BackendSalaryRecord[]>(`/staff/salary${query}`)
+  // Backend wraps the list in { records: [...] }
+  const res = await apiClient.get<{ records: BackendSalaryRecord[] } | BackendSalaryRecord[]>(`/staff/salary${query}`)
+  const rows = Array.isArray(res) ? res : (res as { records: BackendSalaryRecord[] }).records ?? []
   return Array.isArray(rows) ? rows : []
 }
 

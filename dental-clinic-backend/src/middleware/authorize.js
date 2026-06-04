@@ -23,8 +23,7 @@ export const ROLE_PERMISSIONS = {
     'odontogram:read',
     'odontogram:create',
     'odontogram:update',
-    'staff:read',
-    'staff:update',
+    'staff:*',
   ],
   ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*', 'reports:financial', 'staff:read'],
   STOREKEEPER: ['inventory:*', 'reports:inventory'],
@@ -44,15 +43,14 @@ export function authorize(permission) {
     const user = request.user;
 
     if (!user) {
-      void reply.status(401).send(errorResponse('Unauthorized'));
-      return;
+      return reply.status(401).send(errorResponse('Unauthorized'));
     }
 
     const rolePermissions = ROLE_PERMISSIONS[user.role] ?? [];
     const allPermissions = [...rolePermissions, ...(user.permissions ?? [])];
 
     if (!hasPermission(allPermissions, permission)) {
-      void reply.status(403).send(errorResponse('Forbidden'));
+      return reply.status(403).send(errorResponse('Forbidden'));
     }
   };
 }
@@ -62,16 +60,14 @@ export function authorizeOwner(permission, getResourceOwnerId) {
     const user = request.user;
 
     if (!user) {
-      void reply.status(401).send(errorResponse('Unauthorized'));
-      return;
+      return reply.status(401).send(errorResponse('Unauthorized'));
     }
 
     const rolePermissions = ROLE_PERMISSIONS[user.role] ?? [];
     const allPermissions = [...rolePermissions, ...(user.permissions ?? [])];
 
     if (!hasPermission(allPermissions, permission)) {
-      void reply.status(403).send(errorResponse('Forbidden'));
-      return;
+      return reply.status(403).send(errorResponse('Forbidden'));
     }
 
     if (user.role === 'ADMIN' || user.role === 'DENTIST' || user.role === 'RECEPTIONIST') {
@@ -80,7 +76,7 @@ export function authorizeOwner(permission, getResourceOwnerId) {
 
     const ownerId = await getResourceOwnerId(request);
     if (ownerId !== user.sub) {
-      void reply.status(403).send(errorResponse('Forbidden'));
+      return reply.status(403).send(errorResponse('Forbidden'));
     }
   };
 }

@@ -32,7 +32,7 @@ const FALLBACK_MONTHLY_DATA = [
 
 export default function FinancePage() {
   const { t } = useTranslation()
-  const { invoices, payments, financeSummary, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, loadPayments, isLoading, isLoadingPayments, error } = useFinanceStore()
+  const { invoices, payments, financeSummary, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading, error } = useFinanceStore()
 
   // Load real invoices on mount (also loads payments internally)
   useEffect(() => { loadInvoices() }, [loadInvoices])
@@ -57,7 +57,8 @@ export default function FinancePage() {
   // Reload payments whenever the user switches to the payments tab
   useEffect(() => {
     if (viewMode === 'payments') {
-      loadPayments()
+      // loadInvoices already fetches payments internally after loading invoices
+      loadInvoices()
     }
   }, [viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
   const [listMode, setListMode] = useState<'table' | 'grid'>('table')
@@ -247,7 +248,7 @@ export default function FinancePage() {
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 lg:col-span-8">
                 <SectionCard noPadding action={
-                  <Button variant="ghost" size="xs" leftIcon={<RefreshCw size={12} />} loading={isLoadingPayments} onClick={() => loadPayments()}>
+                  <Button variant="ghost" size="xs" leftIcon={<RefreshCw size={12} />} loading={isLoading} onClick={() => loadInvoices()}>
                     {t('common.refresh')}
                   </Button>
                 }>

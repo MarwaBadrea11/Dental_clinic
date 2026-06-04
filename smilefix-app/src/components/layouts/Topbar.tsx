@@ -8,6 +8,7 @@ import { Dropdown } from '@/components/ui/Dropdown'
 import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
+import { useNotificationStore } from '@/store/notificationStore'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/utils/cn'
 
@@ -19,6 +20,7 @@ interface TopbarProps {
 export function Topbar({ title, sidebarWidth }: TopbarProps) {
   const { toggleSidebar, theme, toggleTheme, language } = useUIStore()
   const { user, isAuthenticated, logout } = useAuthStore()
+  const unreadCount = useNotificationStore((s) => s.unreadCount)
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
@@ -92,7 +94,11 @@ export function Topbar({ title, sidebarWidth }: TopbarProps) {
           aria-label={t('topbar.notifications')}
         >
           <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--color-error)]" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-error)] text-white text-[10px] font-bold flex items-center justify-center leading-none">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </Link>
 
         <div className="w-px h-6 bg-[var(--color-outline-variant)]/30 mx-1" />

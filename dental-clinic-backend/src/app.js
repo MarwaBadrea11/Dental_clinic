@@ -26,6 +26,7 @@ import auditHookPlugin from './plugins/auditHook.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { staffRoutes } from './modules/staff/staff.routes.js';
 import { notesRoutes } from './modules/notes/notes.routes.js';
+import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 import { AppError, ValidationError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
 
@@ -106,6 +107,7 @@ export async function buildApp(opts = {}) {
   await fastify.register(inventoryRoutes, { prefix: '/api/v1/inventory' });
   await fastify.register(staffRoutes, { prefix: '/api/v1/staff' });
   await fastify.register(notesRoutes, { prefix: '/api/v1/patients' });
+  await fastify.register(notificationsRoutes, { prefix: '/api/v1/notifications' });
 
   return fastify;
 }

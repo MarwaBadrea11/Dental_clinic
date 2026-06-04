@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useUIStore } from '@/store/uiStore'
 import { NAV_ITEMS, BOTTOM_NAV_ITEMS } from '@/constants/navigation'
+import { useNotificationSync } from '@/hooks/useNotificationSync'
 
 const SIDEBAR_FULL = 256
 const SIDEBAR_COLLAPSED = 72
@@ -40,6 +41,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { t } = useTranslation()
   const location = useLocation()
   const isRTL = language === 'ar'
+
+  // Load notifications on mount and poll badge count every 60 s
+  useNotificationSync()
 
   const title = t(getPageKey(location.pathname))
   const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED : SIDEBAR_FULL

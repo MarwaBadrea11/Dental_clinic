@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sun, Moon, Globe, Shield, User, Bell,
@@ -15,6 +15,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { ImageUploadArea } from '@/components/ui/ImageUploadArea'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
+import { useNotificationPreferencesStore } from '@/store/notificationPreferencesStore'
 import { cn } from '@/utils/cn'
 
 type SettingsTab = 'profile' | 'appearance' | 'clinic' | 'notifications' | 'permissions' | 'security'
@@ -76,7 +77,23 @@ export default function SettingsPage() {
   const { user } = useAuthStore()
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved]         = useState(false)
+
+  // ── Notification preferences store ────────────────────────────────────────
+  const {
+    preferences: notifs,
+    isLoading:   notifsLoading,
+    isSaving:    notifsSaving,
+    error:       notifsError,
+    load:        loadPrefs,
+    toggle:      togglePref,
+    save:        savePrefs,
+  } = useNotificationPreferencesStore()
+
+  // Load preferences the first time the notifications tab is opened
+  useEffect(() => {
+    if (activeTab === 'notifications') loadPrefs()
+  }, [activeTab, loadPrefs])
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -100,19 +117,12 @@ export default function SettingsPage() {
     timezone: 'UTC-8',
   })
 
-  // Notification toggles
-  const [notifs, setNotifs] = useState({
-    appointmentReminders: true,
-    newPatients: true,
-    paymentAlerts: true,
-    lowInventory: true,
-    systemUpdates: false,
-    weeklyReports: true,
-    smsNotifications: false,
-    emailDigest: true,
-  })
+  // Notification toggles — now driven by notificationPreferencesStore (see above)
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (activeTab === 'notifications') {
+      await savePrefs()
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -133,8 +143,17 @@ export default function SettingsPage() {
         subtitle={t('settings.subtitle')}
         breadcrumb={[{ label: t('nav.dashboard'), href: '/' }, { label: t('nav.settings') }]}
         actions={
-          <Button size="sm" onClick={handleSave} className={saved ? 'bg-[var(--color-secondary)]' : ''}>
-            {saved ? `✓ ${t('common.saved')}` : t('common.save')}
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={notifsSaving}
+            className={saved ? 'bg-[var(--color-secondary)]' : ''}
+          >
+            {notifsSaving
+              ? 'Saving…'
+              : saved
+              ? `✓ ${t('common.saved')}`
+              : t('common.save')}
           </Button>
         }
       />
@@ -295,16 +314,24 @@ export default function SettingsPage() {
               {/* NOTIFICATIONS */}
               {activeTab === 'notifications' && (
                 <SectionCard title="Notification Preferences" icon={<Bell size={15} />}>
-                  <div className="divide-y divide-[var(--color-outline-variant)]/15">
+                  {notifsError && (
+                    <div className="mb-4 px-4 py-2.5 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-error)] text-sm">
+                      {notifsError}
+                    </div>
+                  )}
+                  <div className={cn('divide-y divide-[var(--color-outline-variant)]/15', notifsLoading && 'opacity-50 pointer-events-none')}>
                     {(Object.entries(notifs) as [keyof typeof notifs, boolean][]).map(([key, val]) => (
                       <Toggle
                         key={key}
                         checked={val}
-                        onChange={(v) => setNotifs((n) => ({ ...n, [key]: v }))}
+                        onChange={(v) => togglePref(key, v)}
                         label={key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())}
                       />
                     ))}
                   </div>
+                  {notifsLoading && (
+                    <p className="mt-3 text-xs text-[var(--color-on-surface-variant)]">Loading preferences…</p>
+                  )}
                 </SectionCard>
               )}
 

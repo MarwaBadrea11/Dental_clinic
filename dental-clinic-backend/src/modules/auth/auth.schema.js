@@ -11,7 +11,14 @@ export const RegisterSchema = z.object({
   username: z.string().min(2, 'Username must be at least 2 characters').max(50),
   email: z.string().email('Invalid email address'),
   password: passwordSchema,
-  role: z.enum(['ADMIN', 'DENTIST', 'RECEPTIONIST', 'ACCOUNTANT', 'STOREKEEPER', 'HR']),
+  // PATIENT is the role used by the mobile self-registration flow.
+  // Staff roles are assigned by admins via the clinic admin panel.
+  role: z.enum(['ADMIN', 'DENTIST', 'RECEPTIONIST', 'ACCOUNTANT', 'STOREKEEPER', 'HR', 'PATIENT']),
+  // Optional patient fields — only used when role = 'PATIENT'
+  phone:         z.string().optional(),
+  national_id:   z.string().optional(),
+  date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD').optional(),
+  gender:        z.enum(['male', 'female', 'other']).optional(),
 });
 
 export const LoginSchema = z.object({

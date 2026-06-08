@@ -18,6 +18,7 @@ import { isValidPhoneNumber } from 'libphonenumber-js';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore } from '../store/appStore';
+import { register, login, fetchMyPatient, adaptPatient, ApiRequestError } from '../services';
 import type { AppColors } from '../theme/colors';
 
 // ─────────────────────────────────────────────
@@ -73,6 +74,7 @@ export default function RegisterScreen({ navigation }: any) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [generalError, setGeneralError] = useState('');
 
   const progressAnim = useRef(new Animated.Value(0.5)).current;
   const s = makeStyles(colors, isRTL, isDark);
@@ -81,16 +83,33 @@ export default function RegisterScreen({ navigation }: any) {
     const e: Record<string, string> = {};
     if (!fullName.trim()) e.fullName = t('required');
     if (!validatePhone(phone)) e.phone = t('invalidPhone');
+    // Email validation — must contain @ and a dot after it
+    if (!email.trim()) {
+      e.email = t('emailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      e.email = t('invalidEmail');
+    }
     if (!natId || natId.length < 9) e.natId = t('invalidId');
     if (!gender) e.gender = t('required');
-
+    // DOB: must be YYYY-MM-DD
+    if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+      e.dob = isRTL ? 'الصيغة الصحيحة: YYYY-MM-DD مثال: 2004-05-23' : 'Format must be YYYY-MM-DD e.g. 2004-05-23';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep2 = (): boolean => {
     const e: Record<string, string> = {};
-    if (!password || password.length < 8) e.password = t('pwdTooShort');
+    if (!password || password.length < 8) {
+      e.password = t('pwdTooShort');
+    } else if (!/[A-Z]/.test(password)) {
+      e.password = t('pwdNeedsUppercase');
+    } else if (!/[0-9]/.test(password)) {
+      e.password = t('pwdNeedsNumber');
+    } else if (!/[^A-Za-z0-9]/.test(password)) {
+      e.password = t('pwdNeedsSpecial');
+    }
     if (password !== confirm) e.confirm = t('pwdMismatch');
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -107,26 +126,76 @@ export default function RegisterScreen({ navigation }: any) {
     Animated.timing(progressAnim, { toValue: 0.5, duration: 300, useNativeDriver: false }).start();
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!validateStep2()) return;
     setLoading(true);
-    setTimeout(() => {
-      setAuthenticated(
-        {
-          id: Date.now().toString(),
-          fullName,
-          phone: phone.replace(/\s/g, ''),
-          nationalId: natId,
-          dateOfBirth: dob,
-          gender: gender as 'male' | 'female',
-          email,
-          alignersTotal: 24,
-          alignersCurrent: 0,
-        },
-        'token-' + Date.now()
-      );
+    setGeneralError('');
+    try {
+      // Step 1: create the user account with role=PATIENT
+      // The backend will automatically create the linked patient record.
+      await register({
+        username:      fullName.trim(),
+        email:         email.trim(),
+        password,
+        role:          'PATIENT',
+        phone:         phone.replace(/\s/g, ''),
+        national_id:   natId,
+        date_of_birth: dob || undefined,
+        gender:        gender || undefined,
+      });
+
+      // Step 2: immediately log in to get the tokens
+      const result = await login({ email: email.trim(), password });
+
+      // Step 3: resolve the patient record — pass the token explicitly
+      // because setAuthenticated() hasn't been called yet, so the store is empty
+      const backendPatient = await fetchMyPatient(result.accessToken);
+
+      // Step 4: store the session
+      const patient = backendPatient
+        ? adaptPatient(backendPatient, result.user.email)
+        : {
+            id:          result.user.id,
+            fullName:    fullName.trim(),
+            phone:       phone.replace(/\s/g, ''),
+            nationalId:  natId,
+            dateOfBirth: dob,
+            gender:      gender as 'male' | 'female',
+            email:       result.user.email,
+          };
+
+      await setAuthenticated(patient, result.accessToken, result.refreshToken);
+      // Navigator auto-switches to Main when isAuthenticated becomes true
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        if (err.status === 422) {
+          const fields = err.body.details?.fields ?? [];
+          const fieldErrors: Record<string, string> = {};
+          for (const f of fields) {
+            if (f.field === 'email')    fieldErrors.email    = f.message;
+            if (f.field === 'password') fieldErrors.password = f.message;
+            if (f.field === 'username') fieldErrors.fullName = f.message;
+          }
+          if (Object.keys(fieldErrors).length > 0) {
+            setErrors((prev) => ({ ...prev, ...fieldErrors }));
+          } else {
+            setGeneralError(t('registerFailed'));
+          }
+        } else if (err.status === 409) {
+          setErrors((prev) => ({ ...prev, email: t('emailAlreadyExists') }));
+          // Go back to step 1 so the user can see the email error
+          goToStep1();
+        } else if (err.status === 0) {
+          setGeneralError(t('networkError'));
+        } else {
+          setGeneralError(err.body.message || t('registerFailed'));
+        }
+      } else {
+        setGeneralError(t('networkError'));
+      }
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   const step1Fields: Omit<FieldConfig, 'rightIcon'>[] = [
@@ -149,8 +218,9 @@ export default function RegisterScreen({ navigation }: any) {
       label: t('email'),
       placeholder: t('emailPh'),
       value: email,
-      onChange: setEmail,
+      onChange: (v) => { setEmail(v); setErrors(e => ({ ...e, email: '' })); },
       keyboardType: 'email-address',
+      error: errors.email,
     },
     {
       label: t('nationalId'),
@@ -163,9 +233,20 @@ export default function RegisterScreen({ navigation }: any) {
     },
     {
       label: t('dateOfBirth'),
-      placeholder: 'YYYY-MM-DD',
+      placeholder: isRTL ? 'مثال: 2004-05-23' : 'e.g. 2004-05-23',
       value: dob,
-      onChange: setDob,
+      onChange: (v) => {
+        // Auto-format: insert dashes at positions 4 and 7
+        const digits = v.replace(/\D/g, '').slice(0, 8);
+        let formatted = digits;
+        if (digits.length > 4) formatted = digits.slice(0, 4) + '-' + digits.slice(4);
+        if (digits.length > 6) formatted = formatted.slice(0, 7) + '-' + digits.slice(6);
+        setDob(formatted);
+        setErrors(e => ({ ...e, dob: '' }));
+      },
+      keyboardType: 'numeric',
+      maxLength: 10,
+      error: errors.dob,
     },
   ];
 
@@ -256,6 +337,14 @@ export default function RegisterScreen({ navigation }: any) {
                 </>
               ) : (
                 <>
+                  {/* General error banner — visible on step 2 */}
+                  {generalError ? (
+                    <View style={s.errorBanner}>
+                      <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
+                      <Text style={s.errorBannerText}>{generalError}</Text>
+                    </View>
+                  ) : null}
+
                   <FlatField
                     label={t('password')}
                     placeholder={t('passwordPh')}
@@ -293,7 +382,9 @@ export default function RegisterScreen({ navigation }: any) {
                   <View style={s.pwdHint}>
                     <Ionicons name="shield-checkmark-outline" size={14} color={colors.success} />
                     <Text style={s.pwdHintText}>
-                      {isRTL ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' : 'Password must be at least 8 characters'}
+                      {isRTL
+                        ? 'كلمة المرور: 8 أحرف على الأقل، حرف كبير، رقم، ورمز خاص'
+                        : 'Min 8 chars, one uppercase, one number, one special character'}
                     </Text>
                   </View>
 
@@ -477,6 +568,13 @@ function makeStyles(c: AppColors, isRTL: boolean, isDark: boolean) {
     primaryBtn: { flexDirection: row, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.blue, borderRadius: 14, paddingVertical: 16, marginTop: 20 },
     btnDisabled: { opacity: 0.6 },
     primaryBtnText: { fontSize: 16, color: c.onPrimaryContainer, fontWeight: '700' },
+
+    errorBanner: {
+      flexDirection: row, alignItems: 'center', gap: 8,
+      backgroundColor: c.errorBg + (isDark ? '40' : '60'),
+      borderRadius: 12, padding: 12, marginBottom: 16,
+    },
+    errorBannerText: { flex: 1, fontSize: 13, color: c.error, textAlign: align },
 
     loginRow: { flexDirection: row, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
     loginText: { fontSize: 13, color: c.textSub },

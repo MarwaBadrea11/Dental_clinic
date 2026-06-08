@@ -1,5 +1,6 @@
 // ─────────────────────────────────────────────
-// Login Screen — Phone + OTP + Biometric
+// Login Screen — Email + Password + Biometric
+// Wired to POST /api/v1/auth/login
 // Clinical Serenity | Arabic RTL | Expo 54
 // ─────────────────────────────────────────────
 import React, { useState, useRef, useEffect } from 'react';
@@ -18,41 +19,37 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAppStore } from '../store/appStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../hooks/useTheme';
+import {
+  login,
+  fetchMyPatient,
+  adaptPatient,
+  ApiRequestError,
+} from '../services';
 import Text from '../components/Text';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
-// ── International phone validator ────────────
-function isValidPhone(v: string): boolean {
-  const cleaned = v.replace(/\s/g, '');
-  if (!cleaned) return false;
-  
-  // Accept international numbers with optional plus sign
-  // Minimum 7 digits, maximum 15 digits (including country code)
-  const internationalPattern = /^\+?[1-9]\d{6,14}$/;
-  
-  // Also accept local numbers (without country code) for backward compatibility
-  const localPattern = /^\d{7,15}$/;
-  
-  return internationalPattern.test(cleaned) || localPattern.test(cleaned);
-}
-
 export default function LoginScreen({ navigation }: Props) {
   const setAuthenticated = useAppStore((s) => s.setAuthenticated);
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL }    = useTranslation();
   const { colors, isDark } = useTheme();
 
-  const [phone, setPhone]         = useState('');
-  const [loading, setLoading]     = useState(false);
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd]   = useState(false);
+  const [loading, setLoading]   = useState(false);
   const [bioLoading, setBioLoading] = useState(false);
-  const [phoneErr, setPhoneErr]   = useState('');
+  const [emailErr, setEmailErr]   = useState('');
+  const [passwordErr, setPasswordErr] = useState('');
+  const [generalErr, setGeneralErr]   = useState('');
 
   // ── Animations ────────────────────────────
   const cardY  = useRef(new Animated.Value(60)).current;
@@ -75,28 +72,77 @@ export default function LoginScreen({ navigation }: Props) {
     ]).start();
   }
 
-  // ── Send OTP ──────────────────────────────
-  function handleSendOtp() {
-    const cleaned = phone.replace(/\s/g, '');
-    if (!cleaned) {
-      setPhoneErr(t('phoneRequired'));
-      shake();
-      return;
+  // ── Validate fields ───────────────────────
+  function validate(): boolean {
+    let valid = true;
+    if (!email.trim()) {
+      setEmailErr(t('emailRequired'));
+      valid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      setEmailErr(t('invalidEmail'));
+      valid = false;
     }
-    if (!isValidPhone(cleaned)) {
-      setPhoneErr(t('enterValidPhone'));
-      shake();
-      return;
+    if (!password) {
+      setPasswordErr(t('passwordRequired'));
+      valid = false;
     }
-    setPhoneErr('');
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('OTPVerify', { phone: cleaned });
-    }, 900);
+    if (!valid) shake();
+    return valid;
   }
 
-  // ── Biometric ─────────────────────────────
+  // ── Login handler ─────────────────────────
+  async function handleLogin() {
+    setEmailErr('');
+    setPasswordErr('');
+    setGeneralErr('');
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      // Step 1: authenticate and get tokens
+      const result = await login({ email: email.trim(), password });
+
+      // Step 2: resolve the linked patient record — pass the token explicitly
+      // because setAuthenticated() hasn't been called yet, so the store is empty
+      const backendPatient = await fetchMyPatient(result.accessToken);
+
+      // Step 3: build the Patient object for the store
+      const patient = backendPatient
+        ? adaptPatient(backendPatient, result.user.email)
+        : {
+            // Fallback: no patient record yet — use user account data as placeholder
+            id:          result.user.id,   // NOTE: this is the user UUID, not a patient UUID
+            fullName:    result.user.username,
+            phone:       '',
+            nationalId:  '',
+            dateOfBirth: '',
+            gender:      'male' as const,
+            email:       result.user.email,
+          };
+
+      await setAuthenticated(patient, result.accessToken, result.refreshToken);
+      // Navigator reacts to isAuthenticated automatically — no navigation.replace needed
+    } catch (err) {
+      shake();
+      if (err instanceof ApiRequestError) {
+        if (err.status === 401 || err.status === 400) {
+          setGeneralErr(t('invalidCredentials'));
+        } else if (err.status === 429) {
+          setGeneralErr(t('tooManyRequests'));
+        } else if (err.status === 0) {
+          setGeneralErr(t('networkError'));
+        } else {
+          setGeneralErr(err.body.message || t('loginFailed'));
+        }
+      } else {
+        setGeneralErr(t('networkError'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Biometric — restores session from SecureStore ──
   async function handleBiometric() {
     setBioLoading(true);
     try {
@@ -105,12 +151,7 @@ export default function LoginScreen({ navigation }: Props) {
       const enrolled = await LA.isEnrolledAsync();
 
       if (!hasHW || !enrolled) {
-        Alert.alert(
-          t('notAvailable'),
-          t('biometricNotEnabled'),
-          [{ text: t('ok') }]
-        );
-        setBioLoading(false);
+        Alert.alert(t('notAvailable'), t('biometricNotEnabled'), [{ text: t('ok') }]);
         return;
       }
 
@@ -122,7 +163,14 @@ export default function LoginScreen({ navigation }: Props) {
       });
 
       if (result.success) {
-        navigation.navigate('OTPVerify', { phone: '0500000000' });
+        // Re-hydrate from SecureStore — the session was already saved on last login
+        const hydrateFromStorage = useAppStore.getState().hydrateFromStorage;
+        await hydrateFromStorage();
+        // If no stored session, tell the user to log in with credentials first
+        const isAuth = useAppStore.getState().isAuthenticated;
+        if (!isAuth) {
+          Alert.alert(t('notAvailable'), t('noStoredSession'), [{ text: t('ok') }]);
+        }
       } else {
         Alert.alert(t('verificationFailed'), t('fingerprintNotRecognized'));
       }
@@ -137,16 +185,13 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
 
-      {/* Background */}
       <LinearGradient
         colors={[colors.surface, colors.bg, colors.warm + (isDark ? '40' : '70')]}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
-
-      {/* Decorative blobs */}
       <View style={s.blob1} />
       <View style={s.blob2} />
 
@@ -160,14 +205,13 @@ export default function LoginScreen({ navigation }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-
-            {/* ── Back button ── */}
+            {/* Back */}
             <TouchableOpacity style={s.backRow} onPress={() => navigation.goBack()}>
               <Text style={s.backArrow}>{isRTL ? '←' : '→'}</Text>
               <Text style={s.backText}>{t('back')}</Text>
             </TouchableOpacity>
 
-            {/* ── Mini logo ── */}
+            {/* Logo */}
             <View style={s.logoRow}>
               <View style={s.logoCircle}>
                 <View style={s.logoShine} />
@@ -176,68 +220,82 @@ export default function LoginScreen({ navigation }: Props) {
               <Text style={s.logoBrand}>SmileFix</Text>
             </View>
 
-            {/* ── Header ── */}
+            {/* Header */}
             <View style={s.header}>
               <Text style={s.title}>{t('welcomeBack')}</Text>
-              <Text style={s.subtitle}>
-                {t('enterPhoneToLogin')}
-              </Text>
+              <Text style={s.subtitle}>{t('signInWithEmail')}</Text>
             </View>
 
-            {/* ── Glass card ── */}
+            {/* Card */}
             <Animated.View
-              style={[
-                s.card,
-                {
-                  opacity: cardO,
-                  transform: [
-                    { translateY: cardY },
-                    { translateX: shakeX },
-                  ],
-                },
-              ]}
+              style={[s.card, { opacity: cardO, transform: [{ translateY: cardY }, { translateX: shakeX }] }]}
             >
-              {/* Phone label */}
-              <Text style={s.fieldLabel}>{t('phoneNumber')}</Text>
-
-              {/* Phone input row */}
-              <View style={[s.inputRow, phoneErr ? s.inputRowErr : null]}>
-                <View style={s.flagBox}>
-                  <Text style={s.flagEmoji}>🇸🇦</Text>
-                  <Text style={s.flagCode}>+966</Text>
-                </View>
-                <View style={s.inputDivider} />
-                <TextInput
-                  style={s.phoneInput}
-                  placeholder={t('phoneExample')}
-                  placeholderTextColor={colors.textSub + '70'}
-                  value={phone}
-                  onChangeText={(t) => { setPhone(t); setPhoneErr(''); }}
-                  keyboardType="phone-pad"
-                  maxLength={15}
-                  textAlign={isRTL ? 'right' : 'left'}
-                  returnKeyType="done"
-                  onSubmitEditing={handleSendOtp}
-                />
-              </View>
-
-              {/* Error */}
-              {phoneErr ? (
-                <View style={s.errRow}>
-                  <Text style={s.errText}>{phoneErr}</Text>
-                  <Text style={s.errIcon}>{'⚠️'}</Text>
+              {/* General error banner */}
+              {generalErr ? (
+                <View style={s.errorBanner}>
+                  <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
+                  <Text style={s.errorBannerText}>{generalErr}</Text>
                 </View>
               ) : null}
 
-              {/* Hint */}
-              <Text style={s.phoneHint}>
-                {t('otpWillBeSent')}
-              </Text>
+              {/* Email */}
+              <Text style={s.fieldLabel}>{t('email')}</Text>
+              <View style={[s.inputRow, emailErr ? s.inputRowErr : null]}>
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={emailErr ? colors.error : colors.textSub}
+                  style={s.inputIcon}
+                />
+                <TextInput
+                  style={s.textInput}
+                  placeholder={t('emailPh')}
+                  placeholderTextColor={colors.textSub + '70'}
+                  value={email}
+                  onChangeText={(v) => { setEmail(v); setEmailErr(''); setGeneralErr(''); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textAlign={isRTL ? 'right' : 'left'}
+                  returnKeyType="next"
+                />
+              </View>
+              {emailErr ? <Text style={s.fieldErr}>{emailErr}</Text> : null}
 
-              {/* ── Send OTP button ── */}
+              {/* Password */}
+              <Text style={[s.fieldLabel, { marginTop: 16 }]}>{t('password')}</Text>
+              <View style={[s.inputRow, passwordErr ? s.inputRowErr : null]}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color={passwordErr ? colors.error : colors.textSub}
+                  style={s.inputIcon}
+                />
+                <TextInput
+                  style={s.textInput}
+                  placeholder={t('passwordPh')}
+                  placeholderTextColor={colors.textSub + '70'}
+                  value={password}
+                  onChangeText={(v) => { setPassword(v); setPasswordErr(''); setGeneralErr(''); }}
+                  secureTextEntry={!showPwd}
+                  textAlign={isRTL ? 'right' : 'left'}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+                <TouchableOpacity onPress={() => setShowPwd(!showPwd)} style={s.eyeBtn}>
+                  <Ionicons
+                    name={showPwd ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                    color={colors.textSub}
+                  />
+                </TouchableOpacity>
+              </View>
+              {passwordErr ? <Text style={s.fieldErr}>{passwordErr}</Text> : null}
+
+              {/* Login button */}
               <TouchableOpacity
-                style={[s.btnPrimary, loading ? s.btnDisabled : null]}
-                onPress={handleSendOtp}
+                style={[s.btnPrimary, loading && s.btnDisabled]}
+                onPress={handleLogin}
                 disabled={loading}
                 activeOpacity={0.82}
               >
@@ -247,11 +305,10 @@ export default function LoginScreen({ navigation }: Props) {
                   end={{ x: 1, y: 0 }}
                   style={s.btnGrad}
                 >
-                  {loading ? (
-                    <ActivityIndicator color={colors.onPrimary} size="small" />
-                  ) : (
-                    <Text style={s.btnText}>{t('sendVerificationCode')}</Text>
-                  )}
+                  {loading
+                    ? <ActivityIndicator color={colors.onPrimary} size="small" />
+                    : <Text style={s.btnText}>{t('login')}</Text>
+                  }
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -262,9 +319,9 @@ export default function LoginScreen({ navigation }: Props) {
                 <View style={s.divLine} />
               </View>
 
-              {/* ── Biometric button ── */}
+              {/* Biometric */}
               <TouchableOpacity
-                style={[s.bioBtn, bioLoading ? s.btnDisabled : null]}
+                style={[s.bioBtn, bioLoading && s.btnDisabled]}
                 onPress={handleBiometric}
                 disabled={bioLoading}
                 activeOpacity={0.82}
@@ -283,16 +340,14 @@ export default function LoginScreen({ navigation }: Props) {
                 )}
               </TouchableOpacity>
 
-              {/* ── Unique phone rule ── */}
-              <View style={s.ruleBox}>
-                <Text style={s.ruleIcon}>ℹ️</Text>
-                <Text style={s.ruleText}>
-                  {t('uniquePhoneRule')}
-                </Text>
+              {/* Security note */}
+              <View style={s.secNote}>
+                <Text style={s.secIcon}>🔒</Text>
+                <Text style={s.secText}>{t('dataProtectedSSL')}</Text>
               </View>
             </Animated.View>
 
-            {/* ── Register link ── */}
+            {/* Register link */}
             <View style={s.regRow}>
               <Text style={s.regText}>{t('newPatient')} </Text>
               <TouchableOpacity
@@ -301,14 +356,6 @@ export default function LoginScreen({ navigation }: Props) {
               >
                 <Text style={s.regLink}>{t('createAccountNow')}</Text>
               </TouchableOpacity>
-            </View>
-
-            {/* ── Security note ── */}
-            <View style={s.secNote}>
-              <Text style={s.secIcon}>🔒</Text>
-              <Text style={s.secText}>
-                {t('dataProtectedSSL')}
-              </Text>
             </View>
 
           </ScrollView>
@@ -320,18 +367,15 @@ export default function LoginScreen({ navigation }: Props) {
 
 // ── Styles ────────────────────────────────────
 function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
-  const textAlign = isRTL ? 'right' : 'left';
-  const paddingRight = isRTL ? 20 : 0;
-  const paddingLeft = isRTL ? 0 : 20;
+  const textAlign    = isRTL ? 'right' : 'left';
   const flexDirection = isRTL ? 'row-reverse' : 'row';
-  const alignSelf = isRTL ? 'flex-end' : 'flex-start';
+  const alignSelf    = isRTL ? 'flex-end' : 'flex-start';
 
   return StyleSheet.create({
     root:  { flex: 1, backgroundColor: c.bg },
     flex:  { flex: 1 },
     scroll: { paddingHorizontal: 24, paddingBottom: 48 },
 
-    // Blobs
     blob1: {
       position: 'absolute', width: 300, height: 300, borderRadius: 150,
       backgroundColor: isDark ? c.teal + '08' : c.teal + '14', top: -70, right: -70,
@@ -341,7 +385,6 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
       backgroundColor: isDark ? c.tealLight + '05' : c.tealLight + '10', bottom: 100, left: -60,
     },
 
-    // Back
     backRow: {
       flexDirection: flexDirection, alignItems: 'center', gap: 6,
       paddingTop: 16, paddingBottom: 4, alignSelf: alignSelf,
@@ -349,11 +392,9 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
     backArrow: { fontSize: 18, color: c.primary },
     backText:  { fontSize: 14, color: c.primary, fontWeight: '600' },
 
-    // Logo
     logoRow: { alignItems: 'center', marginVertical: 20 },
     logoCircle: {
-      width: 64, height: 64, borderRadius: 32,
-      backgroundColor: c.teal,
+      width: 64, height: 64, borderRadius: 32, backgroundColor: c.teal,
       alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden', marginBottom: 10,
       shadowColor: c.blue, shadowOffset: { width: 0, height: 6 },
@@ -365,22 +406,12 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
       borderTopLeftRadius: 32, borderTopRightRadius: 32,
     },
     logoLetters: { fontSize: 24, color: c.onPrimaryContainer, fontWeight: '700' },
-    logoBrand:   { fontSize: 20, color: c.blue,   fontWeight: '800' },
+    logoBrand:   { fontSize: 20, color: c.blue, fontWeight: '800' },
 
-    // Header
     header:   { marginBottom: 24, alignItems: alignSelf },
-    title:    { 
-      fontSize: 26, color: c.blue, textAlign: textAlign, 
-      fontWeight: '700', marginBottom: 6, 
-      paddingRight: paddingRight, paddingLeft: paddingLeft 
-    },
-    subtitle: { 
-      fontSize: 14, color: c.textSub, textAlign: textAlign, 
-      lineHeight: 22, 
-      paddingRight: paddingRight, paddingLeft: paddingLeft 
-    },
+    title:    { fontSize: 26, color: c.blue, textAlign: textAlign, fontWeight: '700', marginBottom: 6 },
+    subtitle: { fontSize: 14, color: c.textSub, textAlign: textAlign, lineHeight: 22 },
 
-    // Card
     card: {
       backgroundColor: isDark ? 'rgba(22,27,34,0.85)' : 'rgba(255,255,255,0.82)',
       borderRadius: 24, padding: 22,
@@ -390,53 +421,37 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
       marginBottom: 20,
     },
 
+    errorBanner: {
+      flexDirection: flexDirection, alignItems: 'center', gap: 8,
+      backgroundColor: c.errorBg + (isDark ? '40' : '60'),
+      borderRadius: 12, padding: 12, marginBottom: 16,
+    },
+    errorBannerText: { flex: 1, fontSize: 13, color: c.error, textAlign: textAlign },
+
     fieldLabel: {
       fontSize: 11, color: c.textSub, letterSpacing: 0.6,
       textTransform: 'uppercase', textAlign: textAlign,
-      marginBottom: 8, marginRight: isRTL ? 2 : 0,
-      marginLeft: isRTL ? 0 : 2, fontWeight: '600',
+      marginBottom: 8, fontWeight: '600',
     },
+    fieldErr: { fontSize: 12, color: c.error, textAlign: textAlign, marginTop: 4 },
 
-    // Phone input
     inputRow: {
       flexDirection: flexDirection, alignItems: 'center',
       backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.95)',
       borderRadius: 14, borderWidth: 1.5,
       borderColor: 'transparent', minHeight: 56,
-      overflow: 'hidden',
+      overflow: 'hidden', paddingHorizontal: 12,
     },
     inputRowErr: { borderColor: c.error },
-    flagBox: {
-      flexDirection: flexDirection, alignItems: 'center',
-      paddingHorizontal: 12, gap: 4,
+    inputIcon:   { marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 },
+    textInput: {
+      flex: 1, fontSize: 16, color: c.text,
+      paddingVertical: 14, textAlign: textAlign,
     },
-    flagEmoji: { fontSize: 20 },
-    flagCode:  { fontSize: 14, color: c.blue, fontWeight: '600' },
-    inputDivider: { width: 1, height: 28, backgroundColor: c.outline + (isDark ? '40' : '60') },
-    phoneInput: {
-      flex: 1, fontSize: 17, color: c.text,
-      paddingHorizontal: 14, paddingVertical: 14, letterSpacing: 1,
-      textAlign: textAlign,
-    },
+    eyeBtn: { padding: 4 },
 
-    // Error
-    errRow: {
-      flexDirection: flexDirection, alignItems: 'center',
-      justifyContent: isRTL ? 'flex-end' : 'flex-start', gap: 6,
-      marginTop: 6, marginBottom: 4,
-    },
-    errText: { fontSize: 12, color: c.error, textAlign: textAlign },
-    errIcon: { fontSize: 14 },
-
-    phoneHint: {
-      fontSize: 12, color: c.textSub, textAlign: textAlign,
-      marginTop: 8, marginBottom: 16, lineHeight: 18,
-      paddingRight: paddingRight, paddingLeft: paddingLeft,
-    },
-
-    // Primary button
     btnPrimary: {
-      borderRadius: 16, overflow: 'hidden',
+      borderRadius: 16, overflow: 'hidden', marginTop: 20,
       shadowColor: c.teal, shadowOffset: { width: 0, height: 8 },
       shadowOpacity: isDark ? 0.25 : 0.32, shadowRadius: 18, elevation: 5,
     },
@@ -444,7 +459,6 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
     btnGrad: { height: 56, alignItems: 'center', justifyContent: 'center' },
     btnText: { fontSize: 17, color: c.onPrimary, fontWeight: '700', letterSpacing: 0.3 },
 
-    // Divider
     divRow: {
       flexDirection: flexDirection, alignItems: 'center',
       marginVertical: 18, gap: 10,
@@ -452,53 +466,31 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
     divLine: { flex: 1, height: 1, backgroundColor: c.outline + (isDark ? '40' : '80') },
     divText: { fontSize: 13, color: c.textSub },
 
-    // Biometric
     bioBtn: {
-      backgroundColor: isDark ? c.warm : c.warm,
-      borderRadius: 16, padding: 16,
+      backgroundColor: c.warm, borderRadius: 16, padding: 16,
       borderWidth: 1, borderColor: isDark ? c.outline + '40' : c.tealLight + '60',
-      minHeight: 64, justifyContent: 'center',
+      minHeight: 64, justifyContent: 'center', marginBottom: 16,
     },
-    bioBtnInner: {
-      flexDirection: flexDirection, alignItems: 'center', gap: 12,
-    },
+    bioBtnInner: { flexDirection: flexDirection, alignItems: 'center', gap: 12 },
     bioIcon:  { fontSize: 28 },
     bioCopy:  { flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' },
     bioTitle: { fontSize: 15, color: c.blue, textAlign: textAlign, fontWeight: '600' },
     bioSub:   { fontSize: 12, color: c.textSub, textAlign: textAlign, marginTop: 2 },
     bioArrow: { fontSize: 18, color: c.teal },
 
-    // Unique phone rule
-    ruleBox: {
-      flexDirection: flexDirection, alignItems: 'flex-start',
-      gap: 8, marginTop: 16,
-      backgroundColor: isDark ? c.successBg + '30' : c.successBg + '50',
+    secNote: {
+      flexDirection: flexDirection, alignItems: 'center', gap: 8,
+      backgroundColor: isDark ? c.successBg + '20' : c.successBg + '40',
       borderRadius: 12, padding: 12,
     },
-    ruleIcon: { fontSize: 14 },
-    ruleText: {
-      flex: 1, fontSize: 12, color: isDark ? c.success : c.secText,
-      textAlign: textAlign, lineHeight: 18,
-    },
+    secIcon: { fontSize: 16 },
+    secText: { flex: 1, fontSize: 11, color: isDark ? c.success : c.secText, textAlign: textAlign, lineHeight: 17 },
 
-    // Register
     regRow: {
       flexDirection: flexDirection, justifyContent: 'center',
       alignItems: 'center', marginBottom: 12,
     },
     regText: { fontSize: 14, color: c.textSub },
     regLink: { fontSize: 14, color: c.primary, fontWeight: '700', textDecorationLine: 'underline' },
-
-    // Security note
-    secNote: {
-      flexDirection: flexDirection, alignItems: 'center',
-      gap: 8, backgroundColor: isDark ? c.successBg + '20' : c.successBg + '40',
-      borderRadius: 12, padding: 12,
-    },
-    secIcon: { fontSize: 16 },
-    secText: {
-      flex: 1, fontSize: 11, color: isDark ? c.success : c.secText,
-      textAlign: textAlign, lineHeight: 17,
-    },
   });
 }

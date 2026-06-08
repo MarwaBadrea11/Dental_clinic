@@ -116,7 +116,8 @@ export default function OTPVerifyScreen({ navigation, route }: Props) {
               alignersTotal: 24,
               alignersCurrent: 12,
             },
-            'token-' + Date.now()
+            'demo-access-token',
+            'demo-refresh-token',
           );
           setLoading(false);
           // Navigator reacts to isAuthenticated automatically

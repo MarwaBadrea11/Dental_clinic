@@ -28,6 +28,12 @@ export const ROLE_PERMISSIONS = {
   ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*', 'reports:financial', 'staff:read'],
   STOREKEEPER: ['inventory:*', 'reports:inventory'],
   HR: ['staff:*', 'reports:payroll'],
+  // PATIENT: self-service only — can read/book own appointments and read procedures
+  PATIENT: [
+    'appointments:read',
+    'appointments:create',
+    'invoices:read',
+  ],
 };
 
 export function hasPermission(userPermissions, required) {

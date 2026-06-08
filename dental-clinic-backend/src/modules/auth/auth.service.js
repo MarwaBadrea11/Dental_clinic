@@ -39,6 +39,27 @@ export class AuthService {
       userAgent: meta.userAgent,
     });
 
+    // ── Auto-create patient record for self-registering patients ──────────────
+    // This eliminates the patient_id gap: when a PATIENT registers, we
+    // immediately create a matching patient row so /patients/me resolves on
+    // the very first login without requiring clinic staff to create the record.
+    if (dto.role === 'PATIENT') {
+      // Split username into first/last name (best-effort)
+      const nameParts  = dto.username.trim().split(/\s+/);
+      const first_name = nameParts[0] ?? dto.username;
+      const last_name  = nameParts.slice(1).join(' ') || '-';
+
+      await this.repo.createPatientRecord({
+        first_name,
+        last_name,
+        email:        dto.email,
+        phone:        dto.phone ?? '',           // provided by mobile reg form if passed
+        national_id:  dto.national_id ?? `REG-${user.id.slice(0, 8)}`,
+        date_of_birth: dto.date_of_birth ?? '1990-01-01',
+        gender:       dto.gender ?? 'male',
+      });
+    }
+
     return { id: user.id, username: user.username, email: user.email, role: user.role, createdAt: user.created_at };
   }
 

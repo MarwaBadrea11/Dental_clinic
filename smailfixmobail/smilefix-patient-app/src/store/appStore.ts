@@ -3,6 +3,7 @@
 // SmileFix Patient App
 // ─────────────────────────────────────────────
 import { create } from 'zustand';
+import { saveSession, clearSession, saveAccessToken } from '../services/storage';
 
 // ── Types ─────────────────────────────────────
 export type Locale    = 'ar' | 'en';
@@ -61,6 +62,9 @@ interface AppState {
   isAuthenticated: boolean;
   patient: Patient | null;
   authToken: string | null;
+  refreshToken: string | null;
+  /** True while the app is reading SecureStore on launch */
+  isHydrating: boolean;
 
   // Locale & Theme
   locale: Locale;
@@ -82,8 +86,14 @@ interface AppState {
   setLocale: (locale: Locale) => void;
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
-  setAuthenticated: (patient: Patient, token: string) => void;
-  logout: () => void;
+  /** Call after a successful login — persists tokens + patient to SecureStore */
+  setAuthenticated: (patient: Patient, accessToken: string, refreshToken: string) => Promise<void>;
+  /** Call after a silent token refresh — updates the access token in memory + SecureStore */
+  updateAccessToken: (accessToken: string) => Promise<void>;
+  /** Clears auth state and wipes SecureStore */
+  logout: () => Promise<void>;
+  /** Run once at app launch — reads SecureStore and restores session */
+  hydrateFromStorage: () => Promise<void>;
   setAppointments: (appointments: Appointment[]) => void;
   addAppointment: (appointment: Appointment) => void;
   archiveAppointment: (id: string) => void;
@@ -102,6 +112,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   isAuthenticated: false,
   patient: null,
   authToken: null,
+  refreshToken: null,
+  isHydrating: true,   // starts true — App.tsx waits until hydration is done
   locale: 'ar',
   theme: 'light',
   appointments: [],
@@ -120,16 +132,46 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ── Auth ──────────────────────────────────
   // Do NOT call navigation.replace('Main') — let the navigator
   // react to isAuthenticated changing automatically.
-  setAuthenticated: (patient, token) =>
-    set({ isAuthenticated: true, patient, authToken: token }),
+  setAuthenticated: async (patient, accessToken, refreshToken) => {
+    // Persist to encrypted storage first, then update memory
+    await saveSession({ accessToken, refreshToken, patient });
+    set({ isAuthenticated: true, patient, authToken: accessToken, refreshToken });
+  },
 
-  logout: () =>
+  updateAccessToken: async (accessToken) => {
+    await saveAccessToken(accessToken);
+    set({ authToken: accessToken });
+  },
+
+  logout: async () => {
+    await clearSession();
     set({
       isAuthenticated: false,
       patient: null,
       authToken: null,
+      refreshToken: null,
       appointments: [],
-    }),
+    });
+  },
+
+  hydrateFromStorage: async () => {
+    try {
+      const { loadSession } = await import('../services/storage');
+      const session = await loadSession();
+      if (session) {
+        set({
+          isAuthenticated: true,
+          patient:      session.patient,
+          authToken:    session.accessToken,
+          refreshToken: session.refreshToken,
+        });
+      }
+    } catch {
+      // If anything fails, just stay logged out — not a crash
+    } finally {
+      set({ isHydrating: false });
+    }
+  },
 
   setAppointments: (appointments) => set({ appointments }),
 

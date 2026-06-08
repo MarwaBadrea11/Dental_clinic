@@ -9,7 +9,7 @@ export const CreateAppointmentSchema = z.object({
   chair_number: z.string().min(1).optional().nullable().default('1'),
   treatment_name: z.string().max(255).optional().nullable(),
   scheduled_at: z.string().datetime({ offset: true, message: 'Must be a valid ISO 8601 datetime string' }),
-  duration_minutes: z.number().int().min(5, 'Duration must be at least 5 minutes').max(480, 'Duration cannot exceed 8 hours'),
+  duration_minutes: z.number().int().min(5, 'Duration must be at least 5 minutes').max(480, 'Duration cannot exceed 8 hours').default(30),
   status: z.enum(['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).default('SCHEDULED'),
   notes: z.string().optional().nullable(),
 });

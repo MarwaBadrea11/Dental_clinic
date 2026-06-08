@@ -6,7 +6,7 @@ import 'react-native-gesture-handler';
 // Initialize i18next before anything else
 import './src/i18n';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,10 +28,32 @@ import {
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { useTheme } from './src/theme/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { useAppStore } from './src/store/appStore';
+
+// ── Splash screen shown while fonts load or storage hydrates ─
+function SplashScreen() {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.splash, { backgroundColor: colors.bg }]}>
+      <View style={[styles.splashCircle, { backgroundColor: colors.teal }]}>
+        <Text style={[styles.splashLogo, { color: colors.onPrimaryContainer }]}>
+          SF
+        </Text>
+      </View>
+      <ActivityIndicator
+        color={colors.teal}
+        size="large"
+        style={{ marginTop: 32 }}
+      />
+    </View>
+  );
+}
 
 // ── Inner app (needs ThemeProvider) ──────────
 function InnerApp() {
   const { colors } = useTheme();
+  const hydrateFromStorage = useAppStore((s) => s.hydrateFromStorage);
+  const isHydrating        = useAppStore((s) => s.isHydrating);
 
   const [fontsLoaded, fontError] = useFonts({
     Manrope_400Regular,
@@ -43,21 +65,15 @@ function InnerApp() {
     Inter_600SemiBold,
   });
 
-  if (!fontsLoaded && !fontError) {
-    return (
-      <View style={[styles.splash, { backgroundColor: colors.bg }]}>
-        <View style={[styles.splashCircle, { backgroundColor: colors.teal }]}>
-          <Text style={[styles.splashLogo, { color: colors.onPrimaryContainer }]}>
-            SF
-          </Text>
-        </View>
-        <ActivityIndicator
-          color={colors.teal}
-          size="large"
-          style={{ marginTop: 32 }}
-        />
-      </View>
-    );
+  // ── Hydrate auth session from SecureStore on first mount ──
+  useEffect(() => {
+    hydrateFromStorage();
+  }, []);
+
+  // Wait for both fonts AND storage hydration before rendering the navigator.
+  // This prevents a flash of the auth screens for already-logged-in users.
+  if ((!fontsLoaded && !fontError) || isHydrating) {
+    return <SplashScreen />;
   }
 
   return (

@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────
 // Appointments Screen — Fully themed
+// Fetches real appointments from backend on focus
 // ─────────────────────────────────────────────
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -9,55 +10,157 @@ import {
   FlatList,
   Alert,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore, Appointment } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
+import {
+  listAppointments,
+  updateAppointment,
+  ApiRequestError,
+  type BackendAppointment,
+} from '../services';
 
 type TabKey = 'upcoming' | 'past';
 
-export default function AppointmentsScreen({ navigation }: any) {
-  const { colors }    = useTheme();
-  const { t, isRTL }  = useTranslation();
-  const { appointments, archiveAppointment } = useAppStore();
-  const [tab, setTab] = useState<TabKey>('upcoming');
+// ── Map backend appointment → store Appointment shape ─
+function adaptAppointment(a: BackendAppointment): Appointment {
+  // Extract date (YYYY-MM-DD) and time (HH:mm) from scheduled_at ISO string
+  const dt       = new Date(a.scheduled_at);
+  const date     = dt.toISOString().split('T')[0];
+  const timeSlot = dt.toTimeString().slice(0, 5);   // 'HH:mm'
 
-  const now = new Date().toISOString().split('T')[0];
+  // Map backend status to store status
+  const statusMap: Record<string, Appointment['status']> = {
+    SCHEDULED:   'waiting',
+    CONFIRMED:   'confirmed',
+    IN_PROGRESS: 'confirmed',
+    COMPLETED:   'completed',
+    CANCELLED:   'cancelled',
+    NO_SHOW:     'cancelled',
+  };
+
+  return {
+    id:         a.id,
+    patientId:  a.patient_id,
+    doctorId:   a.dentist_id,
+    serviceId:  '',
+    date,
+    timeSlot,
+    status:     statusMap[a.status] ?? 'waiting',
+    notes:      a.notes ?? undefined,
+    createdAt:  a.created_at,
+    isArchived: a.status === 'CANCELLED' || a.status === 'NO_SHOW',
+    // Reconstruct doctor display object from joined fields
+    doctor: a.dentist_username ? {
+      id:           a.dentist_id,
+      name:         a.dentist_username,
+      nameAr:       a.dentist_username,
+      specialty:    'Dentist',
+      specialtyAr:  'طبيب أسنان',
+      rating:       0,
+      availableDays: [],
+    } : undefined,
+    // treatment_name exposed as service name placeholder
+    service: a.treatment_name ? {
+      id:       '',
+      name:     a.treatment_name,
+      nameAr:   a.treatment_name,
+      duration: a.duration_minutes,
+      price:    0,
+    } : undefined,
+  };
+}
+
+export default function AppointmentsScreen({ navigation }: any) {
+  const { colors }   = useTheme();
+  const { t, isRTL } = useTranslation();
+  const { appointments, setAppointments, archiveAppointment, patient } = useAppStore();
+  const [tab, setTab]           = useState<TabKey>('upcoming');
+  const [loading, setLoading]   = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState('');
+
+  // ── Fetch appointments from backend ───────
+  const fetchAppointments = useCallback(async (silent = false) => {
+    if (!patient?.id) return;
+    silent ? setRefreshing(true) : setLoading(true);
+    setFetchError('');
+    try {
+      const result = await listAppointments({ patient_id: patient.id });
+      const adapted = result.appointments.map(adaptAppointment);
+      setAppointments(adapted);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 0) {
+        setFetchError(t('networkError'));
+      } else {
+        setFetchError(t('loadingFailed'));
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [patient?.id]);
+
+  // ── Refresh every time this screen gains focus ─
+  useFocusEffect(
+    useCallback(() => {
+      fetchAppointments();
+    }, [fetchAppointments]),
+  );
+
+  const now      = new Date().toISOString().split('T')[0];
   const upcoming = appointments.filter(
-    (a) => !a.isArchived && a.date >= now && a.status !== 'cancelled'
+    (a) => !a.isArchived && a.date >= now && a.status !== 'cancelled',
   );
   const past = appointments.filter(
-    (a) => !a.isArchived && (a.date < now || a.status === 'completed')
+    (a) => !a.isArchived && (a.date < now || a.status === 'completed'),
   );
 
   const s = makeStyles(colors, isRTL);
 
   const statusMeta = (status: Appointment['status']) => {
     const map = {
-      confirmed: { bg: colors.successBg,  text: colors.success },
-      waiting:   { bg: colors.warningBg,  text: colors.warning },
+      confirmed: { bg: colors.successBg,   text: colors.success },
+      waiting:   { bg: colors.warningBg,   text: colors.warning },
       completed: { bg: colors.teal + '20', text: colors.teal },
-      cancelled: { bg: colors.errorBg,    text: colors.error },
+      cancelled: { bg: colors.errorBg,     text: colors.error },
     };
     return map[status] ?? map.waiting;
   };
 
+  // ── Cancel an appointment via API ─────────
   const handleCancel = (id: string) => {
     Alert.alert(
       t('cancel'),
       isRTL ? 'هل أنت متأكد من إلغاء هذا الموعد؟' : 'Are you sure you want to cancel?',
       [
         { text: t('no'), style: 'cancel' },
-        { text: t('yes'), style: 'destructive', onPress: () => archiveAppointment(id) },
-      ]
+        {
+          text: t('yes'), style: 'destructive',
+          onPress: async () => {
+            try {
+              await updateAppointment(id, { status: 'CANCELLED' });
+              archiveAppointment(id);     // optimistic local update
+              fetchAppointments(true);    // then sync with server
+            } catch {
+              Alert.alert(t('error'), t('cancelFailed'));
+            }
+          },
+        },
+      ],
     );
   };
 
+  // ── Card renderer ─────────────────────────
   const renderItem = ({ item }: { item: Appointment }) => {
     const meta = statusMeta(item.status);
     return (
@@ -67,7 +170,7 @@ export default function AppointmentsScreen({ navigation }: any) {
           <View style={s.doctorRow}>
             <View style={s.avatar}>
               <Text style={s.avatarLetter}>
-                {(isRTL ? item.doctor?.nameAr : item.doctor?.name)?.charAt(0) ?? 'D'}
+                {(isRTL ? item.doctor?.nameAr : item.doctor?.name)?.charAt(0)?.toUpperCase() ?? 'D'}
               </Text>
             </View>
             <View style={s.doctorInfo}>
@@ -125,22 +228,39 @@ export default function AppointmentsScreen({ navigation }: any) {
     <View style={s.empty}>
       <Ionicons name="calendar-outline" size={56} color={colors.textSub} />
       <Text style={s.emptyText}>{t('noUpcoming')}</Text>
-      <TouchableOpacity
-        style={s.bookBtn}
-        onPress={() => navigation.navigate('Booking')}
-      >
+      <TouchableOpacity style={s.bookBtn} onPress={() => navigation.navigate('Booking')}>
         <Text style={s.bookBtnText}>{t('bookNow')}</Text>
       </TouchableOpacity>
     </View>
   );
 
+  // ── Full-screen loading on first load ─────
+  if (loading && appointments.length === 0) {
+    return (
+      <View style={[s.root, s.center]}>
+        <ActivityIndicator color={colors.teal} size="large" />
+        <Text style={{ color: colors.textSub, marginTop: 12 }}>{t('loading')}</Text>
+      </View>
+    );
+  }
+
+  // ── Full-screen error ─────────────────────
+  if (fetchError && appointments.length === 0) {
+    return (
+      <View style={[s.root, s.center]}>
+        <Ionicons name="cloud-offline-outline" size={56} color={colors.textSub} />
+        <Text style={{ color: colors.textSub, marginTop: 12, textAlign: 'center' }}>{fetchError}</Text>
+        <TouchableOpacity style={[s.bookBtn, { marginTop: 20 }]} onPress={() => fetchAppointments()}>
+          <Text style={s.bookBtnText}>{t('retry')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={s.root}>
       <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
-      <LinearGradient
-        colors={[colors.gradStart, colors.gradEnd]}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <LinearGradient colors={[colors.gradStart, colors.gradEnd]} style={StyleSheet.absoluteFillObject} />
 
       <SafeAreaView style={s.safe}>
         {/* Title */}
@@ -154,9 +274,7 @@ export default function AppointmentsScreen({ navigation }: any) {
               style={[s.tabBtn, tab === k && s.tabBtnActive]}
               onPress={() => setTab(k)}
             >
-              <Text style={[s.tabText, tab === k && s.tabTextActive]}>
-                {t(k)}
-              </Text>
+              <Text style={[s.tabText, tab === k && s.tabTextActive]}>{t(k)}</Text>
             </TouchableOpacity>
           ))}
           <TouchableOpacity
@@ -175,6 +293,14 @@ export default function AppointmentsScreen({ navigation }: any) {
           ListEmptyComponent={renderEmpty}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchAppointments(true)}
+              colors={[colors.teal]}
+              tintColor={colors.teal}
+            />
+          }
         />
       </SafeAreaView>
     </View>
@@ -188,6 +314,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: c.bg },
     safe: { flex: 1 },
+    center: { alignItems: 'center', justifyContent: 'center' },
     title: {
       fontSize: 26, fontWeight: '700',
       color: c.blue, textAlign: align,

@@ -94,4 +94,45 @@ export class AuthRepository {
       user_agent: userAgent ?? null,
     });
   }
+
+  // ─── Patient auto-creation (PATIENT self-registration) ───────────────────────
+
+  /**
+   * Creates a minimal patient record linked by email.
+   * Called automatically when a user registers with role=PATIENT.
+   * Skips creation if a patient with that email already exists.
+   */
+  async createPatientRecord({ first_name, last_name, email, phone, national_id, date_of_birth, gender }) {
+    // Check for existing patient by email to avoid duplicates
+    const existing = await this.db('patients')
+      .whereRaw('LOWER(email) = LOWER(?)', [email])
+      .whereNull('deleted_at')
+      .first();
+
+    if (existing) return existing;
+
+    // Ensure national_id is unique — if a collision exists, append a suffix
+    let safeNationalId = national_id;
+    const idConflict = await this.db('patients')
+      .where({ national_id })
+      .whereNull('deleted_at')
+      .first();
+    if (idConflict) {
+      safeNationalId = `${national_id}-${Date.now()}`;
+    }
+
+    const [patient] = await this.db('patients')
+      .insert({
+        first_name,
+        last_name,
+        email,
+        phone:        phone || '',
+        national_id:  safeNationalId,
+        date_of_birth,
+        gender,
+      })
+      .returning('*');
+
+    return patient;
+  }
 }

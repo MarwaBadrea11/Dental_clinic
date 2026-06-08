@@ -45,7 +45,35 @@ export async function buildApp(opts = {}) {
   // CORS must be registered first so preflight OPTIONS requests are handled
   // before any other hooks (e.g. security headers) can intercept the response.
   await fastify.register(cors, {
-    origin: env.CORS_ORIGIN.split(',').map(o => o.trim()),
+    // Parse the comma-separated CORS_ORIGIN env var into an array, then add
+    // special handling for React Native / Expo requests:
+    //   • React Native on a physical device sends no Origin header (null)
+    //   • The Android emulator reaches the host at 10.0.2.2
+    //   • The iOS simulator uses localhost
+    // In development we allow all these. In production, lock this to your
+    // actual domain(s) only.
+    origin: (origin, cb) => {
+      // Allow requests with no Origin header (React Native fetch, Postman, etc.)
+      if (!origin) return cb(null, true);
+
+      const allowed = env.CORS_ORIGIN.split(',').map(o => o.trim());
+
+      // Exact match
+      if (allowed.includes(origin)) return cb(null, true);
+
+      // In development, allow any localhost / LAN IP origin automatically
+      if (env.NODE_ENV === 'development') {
+        const isLocal =
+          origin.startsWith('http://localhost') ||
+          origin.startsWith('http://127.0.0.1') ||
+          origin.startsWith('http://10.0.2.2') ||      // Android emulator
+          /^http:\/\/192\.168\.\d+\.\d+/.test(origin) || // LAN
+          /^http:\/\/10\.\d+\.\d+\.\d+/.test(origin);   // LAN (10.x.x.x)
+        if (isLocal) return cb(null, true);
+      }
+
+      cb(new Error(`CORS: origin '${origin}' not allowed`), false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });

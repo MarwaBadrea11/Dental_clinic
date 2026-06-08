@@ -30,8 +30,18 @@ function parseValidation(schema, data, reply) {
  * متحكم عملية حجز موعد جديد
  */
 export async function bookAppointmentHandler(request, reply) {
+  // TEMP DEBUG
+  request.log.warn({ body: request.body }, 'booking body received');
+
   const data = parseValidation(CreateAppointmentSchema, request.body, reply);
-  if (!data) return;
+  if (!data) {
+    // TEMP DEBUG — log what Zod rejected
+    const parsed = CreateAppointmentSchema.safeParse(request.body);
+    if (!parsed.success) {
+      request.log.warn({ fields: parsed.error.issues.map(i => ({ field: i.path.join('.'), message: i.message })) }, 'booking validation failed');
+    }
+    return;
+  }
 
   try {
     const appointment = await getService(request).book(data);

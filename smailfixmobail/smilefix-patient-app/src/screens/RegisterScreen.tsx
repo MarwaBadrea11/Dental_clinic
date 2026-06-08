@@ -449,7 +449,7 @@ function FlatField({
 
   const borderColor = focusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [error ? colors.error : isDark ? colors.outline : 'transparent', error ? colors.error : colors.blue],
+    outputRange: [error ? colors.error : colors.outline + '50', error ? colors.error : colors.blue],
   });
 
   const bgColor = focusAnim.interpolate({
@@ -476,7 +476,7 @@ function FlatField({
         alignItems: 'center',
         backgroundColor: bgColor,
         borderRadius: 14,
-        borderWidth: 1.5,
+        borderWidth: focused ? 1.5 : 1,
         borderColor,
         paddingHorizontal: 14,
         minHeight: 52,
@@ -524,7 +524,7 @@ function makeStyles(c: AppColors, isRTL: boolean, isDark: boolean) {
     logoRow: { alignItems: 'center', marginVertical: 16 },
     logoCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: c.teal, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 10 },
     logoShine: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%', backgroundColor: 'rgba(255,255,255,0.22)', borderTopLeftRadius: 32, borderTopRightRadius: 32 },
-    logoLetters: { fontSize: 26, color: c.onPrimaryContainer, fontWeight: '700' },
+    logoLetters: { fontSize: 26, color: '#ffffff', fontWeight: '700' },
     brandName: { fontSize: 22, color: c.blue, fontWeight: '800', textAlign: align, paddingRight: isRTL ? 20 : 0, paddingLeft: isRTL ? 0 : 20 },
 
     stepTitle: { fontSize: 22, fontWeight: '700', color: c.blue, textAlign: align, marginBottom: 4, paddingRight: isRTL ? 20 : 0, paddingLeft: isRTL ? 0 : 20 },
@@ -567,7 +567,7 @@ function makeStyles(c: AppColors, isRTL: boolean, isDark: boolean) {
 
     primaryBtn: { flexDirection: row, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.blue, borderRadius: 14, paddingVertical: 16, marginTop: 20 },
     btnDisabled: { opacity: 0.6 },
-    primaryBtnText: { fontSize: 16, color: c.onPrimaryContainer, fontWeight: '700' },
+    primaryBtnText: { fontSize: 16, color: '#ffffff', fontWeight: '700' },
 
     errorBanner: {
       flexDirection: row, alignItems: 'center', gap: 8,

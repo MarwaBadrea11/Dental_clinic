@@ -352,7 +352,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginRight: isRTL ? 'auto' as any : 0,
     },
     newApptText: {
-      fontSize: 12, color: c.onPrimaryContainer,
+      fontSize: 12, color: '#ffffff',
       fontWeight: '700', fontFamily: 'Inter_600SemiBold',
     },
 
@@ -457,9 +457,10 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     bookBtn: {
       backgroundColor: c.teal, borderRadius: 14,
       paddingVertical: 13, paddingHorizontal: 28,
+      alignSelf: 'center',
     },
     bookBtnText: {
-      fontSize: 15, color: c.onPrimaryContainer,
+      fontSize: 15, color: '#ffffff',
       fontWeight: '700', fontFamily: 'Manrope_700Bold',
     },
   });

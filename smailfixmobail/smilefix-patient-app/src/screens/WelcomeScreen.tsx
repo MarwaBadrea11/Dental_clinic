@@ -220,7 +220,7 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
     logoLetters: {
       fontSize: 34,
       fontFamily: 'Manrope_700Bold',
-      color: c.onPrimaryContainer,
+      color: '#ffffff',
       letterSpacing: 1.5,
     },
     brandName: {
@@ -313,7 +313,7 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
       borderRadius: 16,
       borderWidth: 1.5,
       borderColor: isDark ? c.outline : c.tealLight,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.65)',
+      backgroundColor: c.surfaceCard,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 16,

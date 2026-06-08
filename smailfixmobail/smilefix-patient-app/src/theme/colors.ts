@@ -7,9 +7,9 @@ export const lightColors = {
   // Backgrounds
   bg:              '#edf1f4',
   surface:         '#f6fafd',
-  surfaceCard:     'rgba(255,255,255,0.85)',
-  surfaceCardBorder: 'rgba(255,255,255,0.9)',
-  surfaceInput:    'rgba(255,255,255,0.95)',
+  surfaceCard:     '#ffffff',
+  surfaceCardBorder: 'rgba(189,201,201,0.35)',
+  surfaceInput:    '#ffffff',
   warm:            '#f7eee5',
 
   // Brand

@@ -36,7 +36,7 @@ function SplashScreen() {
   return (
     <View style={[styles.splash, { backgroundColor: colors.bg }]}>
       <View style={[styles.splashCircle, { backgroundColor: colors.teal }]}>
-        <Text style={[styles.splashLogo, { color: colors.onPrimaryContainer }]}>
+        <Text style={[styles.splashLogo, { color: '#ffffff' }]}>
           SF
         </Text>
       </View>

@@ -405,7 +405,7 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
       backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.25)',
       borderTopLeftRadius: 32, borderTopRightRadius: 32,
     },
-    logoLetters: { fontSize: 24, color: c.onPrimaryContainer, fontWeight: '700' },
+    logoLetters: { fontSize: 24, color: '#ffffff', fontWeight: '700' },
     logoBrand:   { fontSize: 20, color: c.blue, fontWeight: '800' },
 
     header:   { marginBottom: 24, alignItems: alignSelf },
@@ -413,9 +413,9 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
     subtitle: { fontSize: 14, color: c.textSub, textAlign: textAlign, lineHeight: 22 },
 
     card: {
-      backgroundColor: isDark ? 'rgba(22,27,34,0.85)' : 'rgba(255,255,255,0.82)',
+      backgroundColor: c.surfaceCard,
       borderRadius: 24, padding: 22,
-      borderWidth: 0.5, borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.9)',
+      borderWidth: 0.5, borderColor: c.surfaceCardBorder,
       shadowColor: c.blue, shadowOffset: { width: 0, height: 10 },
       shadowOpacity: isDark ? 0.04 : 0.07, shadowRadius: 28, elevation: 4,
       marginBottom: 20,
@@ -437,12 +437,12 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
 
     inputRow: {
       flexDirection: flexDirection, alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.95)',
-      borderRadius: 14, borderWidth: 1.5,
-      borderColor: 'transparent', minHeight: 56,
+      backgroundColor: c.surfaceInput,
+      borderRadius: 14, borderWidth: 1,
+      borderColor: c.outline + '50', minHeight: 56,
       overflow: 'hidden', paddingHorizontal: 12,
     },
-    inputRowErr: { borderColor: c.error },
+    inputRowErr: { borderColor: c.error, borderWidth: 1.5 },
     inputIcon:   { marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 },
     textInput: {
       flex: 1, fontSize: 16, color: c.text,

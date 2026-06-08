@@ -30,9 +30,8 @@ export default function ProfileScreen() {
   const s = makeStyles(colors, isRTL);
   
   // Helper functions for RTL/LTR styling
-  const getDirectionStyle = () => ({
-    direction: isRTL ? 'rtl' : 'ltr' as any,
-  });
+  // Note: CSS `direction` is not a valid React Native style property.
+  // RTL layout is handled per-element using textAlign/flexDirection helpers below.
 
   const getTextAlignment = (center = false) => ({
     textAlign: center ? 'center' : (isRTL ? 'right' : 'left'),
@@ -87,7 +86,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={[s.root, getDirectionStyle()]}>
+    <View style={s.root}>
       <LinearGradient
         colors={[colors.gradStart, colors.gradEnd]}
         style={StyleSheet.absoluteFillObject}
@@ -274,6 +273,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       backgroundColor: c.surfaceCard,
       borderRadius: 24, padding: 24,
       alignItems: 'center',
+      // Explicitly column so RTL parent direction doesn't cause horizontal stacking
+      flexDirection: 'column',
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
       marginBottom: 16,
       shadowColor: '#000',
@@ -290,7 +291,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       shadowOpacity: 0.3, shadowRadius: 14, elevation: 5,
     },
     avatarLetter: {
-      fontSize: 38, color: c.onPrimaryContainer,
+      fontSize: 38, color: '#ffffff',
       fontWeight: '700', fontFamily: 'Manrope_700Bold',
     },
     patientName: {

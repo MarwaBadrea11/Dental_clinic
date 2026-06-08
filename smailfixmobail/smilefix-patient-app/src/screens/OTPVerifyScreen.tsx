@@ -412,9 +412,9 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
 
     // Card
     card: {
-      backgroundColor: isDark ? 'rgba(22,27,34,0.85)' : 'rgba(255,255,255,0.82)',
+      backgroundColor: c.surfaceCard,
       borderRadius: 24, padding: 24,
-      borderWidth: 0.5, borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.9)',
+      borderWidth: 0.5, borderColor: c.surfaceCardBorder,
       shadowColor: c.blue, shadowOffset: { width: 0, height: 10 },
       shadowOpacity: isDark ? 0.04 : 0.07, shadowRadius: 28, elevation: 4,
       marginBottom: 16,
@@ -429,7 +429,7 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
     },
     digitBox: {
       width: BOX, height: BOX, borderRadius: 16,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
+      backgroundColor: c.surfaceInput,
       borderWidth: 2, borderColor: c.outline,
       alignItems: 'center', justifyContent: 'center',
     },

@@ -51,7 +51,7 @@ export default function PrimaryButton({
     >
       {loading ? (
         <ActivityIndicator
-          color={isPrimary ? Colors.onPrimaryContainer : Colors.primary}
+          color={isPrimary ? '#ffffff' : Colors.primary}
           size="small"
         />
       ) : (
@@ -86,9 +86,9 @@ const styles = StyleSheet.create({
     ...Shadows.button,
   },
   secondary: {
-    backgroundColor: 'rgba(255,255,255,0.65)',
-    borderWidth: 1.5,
-    borderColor: Colors.secondaryTeal,
+    backgroundColor: Colors.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: Colors.outlineVariant,
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -102,7 +102,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   labelPrimary: {
-    color: Colors.onPrimaryContainer,
+    // primaryContainer background is teal — use white for proper contrast
+    color: '#ffffff',
   },
   labelSecondary: {
     color: Colors.darkBlue,

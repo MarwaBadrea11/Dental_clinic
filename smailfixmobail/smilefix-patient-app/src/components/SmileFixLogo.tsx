@@ -68,7 +68,8 @@ const styles = StyleSheet.create({
   },
   letters: {
     fontFamily: 'Manrope_700Bold',
-    color: Colors.onPrimaryContainer,
+    // primaryContainer background is teal — white gives proper contrast
+    color: '#ffffff',
     letterSpacing: 1,
   },
   brandName: {

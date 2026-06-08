@@ -405,7 +405,7 @@ export default function BookingScreen({ navigation }: any) {
               disabled={loadingConfirm}
             >
               {loadingConfirm
-                ? <ActivityIndicator color={colors.onPrimaryContainer} />
+                ? <ActivityIndicator color={'#ffffff'} />
                 : <Text style={s.confirmText}>{t('confirmBook')}</Text>
               }
             </TouchableOpacity>
@@ -584,7 +584,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginTop: 8, paddingHorizontal: 24, paddingVertical: 10,
       backgroundColor: c.teal, borderRadius: 12,
     },
-    retryText: { fontSize: 14, color: c.onPrimaryContainer, fontWeight: '700' },
+    retryText: { fontSize: 14, color: '#ffffff', fontWeight: '700' },
 
     // Card
     card: {
@@ -620,7 +620,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       paddingVertical: 16, alignItems: 'center', marginTop: 20,
     },
     confirmBtnDisabled: { opacity: 0.6 },
-    confirmText: { fontSize: 16, color: c.onPrimaryContainer, fontWeight: '700', fontFamily: 'Manrope_700Bold' },
+    confirmText: { fontSize: 16, color: '#ffffff', fontWeight: '700', fontFamily: 'Manrope_700Bold' },
 
     backBtn: {
       flexDirection: row, alignItems: 'center', gap: 6,

@@ -197,7 +197,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginRight: isRTL ? 12 : 0,
     },
     avatarLetter: {
-      fontSize: 20, color: c.onPrimaryContainer,
+      fontSize: 20, color: '#ffffff',
       fontWeight: '700', fontFamily: 'Manrope_700Bold',
     },
 
@@ -210,6 +210,9 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
+      // Explicitly enforce column layout so RTL direction on parent
+      // does not cause children to stack horizontally
+      flexDirection: 'column',
     },
     cardLabel: {
       fontSize: 11, fontWeight: '600',
@@ -274,14 +277,18 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     noApptText: {
       fontSize: 15, color: c.textSub,
       textAlign: 'center', marginBottom: 14,
+      // Ensure text sits on its own line above the button
+      width: '100%',
     },
     bookNowBtn: {
       backgroundColor: c.teal,
       borderRadius: 12, paddingVertical: 13,
       alignItems: 'center',
+      // Prevent the button from stretching to fill parent width unexpectedly
+      alignSelf: 'stretch',
     },
     bookNowText: {
-      fontSize: 15, color: c.onPrimaryContainer,
+      fontSize: 15, color: '#ffffff',
       fontWeight: '700', fontFamily: 'Manrope_700Bold',
     },
 

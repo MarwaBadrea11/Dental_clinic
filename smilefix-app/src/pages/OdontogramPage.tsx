@@ -14,6 +14,7 @@ import { usePatientStore } from '@/store/patientStore'
 import { useTreatmentStore } from '@/store/treatmentStore'
 import { createOdontogram } from '@/services/odontogramService'
 import { ROUTES } from '@/constants/routes'
+import { getToothConditionLabel, buildToothLegendItems } from '@/i18n/patientOdontogramOptions'
 import type { ToothCondition } from '@/types'
 
 export default function OdontogramPage() {
@@ -54,17 +55,16 @@ export default function OdontogramPage() {
   if (patientLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-[var(--color-on-surface-variant)]">
-        Loading patient…
+        {t('patients.loadingPatient')}
       </div>
     )
   }
 
-  // Fetch finished but patient genuinely doesn't exist
   if (patientError || !patient) {
     return (
       <EmptyState
-        title="Patient not found"
-        action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>Back to Patients</Button>}
+        title={t('patients.patientNotFound')}
+        action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>{t('patients.backToPatients')}</Button>}
       />
     )
   }
@@ -130,27 +130,38 @@ export default function OdontogramPage() {
       }, {})
     : {}
 
+  const legendItems = buildToothLegendItems(t)
+  const legendBorder: Record<string, string> = {
+    healthy: 'var(--color-outline-variant)',
+    caries: 'var(--color-error)',
+    filled: 'var(--color-secondary)',
+    crown: 'var(--color-tertiary)',
+    'root-canal': '#ea580c',
+    missing: 'var(--color-outline)',
+    implant: '#9d4edd',
+  }
+
   return (
     <div>
       <PageHeader
-        title="Odontogram"
+        title={t('odontogram.title')}
         subtitle={`${fullName} · ${patient.patientCode}`}
         breadcrumb={[
-          { label: 'Dashboard', href: '/' },
-          { label: 'Patients', href: ROUTES.PATIENTS },
+          { label: t('nav.dashboard'), href: '/' },
+          { label: t('nav.patients'), href: ROUTES.PATIENTS },
           { label: fullName, href: `/patients/${patient.id}` },
-          { label: 'Odontogram' },
+          { label: t('odontogram.title') },
         ]}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" leftIcon={<ArrowLeft size={14} />}
               onClick={() => navigate(`/patients/${patient.id}`)}>
-              Back to Patient
+              {t('odontogram.backToPatient')}
             </Button>
             <Button size="sm" leftIcon={<Save size={14} />} onClick={handleSave}
               disabled={saving}
               className={saved ? 'bg-[var(--color-secondary)]' : saveError ? 'bg-[var(--color-error)]' : ''}>
-              {saving ? 'Saving…' : saved ? `${t('odontogram.saved')} ✓` : saveError ? 'Retry Save' : t('odontogram.saveChanges')}
+              {saving ? t('odontogram.saving') : saved ? `${t('odontogram.saved')} ✓` : saveError ? t('odontogram.retrySave') : t('odontogram.saveChanges')}
             </Button>
           </div>
         }
@@ -175,8 +186,8 @@ export default function OdontogramPage() {
           <div className="flex-1">
             <h2 className="font-bold text-base text-[var(--color-on-surface)]">{fullName}</h2>
             <p className="text-sm text-[var(--color-on-surface-variant)]">
-              {patient.patientCode} · {patient.assignedDoctor ?? 'Unassigned'}
-              {patient.bloodType && ` · Blood type ${patient.bloodType}`}
+              {patient.patientCode} · {patient.assignedDoctor ?? t('patients.unassigned')}
+              {patient.bloodType && ` · ${t('patients.bloodTypeLabel', { type: patient.bloodType })}`}
             </p>
             {patient.allergies && patient.allergies.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -194,7 +205,9 @@ export default function OdontogramPage() {
               {Object.entries(conditionCounts).map(([cond, count]) => (
                 <div key={cond} className="text-center bg-[var(--color-surface-container-low)] rounded-[var(--radius-DEFAULT)] px-3 py-2">
                   <p className="text-lg font-bold text-[var(--color-on-surface)]">{count}</p>
-                  <p className="text-[10px] text-[var(--color-on-surface-variant)] capitalize">{cond.replace('-', ' ')}</p>
+                  <p className="text-[10px] text-[var(--color-on-surface-variant)]">
+                    {getToothConditionLabel(t, cond as ToothCondition)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -211,7 +224,7 @@ export default function OdontogramPage() {
             icon={<FileText size={15} />}
             action={
               <Button variant="ghost" size="xs" leftIcon={<RotateCcw size={12} />}>
-                Reset View
+                {t('odontogram.resetView')}
               </Button>
             }
             delay={0}
@@ -233,7 +246,7 @@ export default function OdontogramPage() {
 
           {/* Clinical notes */}
           {odontogram?.notes && (
-            <SectionCard title="Clinical Notes" icon={<FileText size={15} />} delay={0.1} className="mt-5">
+            <SectionCard title={t('odontogram.clinicalNotes')} icon={<FileText size={15} />} delay={0.1} className="mt-5">
               <p className="text-sm text-[var(--color-on-surface-variant)] leading-relaxed">{odontogram.notes}</p>
             </SectionCard>
           )}
@@ -254,20 +267,15 @@ export default function OdontogramPage() {
           {/* Tooth legend quick ref */}
           <SectionCard title={t('odontogram.conditionLegend')} delay={0.15}>
             <div className="space-y-2">
-              {[
-                { label: t('odontogram.healthy'),   color: '#ffffff',  border: 'var(--color-outline-variant)' },
-                { label: t('odontogram.caries'),    color: '#ffdad6',  border: 'var(--color-error)' },
-                { label: t('odontogram.filled'),    color: '#b6eadd',  border: 'var(--color-secondary)' },
-                { label: t('odontogram.crown'),     color: '#c7e7ff',  border: 'var(--color-tertiary)' },
-                { label: t('odontogram.rootCanal'), color: '#fde8d8',  border: '#ea580c' },
-                { label: t('odontogram.missing'),   color: '#e5e9ec',  border: 'var(--color-outline)' },
-                { label: t('odontogram.implant'),   color: '#e8d5ff',  border: '#9d4edd' },
-                { label: t('odontogram.bridge'),    color: '#fef3c7',  border: '#d97706' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2.5">
+              {legendItems.map((item) => (
+                <div key={item.condition} className="flex items-center gap-2.5">
                   <div
                     className="w-6 h-6 rounded border flex-shrink-0"
-                    style={{ background: item.color, borderColor: item.border, borderWidth: '1.5px' }}
+                    style={{
+                      background: item.color,
+                      borderColor: legendBorder[item.condition] ?? 'var(--color-outline-variant)',
+                      borderWidth: '1.5px',
+                    }}
                   />
                   <span className="text-xs text-[var(--color-on-surface)]">{item.label}</span>
                 </div>

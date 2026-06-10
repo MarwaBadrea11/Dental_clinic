@@ -16,13 +16,23 @@ import {
 import { useAppointmentStore } from '@/store/appointmentStore'
 import { ApiError } from '@/services/apiClient'
 import { cn } from '@/utils/cn'
+import {
+  getAppointmentTreatmentLabel,
+  getWeekdayShortLabels,
+} from '@/i18n/appointmentOptions'
 import type { Appointment, AppointmentStatus } from '@/types'
 
 type ViewMode = 'week' | 'day' | 'list'
 
+const VIEW_MODE_KEYS: Record<ViewMode, string> = {
+  week: 'calendar.week',
+  day:  'calendar.day',
+  list: 'calendar.list',
+}
+
 export default function CalendarPage() {
-  const { t } = useTranslation()
-  const DAYS = [t('common.today')[0], 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const { t, i18n } = useTranslation()
+  const weekdayLabels = getWeekdayShortLabels(i18n.language)
   const {
     appointments, stats, selectedDate, viewMode,
     setSelectedDate, setViewMode,
@@ -102,7 +112,7 @@ export default function CalendarPage() {
       if (err instanceof ApiError) {
         setBookingError(err.message)
       } else {
-        setBookingError('Failed to book appointment. Please try again.')
+        setBookingError(t('calendar.bookFailed'))
       }
     } finally {
       setBookingLoading(false)
@@ -121,7 +131,7 @@ export default function CalendarPage() {
   // List columns
   const columns: DataTableColumn<Appointment>[] = [
     {
-      key: 'patient', header: 'Patient', sortable: true,
+      key: 'patient', header: t('common.patient'), sortable: true,
       render: (a) => (
         <div className="flex items-center gap-2.5">
           <Avatar name={a.patientName} size="sm" />
@@ -132,21 +142,21 @@ export default function CalendarPage() {
         </div>
       ),
     },
-    { key: 'date',        header: 'Date',      sortable: true, render: (a) => <span className="text-sm">{new Date(a.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
-    { key: 'time',        header: 'Time',      render: (a) => <span className="text-sm font-mono">{a.startTime} – {a.endTime}</span> },
-    { key: 'treatment',   header: 'Treatment', sortable: true, render: (a) => <span className="text-sm">{a.treatment}</span> },
-    { key: 'doctorName',  header: 'Doctor',    sortable: true, render: (a) => <span className="text-sm">{a.doctorName}</span> },
-    { key: 'status',      header: 'Status',    sortable: true, render: (a) => <AppointmentStatusBadge status={a.status} /> },
+    { key: 'date',        header: t('common.date'),      sortable: true, render: (a) => <span className="text-sm">{new Date(a.date + 'T00:00:00').toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
+    { key: 'time',        header: t('calendar.time'),    render: (a) => <span className="text-sm font-mono">{a.startTime} – {a.endTime}</span> },
+    { key: 'treatment',   header: t('patients.treatment'), sortable: true, render: (a) => <span className="text-sm">{getAppointmentTreatmentLabel(t, a.treatment)}</span> },
+    { key: 'doctorName',  header: t('common.doctor'),    sortable: true, render: (a) => <span className="text-sm">{a.doctorName}</span> },
+    { key: 'status',      header: t('common.status'),    sortable: true, render: (a) => <AppointmentStatusBadge status={a.status} /> },
   ]
 
   const actions: DataTableAction<Appointment>[] = [
-    { label: 'View Details', onClick: (a) => setViewAppt(a) },
-    { label: 'Edit',         onClick: (a) => { setEditAppt(a); setShowForm(true) } },
-    { label: 'Cancel',       onClick: (a) => handleStatusChange(a.id, 'cancelled'), hidden: (a) => a.status === 'cancelled' },
-    { label: 'Delete',       onClick: (a) => removeAppointment(a.id), danger: true },
+    { label: t('calendar.viewDetails'), onClick: (a) => setViewAppt(a) },
+    { label: t('common.edit'),          onClick: (a) => { setEditAppt(a); setShowForm(true) } },
+    { label: t('calendar.cancelAppointment'), onClick: (a) => handleStatusChange(a.id, 'cancelled'), hidden: (a) => a.status === 'cancelled' },
+    { label: t('common.delete'),        onClick: (a) => removeAppointment(a.id), danger: true },
   ]
 
-  const monthLabel = weekStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel = weekStart.toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })
 
   return (
     <div>
@@ -163,13 +173,13 @@ export default function CalendarPage() {
                   key={m}
                   onClick={() => setViewMode(m)}
                   className={cn(
-                    'px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
+                    'px-3 py-1.5 rounded text-xs font-semibold transition-colors',
                     viewMode === m
                       ? 'bg-[var(--color-primary)] text-white'
                       : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
                   )}
                 >
-                  {m}
+                  {t(VIEW_MODE_KEYS[m])}
                 </button>
               ))}
             </div>
@@ -183,7 +193,7 @@ export default function CalendarPage() {
       {/* Stats row */}
       {loadError && (
         <div className="mb-4 px-4 py-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-on-error-container)] text-sm font-medium">
-          Failed to load appointments: {loadError}
+          {t('calendar.loadFailed', { error: loadError })}
         </div>
       )}
       <motion.div
@@ -217,7 +227,7 @@ export default function CalendarPage() {
                   <h3 className="font-semibold text-sm text-[var(--color-on-surface)]">{monthLabel}</h3>
                   <button onClick={nextWeek} className="p-1.5 rounded hover:bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] transition-colors"><ChevronRight size={16} /></button>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(todayStr)}>Today</Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(todayStr)}>{t('calendar.today')}</Button>
               </div>
 
               {/* Day headers */}
@@ -235,7 +245,7 @@ export default function CalendarPage() {
                         isSelected ? 'bg-[var(--color-primary-container)]/20' : 'hover:bg-[var(--color-surface-container-high)]'
                       )}
                     >
-                      <p className="text-[10px] font-semibold uppercase text-[var(--color-on-surface-variant)]">{DAYS[d.getDay()]}</p>
+                      <p className="text-[10px] font-semibold uppercase text-[var(--color-on-surface-variant)]">{weekdayLabels[d.getDay()]}</p>
                       <div className={cn(
                         'w-7 h-7 rounded-full flex items-center justify-center mx-auto mt-1 text-sm font-bold',
                         isToday ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-on-surface)]'
@@ -305,9 +315,9 @@ export default function CalendarPage() {
                 </SectionCard>
               </div>
               <div>
-                <SectionCard title="Today's Appointments" icon={<CalendarDays size={15} />}>
+                <SectionCard title={t('calendar.todayAppts')} icon={<CalendarDays size={15} />}>
                   {todayAppts.length === 0 ? (
-                    <p className="text-sm text-[var(--color-on-surface-variant)] text-center py-4">No appointments today.</p>
+                    <p className="text-sm text-[var(--color-on-surface-variant)] text-center py-4">{t('calendar.noAppointments')}</p>
                   ) : (
                     <div className="space-y-3">
                       {todayAppts.map((a, i) => (
@@ -330,7 +340,7 @@ export default function CalendarPage() {
                 <SearchBar
                   value={listSearch}
                   onChange={setListSearch}
-                  placeholder="Search appointments by patient or treatment…"
+                  placeholder={t('calendar.searchPlaceholder')}
                   maxWidth="26rem"
                 />
               </div>
@@ -341,7 +351,7 @@ export default function CalendarPage() {
                 searchable={false}
                 externalSearch={listSearch}
                 pageSize={10}
-                emptyTitle="No appointments found"
+                emptyTitle={t('calendar.noAppointmentsFound')}
                 emptyIcon={<CalendarDays size={28} />}
                 onRowClick={setViewAppt}
               />

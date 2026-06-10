@@ -11,10 +11,10 @@
  * • Teal/primary focus ring + open state border accent
  * • Soft teal hover on options (bg-[var(--color-primary-container)]/15)
  * • Keyboard accessible: ArrowUp/Down, Enter, Space, Escape, Tab
- * • Portal-rendered list so it floats above modals / overflow:hidden parents
+ * • Anchored dropdown list (relative trigger wrapper + absolute menu)
  * • Smart vertical positioning — flips up when not enough room below
  * • Text truncation for long labels; supports multi-line sublabel via `meta`
- * • Full RTL support (inherits dir from document)
+ * • Full RTL support via logical inset properties (inherits dir from ancestors)
  * • Dark-mode tokens respected automatically via CSS custom properties
  */
 
@@ -25,9 +25,7 @@ import {
   useCallback,
   useId,
   type KeyboardEvent,
-  type CSSProperties,
 } from 'react'
-import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/utils/cn'
@@ -77,27 +75,27 @@ export interface SelectProps {
 
 // ─── Menu positioning ─────────────────────────────────────────────────────────
 
-interface MenuRect {
-  top: number
-  left: number
-  width: number
+interface MenuPlacement {
   maxHeight: number
   openUpward: boolean
 }
 
-function calcMenuRect(trigger: HTMLElement): MenuRect {
+function calcMenuPlacement(trigger: HTMLElement): MenuPlacement {
   const rect = trigger.getBoundingClientRect()
   const viewH = window.innerHeight
-  const spaceBelow = viewH - rect.bottom - 8
-  const spaceAbove = rect.top - 8
-  const maxHeight = 260
-  const openUpward = spaceBelow < maxHeight && spaceAbove > spaceBelow
+  const margin = 8
+  const preferredHeight = 260
+  const spaceBelow = viewH - rect.bottom - margin
+  const spaceAbove = rect.top - margin
+  const openUpward = spaceBelow < preferredHeight && spaceAbove > spaceBelow
 
   return {
-    top: openUpward ? rect.top - Math.min(maxHeight, spaceAbove) : rect.bottom + 4,
-    left: rect.left,
-    width: rect.width,
-    maxHeight: openUpward ? Math.min(maxHeight, spaceAbove) : Math.min(maxHeight, spaceBelow),
+    maxHeight: Math.max(
+      120,
+      openUpward
+        ? Math.min(preferredHeight, spaceAbove)
+        : Math.min(preferredHeight, spaceBelow, viewH - margin * 2)
+    ),
     openUpward,
   }
 }
@@ -123,7 +121,7 @@ export function Select({
 
   const [open, setOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState<number>(-1)
-  const [menuRect, setMenuRect] = useState<MenuRect | null>(null)
+  const [menuPlacement, setMenuPlacement] = useState<MenuPlacement | null>(null)
 
   const triggerRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
@@ -134,7 +132,7 @@ export function Select({
 
   const openMenu = useCallback(() => {
     if (disabled) return
-    if (triggerRef.current) setMenuRect(calcMenuRect(triggerRef.current))
+    if (triggerRef.current) setMenuPlacement(calcMenuPlacement(triggerRef.current))
     const idx = options.findIndex((o) => o.value === value && !o.disabled)
     setFocusedIndex(idx >= 0 ? idx : 0)
     setOpen(true)
@@ -159,7 +157,7 @@ export function Select({
   useEffect(() => {
     if (!open) return
     const update = () => {
-      if (triggerRef.current) setMenuRect(calcMenuRect(triggerRef.current))
+      if (triggerRef.current) setMenuPlacement(calcMenuPlacement(triggerRef.current))
     }
     window.addEventListener('scroll', update, true)
     window.addEventListener('resize', update)
@@ -231,19 +229,6 @@ export function Select({
     }
   }
 
-  // ── Portal menu position styles ───────────────────────────────────────────
-
-  const menuStyle: CSSProperties = menuRect
-    ? {
-        position: 'fixed',
-        top: menuRect.top,
-        left: menuRect.left,
-        width: menuRect.width,
-        maxHeight: menuRect.maxHeight,
-        zIndex: 9999,
-      }
-    : {}
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -258,84 +243,80 @@ export function Select({
         </label>
       )}
 
-      {/* Trigger button */}
-      <button
-        ref={triggerRef}
-        id={inputId}
-        type="button"
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={`${inputId}-listbox`}
-        aria-label={label ?? placeholder}
-        disabled={disabled}
-        onClick={() => (open ? closeMenu() : openMenu())}
-        onKeyDown={handleTriggerKeyDown}
-        className={cn(
-          // Base layout
-          'relative flex items-center justify-between gap-2',
-          'w-full min-h-[2.375rem] px-3 py-2 text-sm text-left',
-          // Background + border
-          'bg-[var(--color-surface-container-low)]',
-          'border rounded-[var(--radius-DEFAULT)]',
-          'transition-all duration-200',
-          // Default border
-          !error && !open && 'border-[var(--color-outline-variant)] hover:border-[var(--color-outline)]',
-          // Open state — brand teal border + ring
-          open && !error && 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20',
-          // Error state
-          error && 'border-[var(--color-error)] ring-2 ring-[var(--color-error)]/15',
-          // Disabled
-          disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
-          // Cursor
-          !disabled && 'cursor-pointer',
-          // Back-compat: className was historically applied to the <select> element
-          className,
-          triggerClassName
-        )}
-      >
-        {/* Selected label / placeholder */}
-        <span
+      {/* Trigger + anchored dropdown — relative wrapper keeps absolute menu aligned */}
+      <div className={cn('relative w-full', !fullWidth && 'inline-block')}>
+        <button
+          ref={triggerRef}
+          id={inputId}
+          type="button"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={`${inputId}-listbox`}
+          aria-label={label ?? placeholder}
+          disabled={disabled}
+          onClick={() => (open ? closeMenu() : openMenu())}
+          onKeyDown={handleTriggerKeyDown}
           className={cn(
-            'flex-1 min-w-0 truncate',
-            selected
-              ? 'text-[var(--color-on-surface)]'
-              : 'text-[var(--color-outline)]'
+            // Base layout
+            'flex items-center justify-between gap-2',
+            'w-full min-h-[2.375rem] px-3 py-2 text-sm text-start',
+            // Background + border
+            'bg-[var(--color-surface-container-low)]',
+            'border rounded-[var(--radius-DEFAULT)]',
+            'transition-all duration-200',
+            // Default border
+            !error && !open && 'border-[var(--color-outline-variant)] hover:border-[var(--color-outline)]',
+            // Open state — brand teal border + ring
+            open && !error && 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20',
+            // Error state
+            error && 'border-[var(--color-error)] ring-2 ring-[var(--color-error)]/15',
+            // Disabled
+            disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
+            // Cursor
+            !disabled && 'cursor-pointer',
+            // Back-compat: className was historically applied to the <select> element
+            className,
+            triggerClassName
           )}
         >
-          {selected ? selected.label : placeholder}
-        </span>
+          {/* Selected label / placeholder */}
+          <span
+            className={cn(
+              'flex-1 min-w-0 truncate',
+              selected
+                ? 'text-[var(--color-on-surface)]'
+                : 'text-[var(--color-outline)]'
+            )}
+          >
+            {selected ? selected.label : placeholder}
+          </span>
 
-        {/* Chevron */}
-        <ChevronDown
-          size={15}
-          className={cn(
-            'shrink-0 text-[var(--color-outline)] transition-transform duration-200',
-            open && 'rotate-180 text-[var(--color-primary)]'
-          )}
-        />
-      </button>
+          {/* Chevron */}
+          <ChevronDown
+            size={15}
+            className={cn(
+              'shrink-0 text-[var(--color-outline)] transition-transform duration-200',
+              open && 'rotate-180 text-[var(--color-primary)]'
+            )}
+          />
+        </button>
 
-      {/* Error / hint */}
-      {error && <p className="text-xs text-[var(--color-error)] mt-0.5">{error}</p>}
-      {hint && !error && (
-        <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5">{hint}</p>
-      )}
-
-      {/* Floating menu — rendered in a portal so it escapes overflow:hidden */}
-      {createPortal(
         <AnimatePresence>
           {open && (
             <motion.div
-              style={menuStyle}
-              initial={{ opacity: 0, scaleY: 0.94, y: menuRect?.openUpward ? 4 : -4 }}
+              initial={{ opacity: 0, scaleY: 0.94, y: menuPlacement?.openUpward ? 4 : -4 }}
               animate={{ opacity: 1, scaleY: 1, y: 0 }}
-              exit={{ opacity: 0, scaleY: 0.94, y: menuRect?.openUpward ? 4 : -4 }}
+              exit={{ opacity: 0, scaleY: 0.94, y: menuPlacement?.openUpward ? 4 : -4 }}
               transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
               style={{
-                ...menuStyle,
-                transformOrigin: menuRect?.openUpward ? 'bottom center' : 'top center',
+                transformOrigin: menuPlacement?.openUpward ? 'bottom center' : 'top center',
               }}
+              className={cn(
+                'absolute z-50 w-full min-w-0',
+                'inset-inline-start-0 end-auto',
+                menuPlacement?.openUpward ? 'bottom-full mb-1' : 'top-full mt-1',
+              )}
             >
               <ul
                 ref={listRef}
@@ -353,7 +334,7 @@ export function Select({
                   'py-1 outline-none',
                   'focus:outline-none'
                 )}
-                style={{ maxHeight: menuRect?.maxHeight ?? 260 }}
+                style={{ maxHeight: menuPlacement?.maxHeight ?? 260 }}
               >
                 {options.length === 0 && (
                   <li className="px-3 py-6 text-center text-sm text-[var(--color-outline)] select-none">
@@ -414,8 +395,13 @@ export function Select({
               </ul>
             </motion.div>
           )}
-        </AnimatePresence>,
-        document.body
+        </AnimatePresence>
+      </div>
+
+      {/* Error / hint */}
+      {error && <p className="text-xs text-[var(--color-error)] mt-0.5">{error}</p>}
+      {hint && !error && (
+        <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5">{hint}</p>
       )}
     </div>
   )

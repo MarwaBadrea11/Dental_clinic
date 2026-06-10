@@ -1,8 +1,13 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
+import {
+  buildGenderSelectOptions,
+  translateFormError,
+} from '@/i18n/patientOdontogramOptions'
 import type { Patient } from '@/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -73,8 +78,11 @@ function validate(form: PatientFormValues): FormErrors {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<PatientFormValues>(() => buildDefaults(initialData))
   const [errors, setErrors] = useState<FormErrors>({})
+
+  const genderOptions = buildGenderSelectOptions(t)
 
   const set = <K extends keyof PatientFormValues>(key: K, value: PatientFormValues[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -97,77 +105,73 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
       {/* ── Personal Info ── */}
       <div className="grid grid-cols-2 gap-4">
         <Input
-          label="First Name"
+          label={t('patients.firstName')}
           value={form.firstName}
           onChange={(e) => set('firstName', e.target.value)}
-          error={errors.firstName}
+          error={translateFormError(t, errors.firstName)}
           required
         />
         <Input
-          label="Last Name"
+          label={t('patients.lastName')}
           value={form.lastName}
           onChange={(e) => set('lastName', e.target.value)}
-          error={errors.lastName}
+          error={translateFormError(t, errors.lastName)}
           required
         />
         <Input
-          label="Date of Birth"
+          label={t('patients.dateOfBirth')}
           type="date"
           value={form.dateOfBirth}
           onChange={(e) => set('dateOfBirth', e.target.value)}
-          error={errors.dateOfBirth}
+          error={translateFormError(t, errors.dateOfBirth)}
           required
         />
         <Select
-          label="Gender"
-          options={[
-            { label: 'Male',   value: 'male' },
-            { label: 'Female', value: 'female' },
-            { label: 'Other',  value: 'other' },
-          ]}
+          label={t('patients.gender')}
+          options={genderOptions}
           value={form.gender}
           onChange={(e) => set('gender', e.target.value as PatientFormValues['gender'])}
         />
         <Input
-          label="National ID"
+          label={t('patients.nationalId')}
           value={form.nationalId}
           onChange={(e) => set('nationalId', e.target.value)}
-          error={errors.nationalId}
+          error={translateFormError(t, errors.nationalId)}
           required
         />
         <Input
-          label="Phone"
+          label={t('patients.phone')}
           type="tel"
           value={form.phone}
           onChange={(e) => set('phone', e.target.value)}
-          error={errors.phone}
+          error={translateFormError(t, errors.phone)}
           required
         />
         <Input
-          label="City"
+          label={t('patients.city')}
           value={form.city}
           onChange={(e) => set('city', e.target.value)}
         />
         <Input
-          label="Email"
+          label={t('patients.email')}
           type="email"
           value={form.email}
           onChange={(e) => set('email', e.target.value)}
-          error={errors.email}
+          error={translateFormError(t, errors.email)}
         />
       </div>
 
       {/* ── Insurance ── */}
       <div className="border-t pt-4 space-y-4">
-        <h3 className="font-semibold text-[var(--color-on-surface)]">Insurance Information</h3>
+        <h3 className="font-semibold text-[var(--color-on-surface)]">{t('patients.insuranceInfo')}</h3>
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Insurance Provider"
+            label={t('patients.insuranceProvider')}
             value={form.insuranceProvider}
             onChange={(e) => set('insuranceProvider', e.target.value)}
           />
           <Input
-            label="Policy Number"
+            label={t('patients.policyNumber')}
             value={form.insurancePolicyNumber}
             onChange={(e) => set('insurancePolicyNumber', e.target.value)}
           />
@@ -176,20 +180,20 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
 
       {/* ── Emergency Contact ── */}
       <div className="border-t pt-4 space-y-4">
-        <h3 className="font-semibold text-[var(--color-on-surface)]">Emergency Contact</h3>
+        <h3 className="font-semibold text-[var(--color-on-surface)]">{t('patients.emergencyContact')}</h3>
         <div className="grid grid-cols-3 gap-4">
           <Input
-            label="Name"
+            label={t('common.name')}
             value={form.emergencyContactName}
             onChange={(e) => set('emergencyContactName', e.target.value)}
           />
           <Input
-            label="Relationship"
+            label={t('patients.relationship')}
             value={form.emergencyContactRelationship}
             onChange={(e) => set('emergencyContactRelationship', e.target.value)}
           />
           <Input
-            label="Phone"
+            label={t('patients.phone')}
             type="tel"
             value={form.emergencyContactPhone}
             onChange={(e) => set('emergencyContactPhone', e.target.value)}
@@ -200,13 +204,15 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
       {/* ── Clinical ── */}
       <div className="border-t pt-4 space-y-4">
         <Textarea
-          label="Clinical Notes"
+          label={t('patients.clinicalNotes')}
+          placeholder={t('patients.clinicalNotesPlaceholder')}
           value={form.clinicalNotes}
           onChange={(e) => set('clinicalNotes', e.target.value)}
           rows={3}
         />
         <Textarea
-          label="Medical History"
+          label={t('patients.medicalHistory')}
+          placeholder={t('patients.medicalHistoryPlaceholder')}
           value={form.medicalHistory}
           onChange={(e) => set('medicalHistory', e.target.value)}
           rows={3}
@@ -214,7 +220,7 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
       </div>
 
       <Button type="submit" loading={loading} className="w-full">
-        Save Patient
+        {t('patients.savePatient')}
       </Button>
     </form>
   )

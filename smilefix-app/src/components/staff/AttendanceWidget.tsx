@@ -4,6 +4,7 @@ import { Clock, CheckCircle2, XCircle, AlertCircle, Umbrella } from 'lucide-reac
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/utils/cn'
+import { getAttendanceStatusLabel, getStaffRoleLabel } from '@/i18n/staffOptions'
 import type { AttendanceRecord, StaffMember } from '@/types'
 
 interface AttendanceWidgetProps {
@@ -29,11 +30,11 @@ export function AttendanceWidget({ attendance, staff, delay = 0, className }: At
   const onLeave  = attendance.filter((a) => a.status === 'leave').length
 
   const statusLabels: Record<string, string> = {
-    present:    t('staff.present'),
-    absent:     t('staff.absent'),
-    late:       t('staff.late'),
-    'half-day': t('status.halfDay'),
-    leave:      t('status.onLeave'),
+    present:    getAttendanceStatusLabel(t, 'present'),
+    absent:     getAttendanceStatusLabel(t, 'absent'),
+    late:       getAttendanceStatusLabel(t, 'late'),
+    'half-day': getAttendanceStatusLabel(t, 'half-day'),
+    leave:      getAttendanceStatusLabel(t, 'leave'),
   }
 
   return (
@@ -78,7 +79,7 @@ export function AttendanceWidget({ attendance, staff, delay = 0, className }: At
                 <p className="text-xs font-semibold text-[var(--color-on-surface)] truncate">
                   {member.firstName} {member.lastName}
                 </p>
-                <p className="text-[10px] text-[var(--color-on-surface-variant)] capitalize">{member.role}</p>
+                <p className="text-[10px] text-[var(--color-on-surface-variant)]">{getStaffRoleLabel(t, member.role)}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {rec.checkIn && (

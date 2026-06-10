@@ -15,6 +15,7 @@ import { PatientCard } from '@/components/patients/PatientCard'
 import { usePatientStore } from '@/store/patientStore'
 import { formatDate } from '@/utils/format'
 import { ROUTES } from '@/constants/routes'
+import { getGenderLabel } from '@/i18n/patientOdontogramOptions'
 import type { Patient } from '@/types'
 
 type ViewMode = 'table' | 'grid'
@@ -47,7 +48,7 @@ export default function PatientsPage() {
 
   const columns: DataTableColumn<Patient>[] = [
     {
-      key: 'name', header: 'Patient', sortable: true,
+      key: 'name', header: t('common.patient'), sortable: true,
       render: (p) => (
         <div className="flex items-center gap-3">
           <Avatar name={`${p.firstName} ${p.lastName}`} src={p.avatar} size="sm" />
@@ -59,23 +60,23 @@ export default function PatientsPage() {
       ),
     },
     {
-      key: 'phone', header: 'Phone', sortable: false,
+      key: 'phone', header: t('patients.phone'), sortable: false,
       render: (p) => <span className="text-sm">{p.phone}</span>,
     },
     {
-      key: 'gender', header: 'Gender', sortable: true,
+      key: 'gender', header: t('patients.gender'), sortable: true,
       render: (p) => (
-        <span className="text-sm capitalize text-[var(--color-on-surface-variant)]">{p.gender}</span>
+        <span className="text-sm text-[var(--color-on-surface-variant)]">{getGenderLabel(t, p.gender)}</span>
       ),
     },
     {
-      key: 'city', header: 'City', sortable: true,
+      key: 'city', header: t('patients.city'), sortable: true,
       render: (p) => (
         <span className="text-sm text-[var(--color-on-surface-variant)]">{p.city ?? '—'}</span>
       ),
     },
     {
-      key: 'email', header: 'Email', sortable: false,
+      key: 'email', header: t('patients.email'), sortable: false,
       render: (p) => (
         <span className="text-sm text-[var(--color-on-surface-variant)] truncate max-w-[160px] block">
           {p.email ?? '—'}
@@ -83,7 +84,7 @@ export default function PatientsPage() {
       ),
     },
     {
-      key: 'createdAt', header: 'Registered', sortable: true,
+      key: 'createdAt', header: t('patients.registered'), sortable: true,
       render: (p) => (
         <span className="text-sm text-[var(--color-on-surface-variant)]">
           {p.createdAt ? formatDate(p.createdAt) : '—'}
@@ -91,7 +92,7 @@ export default function PatientsPage() {
       ),
     },
     {
-      key: 'bloodType', header: 'Blood Type', sortable: false,
+      key: 'bloodType', header: t('patients.bloodType'), sortable: false,
       render: (p) => p.bloodType
         ? <Badge variant="neutral" size="sm">{p.bloodType}</Badge>
         : <span className="text-sm text-[var(--color-on-surface-variant)]">—</span>,

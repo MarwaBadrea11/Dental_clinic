@@ -116,7 +116,13 @@
     "more":          "المزيد",
     "dismiss":       "إغلاق",
     "id":            "المعرف",
-    "retry":         "إعادة المحاولة"
+    "retry":         "إعادة المحاولة",
+    "confirmDelete": "تأكيد الحذف",
+    "fullName":      "الاسم الكامل",
+    "month":         "الشهر",
+    "refresh":       "تحديث",
+    "title":         "العنوان",
+    "year":          "السنة"
   },
   "status": {
     "active":      "نشط",
@@ -181,7 +187,8 @@
     "patientRecords":    "سجلات المرضى",
     "smartScheduling":   "جدولة ذكية",
     "billingFinance":    "الفواتير والمالية",
-    "clinicalAnalytics": "التحليلات السريرية"
+    "clinicalAnalytics": "التحليلات السريرية",
+    "login":             "تسجيل الدخول"
   },
   "dashboard": {
     "title":             "لوحة التحكم",
@@ -241,6 +248,10 @@
     "insuranceInfo":      "التأمين",
     "emergencyContact":   "جهة الاتصال في حالات الطوارئ",
     "contactInfo":        "معلومات الاتصال",
+    "clinicalInfo":       "المعلومات السريرية",
+    "clinicalNotes":      "الملاحظات السريرية",
+    "email":              "البريد الإلكتروني",
+    "phone":              "الهاتف",
     "firstNameRequired":  "الاسم الأول مطلوب",
     "lastNameRequired":   "اسم العائلة مطلوب",
     "phoneRequired":      "رقم الهاتف مطلوب",
@@ -294,7 +305,22 @@
     "photo":              "الصورة",
     "clickOrDrag":        "انقر أو اسحب لرفع صورة",
     "removePhoto":        "إزالة الصورة",
-    "owes":               "مديون"
+    "owes":               "مديون",
+    "nationalId":         "رقم الهوية الوطنية",
+    "registered":         "تاريخ التسجيل",
+    "invalidEmail":       "عنوان بريد إلكتروني غير صالح",
+    "clinicalNotesPlaceholder": "ملاحظات سريرية، حساسية، أو تعليمات خاصة...",
+    "medicalHistoryPlaceholder": "حالات سابقة، عمليات جراحية، أدوية...",
+    "savePatient":        "حفظ المريض",
+    "loadingPatient":     "جارٍ تحميل المريض…",
+    "patientNotFound":    "المريض غير موجود",
+    "patientNotFoundDesc":"سجل هذا المريض غير موجود أو تمت إزالته.",
+    "unassigned":         "غير معيّن",
+    "bloodTypeLabel":     "فصيلة الدم {{type}}",
+    "registerSubtitle":   "أدخل معلومات المريض لإنشاء سجله.",
+    "createFailed":       "فشل إنشاء المريض. يرجى المحاولة مرة أخرى.",
+    "updateFailed":       "فشل تحديث المريض. يرجى المحاولة مرة أخرى.",
+    "editPatientTitle":   "تعديل — {{name}}"
   },
   "calendar": {
     "title":           "التقويم",
@@ -321,6 +347,23 @@
     "newApptTitle":    "موعد جديد",
     "newApptDesc":     "أدخل تفاصيل الموعد أدناه.",
     "updateStatus":    "تحديث الحالة",
+    "month":           "شهر",
+    "time":            "الوقت",
+    "viewDetails":     "عرض التفاصيل",
+    "cancelAppointment": "إلغاء الموعد",
+    "searchPlaceholder": "ابحث عن مواعيد بالمريض أو العلاج…",
+    "noAppointmentsFound": "لم يتم العثور على مواعيد",
+    "loadFailed":      "فشل تحميل المواعيد: {{error}}",
+    "bookFailed":      "فشل حجز الموعد. يرجى المحاولة مرة أخرى.",
+    "selectDoctor":    "اختر طبيباً…",
+    "selectPatient":   "اختر مريضاً…",
+    "loadingDoctors":  "جارٍ تحميل الأطباء…",
+    "loadingPatients": "جارٍ تحميل المرضى…",
+    "autoFilled":      "يُملأ تلقائياً",
+    "notesPlaceholder": "أضف ملاحظات حول هذا الموعد…",
+    "appointmentsCount": "{{count}} موعد",
+    "appointmentsCount_other": "{{count}} مواعيد",
+    "chairShort":      "ك{{n}}",
     "midline":         "خط الوسط",
     "upperJaw":        "الفك العلوي",
     "lowerJaw":        "الفك السفلي",
@@ -329,10 +372,34 @@
     "condition":       "الحالة",
     "lastUpdated":     "آخر تحديث"
   },
+  "appointments": {
+    "durationMinutes": "{{count}} د",
+    "status": {
+      "scheduled":   "مجدول",
+      "confirmed":   "مؤكد",
+      "inProgress":  "قيد التنفيذ",
+      "completed":   "مكتمل",
+      "cancelled":   "ملغى",
+      "noShow":      "لم يحضر"
+    },
+    "treatments": {
+      "dentalCleaning":     "تنظيف الأسنان",
+      "compositeFilling":   "حشوة مركبة",
+      "rootCanalTherapy":   "علاج قناة الجذر",
+      "crownPlacement":     "تركيب التاج",
+      "teethWhitening":     "تبييض الأسنان",
+      "bracesAdjustment":   "تعديل التقويم",
+      "toothExtraction":    "خلع السن",
+      "periodontalScaling": "تنظيف اللثة",
+      "xRaySeries":         "سلسلة أشعة سينية",
+      "consultation":       "استشارة"
+    }
+  },
   "treatments": {
     "title":          "العلاجات",
     "subtitle":       "إجراء في الكتالوج",
     "addTreatment":   "إضافة علاج",
+    "editTreatment":  "تعديل العلاج",
     "allCategories":  "جميع الفئات",
     "avgDuration":    "متوسط المدة",
     "avgPrice":       "متوسط السعر",
@@ -470,7 +537,24 @@
     "orders":         "طلبات",
     "noOrders":       "لا طلبات",
     "daysLeft":       "يوم متبقي",
-    "daysOverdue":    "يوم متأخر"
+    "daysOverdue":    "يوم متأخر",
+    "editItem":           "تعديل العنصر",
+    "estimatedDelivery":  "التسليم المتوقع",
+    "estimatedTotal":     "الإجمالي المتوقع",
+    "orderConfirmed":     "تم تأكيد الطلب",
+    "orderPlaced":        "تم تقديم الطلب",
+    "orderSentTo":        "تم إرساله إلى",
+    "placeOrder":         "تقديم الطلب",
+    "quantityToOrder":    "الكمية المطلوب طلبها",
+    "supplier":           "المورد",
+    "cat_Consumables":          "مستهلكات",
+    "cat_Instruments":          "أدوات",
+    "cat_Medications":          "أدوية",
+    "cat_ProtectiveEquipment":  "معدات الحماية",
+    "cat_ImpressionMaterials":  "مواد الطبعات",
+    "cat_Restorative":          "مواد ترميمية",
+    "cat_Sterilization":        "تعقيم",
+    "cat_Equipment":            "معدات"
   },
   "staff": {
     "title":          "الموظفون",
@@ -530,7 +614,44 @@
     "shiftEnd":       "نهاية الوردية",
     "bonus":          "مكافأة",
     "deductions":     "خصومات",
-    "checkOut":       "تسجيل المغادرة"
+    "checkOut":       "تسجيل المغادرة",
+    "selectStaffMember": "اختر موظفاً...",
+    "fullNamePlaceholder": "د. أحمد الراشد",
+    "emailPlaceholder": "staff@clinic.com",
+    "phonePlaceholder": "+966 5XX XXX XXXX",
+    "noSalaryRecords": "لا توجد سجلات رواتب بعد. انقر \"إضافة سجل راتب\" للبدء.",
+    "confirmDeleteMessage": "هل أنت متأكد أنك تريد حذف {{name}}؟ لا يمكن التراجع عن هذا الإجراء.",
+    "saveFailed": "فشل حفظ الموظف.",
+    "deleteFailed": "فشل حذف الموظف.",
+    "amountPlaceholder": "0.00",
+    "roles": {
+      "doctor":       "طبيب",
+      "receptionist": "موظف استقبال",
+      "nurse":        "ممرض",
+      "hygienist":    "أخصائي نظافة",
+      "assistant":    "مساعد",
+      "admin":        "إداري",
+      "manager":      "مدير"
+    },
+    "status": {
+      "active":   "نشط",
+      "inactive": "غير نشط",
+      "onLeave":  "في إجازة"
+    },
+    "attendanceStatus": {
+      "present":  "حاضر",
+      "absent":   "غائب",
+      "late":     "متأخر",
+      "halfDay":  "نصف يوم",
+      "leave":    "إجازة"
+    },
+    "shifts": {
+      "morning":   "صباحي",
+      "afternoon": "مسائي",
+      "evening":   "مساء",
+      "fullDay":   "يوم كامل",
+      "off":       "إجازة"
+    }
   },
   "reports": {
     "title":              "التقارير",
@@ -556,7 +677,147 @@
     "appointments":       "المواعيد",
     "outstanding":        "المستحق",
     "totalPatients":      "إجمالي المرضى",
-    "lastGenerated":      "آخر إنشاء"
+    "lastGenerated":      "آخر إنشاء",
+    "lastGeneratedToday": "اليوم",
+    "labFilterActive":    "عرض تقارير المختبر فقط",
+    "clearFilter":        "مسح التصفية",
+    "dateFrom":           "من",
+    "dateTo":             "إلى",
+    "exportPdf":          "PDF",
+    "exportExcel":        "Excel",
+    "exportFailed":       "فشل التصدير: {{error}}",
+    "load":               "تحميل",
+    "invoiced":           "مفوتر",
+    "collected":          "محصّل",
+    "totalInvoiced":      "إجمالي الفواتير",
+    "totalCollected":     "إجمالي المحصّل",
+    "invoiceCount":       "عدد الفواتير",
+    "monthlyBreakdown":   "التفصيل الشهري",
+    "paymentMethodsTitle":"طرق الدفع",
+    "noMonthlyData":      "لا توجد بيانات شهرية لهذه الفترة",
+    "paymentsCount":      "{{count}} دفعة",
+    "paymentsCount_other":"{{count}} دفعات",
+    "topProcedures":      "أعلى الإجراءات حسب الإيراد",
+    "procedure":          "الإجراء",
+    "count":              "العدد",
+    "noProcedureData":    "لا توجد بيانات إجراءات",
+    "searchItems":        "ابحث عن عناصر…",
+    "lowStockOnly":       "المخزون المنخفض فقط",
+    "item":               "العنصر",
+    "sku":                "رمز SKU",
+    "qty":                "الكمية",
+    "unitCost":           "تكلفة الوحدة",
+    "stockValue":         "قيمة المخزون",
+    "lowStock":           "مخزون منخفض",
+    "stockOk":            "جيد",
+    "totalItems":         "إجمالي العناصر",
+    "outOfStock":         "نفد المخزون",
+    "inventoryItems":     "عناصر المخزون",
+    "itemsCount":         "{{count}} عنصر",
+    "itemsCount_other":   "{{count}} عناصر",
+    "noInventoryItems":   "لم يتم العثور على عناصر مخزون",
+    "headcount":          "عدد الموظفين",
+    "totalBase":          "إجمالي الأساسي",
+    "netPayroll":         "صافي الرواتب",
+    "baseSalary":         "الراتب الأساسي",
+    "netSalary":          "الصافي",
+    "staffPayrollTitle":  "رواتب الموظفين — {{month}}",
+    "noPayrollRecords":   "لا توجد سجلات رواتب لهذا الشهر",
+    "time":               "الوقت",
+    "actor":              "المستخدم",
+    "action":             "الإجراء",
+    "resource":           "المورد",
+    "resourcePlaceholder":"مثال: patients",
+    "recordId":           "معرف السجل",
+    "ip":                 "IP",
+    "entriesCount":       "{{count}} سجل",
+    "entriesCount_other": "{{count}} سجلات",
+    "noAuditEntries":     "لم يتم العثور على سجلات تدقيق",
+    "pagination":         "صفحة {{page}} من {{totalPages}} · {{total}} إجمالي",
+    "prev":               "السابق",
+    "next":               "التالي",
+    "tabs": {
+      "overview":  "نظرة عامة",
+      "financial": "المالية",
+      "inventory": "المخزون",
+      "payroll":   "الرواتب",
+      "audit":     "سجل التدقيق"
+    },
+    "categories": {
+      "finance":    "المالية",
+      "inventory":  "المخزون",
+      "hr":         "الموارد البشرية",
+      "clinical":   "سريري",
+      "operations": "العمليات",
+      "lab":        "المختبر",
+      "other":      "أخرى"
+    },
+    "paymentMethods": {
+      "cash":   "نقداً",
+      "card":   "بطاقة",
+      "check":  "شيك",
+      "bank":   "تحويل بنكي",
+      "online": "إلكتروني"
+    },
+    "payrollStatus": {
+      "paid":    "مدفوع",
+      "pending": "قيد الانتظار"
+    },
+    "auditActions": {
+      "create":            "إنشاء",
+      "update":            "تحديث",
+      "delete":            "حذف",
+      "login":             "تسجيل دخول",
+      "logout":            "تسجيل خروج",
+      "loginFailed":       "فشل تسجيل الدخول",
+      "permissionDenied":  "رفض الصلاحية"
+    },
+    "catalogue": {
+      "revenueBilling": {
+        "title": "تقرير الإيرادات والفوترة",
+        "description": "الإيرادات الشهرية، الفواتير المستحقة، وتفصيل طرق الدفع."
+      },
+      "inventoryUsage": {
+        "title": "تقرير استخدام المخزون",
+        "description": "معدلات الاستهلاك، تنبيهات إعادة الطلب، ومقاييس أداء الموردين."
+      },
+      "staffPayroll": {
+        "title": "تقرير رواتب الموظفين",
+        "description": "حسابات الرواتب الشهرية، المكافآت، والخصومات لكل موظف."
+      },
+      "patientSummary": {
+        "title": "تقرير ملخص المرضى",
+        "description": "إجمالي المرضى، التسجيلات الجديدة، التركيبة السكانية وتكرار الزيارات."
+      },
+      "treatmentAnalysis": {
+        "title": "تحليل العلاجات",
+        "description": "أكثر الإجراءات تنفيذاً، معدلات النجاح، ومتوسط مدة العلاج."
+      },
+      "appointmentStatistics": {
+        "title": "إحصائيات المواعيد",
+        "description": "معدلات الحجز، عدم الحضور، الإلغاءات وتحليل ساعات الذروة."
+      },
+      "staffPerformance": {
+        "title": "تقرير أداء الموظفين",
+        "description": "الحضور، الإنتاجية، ودرجات رضا المرضى لكل طبيب."
+      },
+      "insuranceClaims": {
+        "title": "تقرير مطالبات التأمين",
+        "description": "المطالبات المقدمة، المعتمدة، المرفوضة والمعلقة حسب المزود."
+      },
+      "clinicEfficiency": {
+        "title": "تقرير كفاءة العيادة",
+        "description": "استخدام الكراسي، أوقات الانتظار، الإنتاجية ومؤشرات التشغيل."
+      },
+      "labResultsSummary": {
+        "title": "ملخص نتائج المختبر",
+        "description": "نتائج الفحوصات المجمعة، أوقات التسليم والنتائج غير الطبيعية."
+      },
+      "radiologyLog": {
+        "title": "سجل الأشعة والأشعة السينية",
+        "description": "الأشعة المرفوعة، المراجعة وبانتظار اعتماد أخصائي الأشعة."
+      }
+    }
   },
   "notifications": {
     "title":             "مركز الإشعارات",
@@ -652,7 +913,76 @@
     "systemUpdates":      "تحديثات النظام",
     "weeklyReports":      "تقارير أسبوعية",
     "smsNotifications":   "إشعارات SMS",
-    "emailDigest":        "ملخص البريد الإلكتروني"
+    "emailDigest":        "ملخص البريد الإلكتروني",
+    "clinicInformation":  "معلومات العيادة",
+    "saving":             "جارٍ الحفظ…",
+    "loadingPreferences": "جارٍ تحميل التفضيلات…",
+    "passwordPlaceholder":"••••••••",
+    "open":               "مفتوح",
+    "closed":             "مغلق",
+    "startTime":          "وقت البدء",
+    "endTime":            "وقت الانتهاء",
+    "workingHours":       "ساعات العمل",
+    "backupRestore":      "النسخ الاحتياطي والاستعادة",
+    "downloadBackup":     "تنزيل النسخة الاحتياطية",
+    "chooseFile":         "اختر ملفاً",
+    "languages": {
+      "en": "الإنجليزية",
+      "ar": "العربية"
+    },
+    "timezones": {
+      "utcMinus8":  "توقيت المحيط الهادئ (UTC-8)",
+      "utcMinus5":  "توقيت الشرق (UTC-5)",
+      "utc0":       "UTC",
+      "utcPlus3":   "توقيت العربية القياسي (UTC+3)",
+      "utcPlus530": "توقيت الهند القياسي (UTC+5:30)"
+    },
+    "dateFormats": {
+      "mdy": "MM/DD/YYYY",
+      "dmy": "DD/MM/YYYY",
+      "ymd": "YYYY-MM-DD"
+    },
+    "currencies": {
+      "usd": "USD — دولار أمريكي",
+      "eur": "EUR — يورو",
+      "sar": "SAR — ريال سعودي"
+    },
+    "placeholders": {
+      "clinicName": "عيادة SmileFix للأسنان",
+      "phone":      "+966 800 000 0000",
+      "email":      "info@clinic.com",
+      "website":    "www.clinic.com",
+      "address":    "500 شارع المركز الطبي",
+      "city":       "الرياض",
+      "taxId":      "TAX-00000"
+    },
+    "roles": {
+      "admin":        "إداري",
+      "doctor":       "طبيب",
+      "receptionist": "موظف استقبال",
+      "nurse":        "ممرض"
+    },
+    "permissionItems": {
+      "viewAll":           "عرض الكل",
+      "editAll":           "تعديل الكل",
+      "delete":            "حذف",
+      "manageStaff":       "إدارة الموظفين",
+      "financialReports":  "التقارير المالية",
+      "systemSettings":    "إعدادات النظام",
+      "viewPatients":      "عرض المرضى",
+      "editPatients":      "تعديل المرضى",
+      "viewAppointments":  "عرض المواعيد",
+      "editAppointments":  "تعديل المواعيد",
+      "viewTreatments":    "عرض العلاجات",
+      "editTreatments":    "تعديل العلاجات",
+      "viewFinance":       "عرض المالية"
+    },
+    "sessions": {
+      "chromeWindows": "Chrome على Windows",
+      "safariIphone":  "Safari على iPhone",
+      "losAngeles":    "لوس انجيليس، CA",
+      "hoursAgo":      "منذ {{count}} ساعات"
+    }
   },
   "medicalHistory": {
     "treatment":    "علاج",
@@ -696,6 +1026,32 @@
     "saveTooth":      "حفظ السن",
     "upperJaw":       "الفك العلوي",
     "lowerJaw":       "الفك السفلي",
-    "midline":        "خط الوسط"
+    "midline":        "خط الوسط",
+    "maxillary":      "الفك العلوي (العلوي)",
+    "mandibular":     "الفك السفلي (السفلي)",
+    "upperRight":     "علوي يمين",
+    "upperLeft":      "علوي يسار",
+    "lowerRight":     "سفلي يمين",
+    "lowerLeft":      "سفلي يسار",
+    "quadrantLabelUpperRight":  "← يمين (علوي)",
+    "quadrantLabelUpperLeft":   "يسار (علوي) →",
+    "quadrantLabelLowerRight":  "← يمين (سفلي)",
+    "quadrantLabelLowerLeft":   "يسار (سفلي) →",
+    "toothTitle":     "السن {{number}} — {{quadrant}}",
+    "fdiPalmer":      "FDI #{{fdi}} · ترميز بالمر",
+    "toothTooltip":   "السن {{palmer}} (FDI {{fdi}}) — {{condition}}",
+    "toothAria":      "السن {{number}}",
+    "lastUpdatedMeta":"آخر تحديث: {{date}} · {{doctor}}",
+    "rootCanalShort": "علاج عصب",
+    "saving":         "جارٍ الحفظ…",
+    "retrySave":      "إعادة المحاولة",
+    "surface": {
+      "mesial":   "وسطي",
+      "distal":   "بعيد",
+      "occlusal": "إطباقي",
+      "buccal":   "وجهي",
+      "lingual":  "لساني",
+      "root":     "جذر"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import {
   BarChart as RechartsBarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
@@ -16,20 +17,33 @@ interface BarChartProps {
   delay?: number
 }
 
-function CustomTooltip({ active, payload, label, formatValue }: any) {
+function CustomTooltip({ active, payload, label, formatValue, revenueLabel }: {
+  active?: boolean
+  payload?: { value: number }[]
+  label?: string
+  formatValue?: (v: number) => string
+  revenueLabel: string
+}) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-[var(--color-surface-container-lowest)] border border-[var(--color-outline-variant)]/30 rounded-lg px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-[var(--color-on-surface)] mb-1">{label}</p>
       <p style={{ color: '#0D9488' }} className="leading-5">
-        Revenue: <span className="font-bold">{formatValue ? formatValue(payload[0].value) : payload[0].value}</span>
+        {revenueLabel}: <span className="font-bold">{formatValue ? formatValue(payload[0].value) : payload[0].value}</span>
       </p>
     </div>
   )
 }
 
+function BarTooltipContent({ formatValue }: { formatValue: (v: number) => string }) {
+  const { t } = useTranslation()
+  return (props: { active?: boolean; payload?: { value: number }[]; label?: string }) => (
+    <CustomTooltip {...props} formatValue={formatValue} revenueLabel={t('reports.revenue')} />
+  )
+}
+
 export function BarChart({ data, height = 300, formatValue = String }: BarChartProps) {
-  // Recharts expects { label, value } — map to { month, revenue } for clarity
+  const { t } = useTranslation()
   const chartData = data.map((d) => ({ month: d.label, revenue: d.value }))
 
   return (
@@ -64,14 +78,13 @@ export function BarChart({ data, height = 300, formatValue = String }: BarChartP
           />
 
           <Tooltip
-            content={<CustomTooltip formatValue={formatValue} />}
+            content={<BarTooltipContent formatValue={formatValue} />}
             cursor={{ fill: 'var(--color-outline-variant)', fillOpacity: 0.08 }}
           />
 
-          {/* Brand teal — matches Revenue bar in RevenueStats & ChartCard */}
           <Bar
             dataKey="revenue"
-            name="Revenue"
+            name={t('reports.revenue')}
             fill="#0D9488"
             radius={[4, 4, 0, 0]}
             maxBarSize={36}

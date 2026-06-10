@@ -18,13 +18,19 @@ import { EmployeeCard, AttendanceWidget, SalaryCard, ShiftTable } from '@/compon
 import { useStaffStore } from '@/store/staffStore'
 import { formatDate, formatCurrency, localDateStr } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import {
+  buildAttendanceStatusSelectOptions,
+  buildStaffRoleSelectOptions,
+  buildStaffStatusSelectOptions,
+  getEmployeeStatusBadgeVariant,
+  getStaffRoleLabel,
+  getStaffStatusLabel,
+  translateStaffFormError,
+} from '@/i18n/staffOptions'
 import type { StaffMember, EmployeeRole, EmployeeStatus, AttendanceRecord } from '@/types'
 import type { CreateStaffPayload, CreateAttendancePayload, CreateSalaryPayload, BackendSalaryRecord } from '@/services/staffService'
 
 type ViewMode = 'team' | 'attendance' | 'schedule' | 'payroll'
-
-const ROLES: EmployeeRole[] = ['doctor', 'receptionist', 'nurse', 'hygienist', 'assistant', 'admin', 'manager']
-const STATUSES: EmployeeStatus[] = ['active', 'inactive', 'on-leave']
 
 // ── Staff Form Modal ──────────────────────────────────────────────────────────
 
@@ -106,21 +112,21 @@ function StaffModal({
       })
       onClose()
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to save staff member'
+      const msg = err instanceof Error ? err.message : t('staff.saveFailed')
       setSubmitError(msg)
     } finally {
       setSaving(false)
     }
   }
 
-  const ROLE_OPTS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
-  const STATUS_OPTS = STATUSES.map((s) => ({ value: s, label: s === 'on-leave' ? 'On Leave' : s.charAt(0).toUpperCase() + s.slice(1) }))
+  const ROLE_OPTS = buildStaffRoleSelectOptions(t)
+  const STATUS_OPTS = buildStaffStatusSelectOptions(t)
 
   return (
     <Modal open={open} onClose={onClose} title={editMember ? t('staff.editStaff') : t('staff.addStaff')} size="lg">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label={t('common.fullName')} required error={errors.full_name} className="col-span-2">
-          <Input placeholder="Dr. Ahmed Al-Rashid" value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
+        <FormField label={t('common.fullName')} required error={translateStaffFormError(t, errors.full_name)} className="col-span-2">
+          <Input placeholder={t('staff.fullNamePlaceholder')} value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
         </FormField>
         <FormField label={t('common.role')}>
           <Select options={ROLE_OPTS} value={form.role} onChange={(e) => set('role', e.target.value as EmployeeRole)} />
@@ -128,11 +134,11 @@ function StaffModal({
         <FormField label={t('common.status')}>
           <Select options={STATUS_OPTS} value={form.status} onChange={(e) => set('status', e.target.value as EmployeeStatus)} />
         </FormField>
-        <FormField label={t('common.email')} required error={errors.email}>
-          <Input type="email" placeholder="staff@clinic.com" value={form.email} onChange={(e) => set('email', e.target.value)} />
+        <FormField label={t('common.email')} required error={translateStaffFormError(t, errors.email)}>
+          <Input type="email" placeholder={t('staff.emailPlaceholder')} value={form.email} onChange={(e) => set('email', e.target.value)} />
         </FormField>
-        <FormField label={t('common.phone')} required error={errors.phone}>
-          <Input placeholder="+1 (555) 000-0000" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
+        <FormField label={t('common.phone')} required error={translateStaffFormError(t, errors.phone)}>
+          <Input placeholder={t('staff.phonePlaceholder')} value={form.phone} onChange={(e) => set('phone', e.target.value)} />
         </FormField>
         <FormField label={t('staff.shiftStart')}>
           <Input type="time" value={form.shift_start} onChange={(e) => set('shift_start', e.target.value)} />
@@ -141,7 +147,7 @@ function StaffModal({
           <Input type="time" value={form.shift_end} onChange={(e) => set('shift_end', e.target.value)} />
         </FormField>
         <FormField label={t('staff.baseSalary')} className="col-span-2">
-          <Input type="number" placeholder="0.00" value={form.base_salary} onChange={(e) => set('base_salary', e.target.value)} />
+          <Input type="number" placeholder={t('staff.amountPlaceholder')} value={form.base_salary} onChange={(e) => set('base_salary', e.target.value)} />
         </FormField>
       </div>
       {submitError && (
@@ -188,16 +194,13 @@ function AttendanceModal({
   }
 
   const STAFF_OPTS = staff.map((m) => ({ value: m.id, label: `${m.firstName} ${m.lastName}` }))
-  const STATUS_OPTS = [
-    { value: 'present', label: 'Present' }, { value: 'absent', label: 'Absent' },
-    { value: 'late', label: 'Late' }, { value: 'half-day', label: 'Half Day' }, { value: 'leave', label: 'Leave' },
-  ]
+  const STATUS_OPTS = buildAttendanceStatusSelectOptions(t)
 
   return (
     <Modal open={open} onClose={onClose} title={t('staff.logAttendance')} size="md">
       <div className="grid grid-cols-2 gap-4">
         <FormField label={t('nav.staff')} required className="col-span-2">
-          <Select options={[{ value: '', label: 'Select staff member...' }, ...STAFF_OPTS]} value={form.staff_id} onChange={(e) => set('staff_id', e.target.value)} />
+          <Select options={[{ value: '', label: t('staff.selectStaffMember') }, ...STAFF_OPTS]} value={form.staff_id} onChange={(e) => set('staff_id', e.target.value)} />
         </FormField>
         <FormField label={t('common.date')}>
           <Input type="date" value={form.log_date} onChange={(e) => set('log_date', e.target.value)} />
@@ -230,7 +233,7 @@ function SalaryModal({
   onSave: (payload: CreateSalaryPayload) => Promise<BackendSalaryRecord | void>
   staff: StaffMember[]
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const now = new Date()
   const [form, setForm] = useState({ staff_id: '', month: String(now.getMonth() + 1), year: String(now.getFullYear()), base_salary: '', bonus: '0', deductions: '0', notes: '' })
   const [saving, setSaving] = useState(false)
@@ -257,13 +260,16 @@ function SalaryModal({
   }
 
   const STAFF_OPTS = staff.map((m) => ({ value: m.id, label: `${m.firstName} ${m.lastName}` }))
-  const MONTH_OPTS = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleString('default', { month: 'long' }) }))
+  const MONTH_OPTS = Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1),
+    label: new Date(2000, i).toLocaleString(i18n.language, { month: 'long' }),
+  }))
 
   return (
     <Modal open={open} onClose={onClose} title={t('staff.addSalaryRecord')} size="md">
       <div className="grid grid-cols-2 gap-4">
         <FormField label={t('nav.staff')} required className="col-span-2">
-          <Select options={[{ value: '', label: 'Select staff member...' }, ...STAFF_OPTS]} value={form.staff_id} onChange={(e) => set('staff_id', e.target.value)} />
+          <Select options={[{ value: '', label: t('staff.selectStaffMember') }, ...STAFF_OPTS]} value={form.staff_id} onChange={(e) => set('staff_id', e.target.value)} />
         </FormField>
         <FormField label={t('common.month')}>
           <Select options={MONTH_OPTS} value={form.month} onChange={(e) => set('month', e.target.value)} />
@@ -272,13 +278,13 @@ function SalaryModal({
           <Input type="number" value={form.year} onChange={(e) => set('year', e.target.value)} />
         </FormField>
         <FormField label={t('staff.baseSalary')} required>
-          <Input type="number" placeholder="0.00" value={form.base_salary} onChange={(e) => set('base_salary', e.target.value)} />
+          <Input type="number" placeholder={t('staff.amountPlaceholder')} value={form.base_salary} onChange={(e) => set('base_salary', e.target.value)} />
         </FormField>
         <FormField label={t('staff.bonus')}>
-          <Input type="number" placeholder="0.00" value={form.bonus} onChange={(e) => set('bonus', e.target.value)} />
+          <Input type="number" placeholder={t('staff.amountPlaceholder')} value={form.bonus} onChange={(e) => set('bonus', e.target.value)} />
         </FormField>
         <FormField label={t('staff.deductions')} className="col-span-2">
-          <Input type="number" placeholder="0.00" value={form.deductions} onChange={(e) => set('deductions', e.target.value)} />
+          <Input type="number" placeholder={t('staff.amountPlaceholder')} value={form.deductions} onChange={(e) => set('deductions', e.target.value)} />
         </FormField>
       </div>
       <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-[var(--color-outline-variant)]/15">
@@ -326,16 +332,8 @@ export default function StaffPage() {
 
   const todayAttendance = attendance.filter((a) => a.date === localDateStr())
 
-  const ROLE_OPTIONS = [
-    { value: 'all', label: t('staff.allRoles') },
-    ...ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) })),
-  ]
-  const STATUS_OPTIONS = [
-    { value: 'all',      label: t('staff.allStatuses') },
-    { value: 'active',   label: t('status.active') },
-    { value: 'inactive', label: t('status.inactive') },
-    { value: 'on-leave', label: t('status.onLeave') },
-  ]
+  const ROLE_OPTIONS = buildStaffRoleSelectOptions(t, { includeAll: true })
+  const STATUS_OPTIONS = buildStaffStatusSelectOptions(t, { includeAll: true })
 
   const handleSaveStaff = async (payload: CreateStaffPayload) => {
     if (editTarget) { await editStaff(editTarget.id, payload) }
@@ -350,7 +348,7 @@ export default function StaffPage() {
       await removeStaff(m.id)
       loadDashboardStats()
     }
-    catch { alert('Failed to delete staff member.') }
+    catch { alert(t('staff.deleteFailed')) }
     finally { setDeletingId(null); setConfirmDeleteId(null) }
   }
 
@@ -367,14 +365,14 @@ export default function StaffPage() {
         </div>
       ),
     },
-    { key: 'role',   header: t('common.role'),   sortable: true, render: (m) => <span className="text-sm capitalize">{m.role}</span> },
+    { key: 'role',   header: t('common.role'),   sortable: true, render: (m) => <span className="text-sm">{getStaffRoleLabel(t, m.role)}</span> },
     { key: 'email',  header: t('common.email'),  render: (m) => <span className="text-xs">{m.email}</span> },
     { key: 'phone',  header: t('common.phone'),  render: (m) => <span className="text-sm">{m.phone}</span> },
     {
       key: 'status', header: t('common.status'), sortable: true,
       render: (m) => (
-        <Badge variant={m.status === 'active' ? 'success' : m.status === 'on-leave' ? 'warning' : 'neutral'} dot size="sm">
-          {m.status === 'on-leave' ? t('status.onLeave') : m.status === 'active' ? t('status.active') : t('status.inactive')}
+        <Badge variant={getEmployeeStatusBadgeVariant(m.status)} dot size="sm">
+          {getStaffStatusLabel(t, m.status)}
         </Badge>
       ),
     },
@@ -533,7 +531,7 @@ export default function StaffPage() {
               </div>
               {salaryRecords.length === 0 ? (
                 <div className="text-center py-12 text-sm text-[var(--color-on-surface-variant)]">
-                  No salary records yet. Click "Add Salary Record" to get started.
+                  {t('staff.noSalaryRecords')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -558,15 +556,15 @@ export default function StaffPage() {
               <Avatar name={`${selected.firstName} ${selected.lastName}`} size="xl" ring />
               <div className="min-w-0">
                 <p className="text-lg font-bold text-[var(--color-on-surface)] truncate">{selected.firstName} {selected.lastName}</p>
-                <p className="text-sm text-[var(--color-on-surface-variant)] capitalize">{selected.role}</p>
-                <Badge variant={selected.status === 'active' ? 'success' : selected.status === 'on-leave' ? 'warning' : 'neutral'} dot size="sm" className="mt-1">
-                  {selected.status === 'on-leave' ? t('status.onLeave') : selected.status === 'active' ? t('status.active') : t('status.inactive')}
+                <p className="text-sm text-[var(--color-on-surface-variant)]">{getStaffRoleLabel(t, selected.role)}</p>
+                <Badge variant={getEmployeeStatusBadgeVariant(selected.status)} dot size="sm" className="mt-1">
+                  {getStaffStatusLabel(t, selected.status)}
                 </Badge>
               </div>
             </div>
             <InfoGrid cols={2} items={[
               { label: t('staff.employeeCode'), value: <span className="font-mono text-[var(--color-primary)]">{selected.employeeCode}</span> },
-              { label: t('common.role'),         value: <span className="capitalize">{selected.role}</span> },
+              { label: t('common.role'),         value: getStaffRoleLabel(t, selected.role) },
               { label: t('common.email'),        value: selected.email },
               { label: t('common.phone'),        value: selected.phone },
               { label: t('staff.joinDate'),      value: formatDate(selected.joinDate) },
@@ -622,7 +620,7 @@ export default function StaffPage() {
             {target && (
               <div className="space-y-4">
                 <p className="text-sm text-[var(--color-on-surface-variant)]">
-                  Are you sure you want to delete <span className="font-semibold text-[var(--color-on-surface)]">{target.firstName} {target.lastName}</span>? This action cannot be undone.
+                  {t('staff.confirmDeleteMessage', { name: `${target.firstName} ${target.lastName}` })}
                 </p>
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-outline-variant)]/15">
                   <Button variant="ghost" onClick={() => setConfirmDeleteId(null)} disabled={!!deletingId}>{t('common.cancel')}</Button>

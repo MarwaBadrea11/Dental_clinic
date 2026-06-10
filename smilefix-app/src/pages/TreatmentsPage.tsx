@@ -13,7 +13,8 @@ import { TreatmentCard, ProcedureBadge, TreatmentFormModal } from '@/components/
 import { useTreatmentStore } from '@/store/treatmentStore'
 import { formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import type { Treatment, TreatmentCategory } from '@/types'
+import { buildTreatmentCategorySelectOptionsWithApiValues } from '@/i18n/treatmentCategoryOptions'
+import type { Treatment } from '@/types'
 
 export default function TreatmentsPage() {
   const { t } = useTranslation()
@@ -48,16 +49,20 @@ export default function TreatmentsPage() {
     loadTreatments()
   }, [loadTreatments])
 
-  const CATEGORIES: { value: string; label: string }[] = [
-    { value: 'all', label: t('treatments.allCategories') },
-    ...(['Preventive','Restorative','Endodontic','Periodontic','Prosthodontic','Orthodontic','Oral Surgery','Cosmetic'] as TreatmentCategory[])
-      .map((c) => ({ value: c, label: c })),
-  ]
+  const CATEGORIES = buildTreatmentCategorySelectOptionsWithApiValues(
+    t,
+    treatments.map((tr) => tr.category),
+    { includeAll: true },
+  )
 
   const filtered = treatments.filter((tr) => {
     const matchCat = category === 'all' || tr.category === category
     const q = search.toLowerCase()
-    const matchSearch = !q || tr.name.toLowerCase().includes(q) || tr.category.toLowerCase().includes(q)
+    const matchSearch = !q || [
+      tr.name,
+      tr.category,
+      tr.description,
+    ].some((v) => v?.toLowerCase().includes(q))
     return matchCat && matchSearch
   })
 
@@ -207,7 +212,7 @@ export default function TreatmentsPage() {
                 Object.entries(grouped).map(([cat, items]) => (
                   <div key={cat} className="mb-8">
                     <div className="flex items-center gap-2 mb-4">
-                      <ProcedureBadge category={cat as TreatmentCategory} size="md" />
+                      <ProcedureBadge category={cat} size="md" />
                       <span className="text-xs text-[var(--color-on-surface-variant)]">
                         {items.length} {items.length > 1 ? t('treatments.procedures') : t('treatments.procedure')}
                       </span>

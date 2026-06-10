@@ -24,7 +24,7 @@ export function ScheduleWidget({
   date, appointments, onDateChange, onSlotClick, onSlotAddClick, onAppointmentClick, onAddClick,
   hours = WORK_HOURS, className,
 }: ScheduleWidgetProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const dt = new Date(date + 'T00:00:00')
   const isToday = date === new Date().toISOString().split('T')[0]
 
@@ -53,10 +53,10 @@ export function ScheduleWidget({
           </button>
           <div className="text-center">
             <p className={cn('text-sm font-bold', isToday ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface)]')}>
-              {dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-              {isToday && <span className="ml-2 text-[10px] font-semibold bg-[var(--color-primary)] text-white px-1.5 py-0.5 rounded-full">{t('common.today').toUpperCase()}</span>}
+              {dt.toLocaleDateString(i18n.language, { weekday: 'long', month: 'long', day: 'numeric' })}
+              {isToday && <span className="ml-2 text-[10px] font-semibold bg-[var(--color-primary)] text-white px-1.5 py-0.5 rounded-full">{t('calendar.today').toUpperCase()}</span>}
             </p>
-            <p className="text-[11px] text-[var(--color-on-surface-variant)]">{appointments.length} {appointments.length !== 1 ? t('nav.calendar') : t('nav.calendar')}</p>
+            <p className="text-[11px] text-[var(--color-on-surface-variant)]">{t('calendar.appointmentsCount', { count: appointments.length })}</p>
           </div>
           <button onClick={next} className="p-1.5 rounded-[var(--radius-DEFAULT)] hover:bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] transition-colors">
             <ChevronRight size={16} />

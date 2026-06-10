@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { Download, ExternalLink } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
@@ -18,6 +19,7 @@ export function ReportCard({
   title, description, icon, category, lastGenerated,
   onGenerate, onDownload, delay = 0, className,
 }: ReportCardProps) {
+  const { t } = useTranslation()
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -44,7 +46,7 @@ export function ReportCard({
         <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5 leading-relaxed">{description}</p>
       </div>
       {lastGenerated && (
-        <p className="text-[10px] text-[var(--color-outline)]">Last generated: {lastGenerated}</p>
+        <p className="text-[10px] text-[var(--color-outline)]">{t('reports.lastGenerated')}: {lastGenerated}</p>
       )}
       <div className="flex items-center gap-2 mt-auto pt-2 border-t border-[var(--color-outline-variant)]/15">
         {onGenerate && (
@@ -52,7 +54,7 @@ export function ReportCard({
             onClick={onGenerate}
             className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:underline"
           >
-            <ExternalLink size={12} /> Generate
+            <ExternalLink size={12} /> {t('common.generate')}
           </button>
         )}
         {onDownload && (
@@ -60,7 +62,7 @@ export function ReportCard({
             onClick={onDownload}
             className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)] ml-auto"
           >
-            <Download size={12} /> Download
+            <Download size={12} /> {t('common.download')}
           </button>
         )}
       </div>

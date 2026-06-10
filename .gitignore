@@ -29,5 +29,8 @@ Thumbs.db
 # Zip files
 *.zip
 
+# i18n scan output
+**/.i18n-missing-keys.json
+
 # Embedded git repos
 smailfixmobail/stitch_smilefix_patient_app_ui/

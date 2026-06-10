@@ -8,6 +8,11 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/FormField'
 import { AppointmentStatusBadge } from './AppointmentStatusBadge'
+import {
+  buildAppointmentStatusSelectOptions,
+  buildAppointmentTreatmentSelectOptions,
+  getAppointmentTreatmentLabel,
+} from '@/i18n/appointmentOptions'
 import { cn } from '@/utils/cn'
 import type { Appointment, AppointmentStatus } from '@/types'
 
@@ -23,17 +28,10 @@ interface AppointmentViewModalProps {
 }
 
 export function AppointmentViewModal({ appointment: a, open, onClose, onEdit, onDelete, onStatusChange }: AppointmentViewModalProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   if (!a) return null
 
-  const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
-    { value: 'scheduled',   label: t('status.scheduled') },
-    { value: 'confirmed',   label: t('status.confirmed') },
-    { value: 'in-progress', label: t('status.inProgress') },
-    { value: 'completed',   label: t('status.completed') },
-    { value: 'cancelled',   label: t('status.cancelled') },
-    { value: 'no-show',     label: t('status.noShow') },
-  ]
+  const STATUS_OPTIONS = buildAppointmentStatusSelectOptions(t)
 
   return (
     <Modal open={open} onClose={onClose} size="md">
@@ -41,7 +39,7 @@ export function AppointmentViewModal({ appointment: a, open, onClose, onEdit, on
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-[var(--color-on-surface)]" style={{ fontFamily: 'Manrope, sans-serif' }}>{a.treatment}</h2>
+            <h2 className="text-lg font-bold text-[var(--color-on-surface)]" style={{ fontFamily: 'Manrope, sans-serif' }}>{getAppointmentTreatmentLabel(t, a.treatment)}</h2>
             <p className="text-sm text-[var(--color-on-surface-variant)] mt-0.5">{a.treatmentCategory}</p>
           </div>
           <AppointmentStatusBadge status={a.status} size="md" />
@@ -51,8 +49,8 @@ export function AppointmentViewModal({ appointment: a, open, onClose, onEdit, on
           {[
             { icon: <User size={14} />,       label: t('common.patient'), value: `${a.patientName}${a.patientCode ? ` (${a.patientCode})` : ''}` },
             { icon: <Stethoscope size={14} />, label: t('common.doctor'),  value: a.doctorName },
-            { icon: <Calendar size={14} />,    label: t('common.date'),    value: new Date(a.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
-            { icon: <Clock size={14} />,       label: t('common.type'),    value: `${a.startTime} – ${a.endTime}` },
+            { icon: <Calendar size={14} />,    label: t('common.date'),    value: new Date(a.date + 'T00:00:00').toLocaleDateString(i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
+            { icon: <Clock size={14} />,       label: t('calendar.time'),  value: `${a.startTime} – ${a.endTime}` },
             ...(a.chair ? [{ icon: <Hash size={14} />, label: t('calendar.chair'), value: `${t('calendar.chair')} ${a.chair}` }] : []),
           ].map((item) => (
             <div key={item.label} className="bg-[var(--color-surface-container-low)] rounded-[var(--radius-DEFAULT)] p-3">
@@ -142,32 +140,13 @@ interface AppointmentFormModalProps {
   loading?: boolean
 }
 
-const TREATMENT_OPTIONS = [
-  { value: 'Dental Cleaning',     label: 'Dental Cleaning' },
-  { value: 'Composite Filling',   label: 'Composite Filling' },
-  { value: 'Root Canal Therapy',  label: 'Root Canal Therapy' },
-  { value: 'Crown Placement',     label: 'Crown Placement' },
-  { value: 'Teeth Whitening',     label: 'Teeth Whitening' },
-  { value: 'Braces Adjustment',   label: 'Braces Adjustment' },
-  { value: 'Tooth Extraction',    label: 'Tooth Extraction' },
-  { value: 'Periodontal Scaling', label: 'Periodontal Scaling' },
-  { value: 'X-Ray Series',        label: 'X-Ray Series' },
-  { value: 'Consultation',        label: 'Consultation' },
-]
-
 export function AppointmentFormModal({
   open, onClose, onSave, initialDate, initialData, loading = false,
 }: AppointmentFormModalProps) {
   const { t } = useTranslation()
 
-  const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
-    { value: 'scheduled',   label: t('status.scheduled') },
-    { value: 'confirmed',   label: t('status.confirmed') },
-    { value: 'in-progress', label: t('status.inProgress') },
-    { value: 'completed',   label: t('status.completed') },
-    { value: 'cancelled',   label: t('status.cancelled') },
-    { value: 'no-show',     label: t('status.noShow') },
-  ]
+  const STATUS_OPTIONS = buildAppointmentStatusSelectOptions(t)
+  const TREATMENT_OPTIONS = buildAppointmentTreatmentSelectOptions(t)
 
   const CHAIR_OPTIONS = [1, 2, 3, 4].map((n) => ({ value: String(n), label: `${t('calendar.chair')} ${n}` }))
 
@@ -294,12 +273,12 @@ export function AppointmentFormModal({
 
   // Build select options
   const doctorSelectOptions = [
-    { value: '', label: dataLoading ? 'Loading doctors…' : 'Select doctor…' },
+    { value: '', label: dataLoading ? t('calendar.loadingDoctors') : t('calendar.selectDoctor') },
     ...doctors.map((d) => ({ value: d.id, label: d.label })),
   ]
 
   const patientSelectOptions = [
-    { value: '', label: dataLoading ? 'Loading patients…' : 'Select patient…' },
+    { value: '', label: dataLoading ? t('calendar.loadingPatients') : t('calendar.selectPatient') },
     ...patients.map((p) => ({ value: p.id, label: `${p.label} (${p.code})` })),
   ]
 
@@ -326,7 +305,7 @@ export function AppointmentFormModal({
         {/* Patient Code (read-only, auto-filled) + Doctor */}
         <FormField label={t('calendar.patientCode')}>
           <Input
-            placeholder="Auto-filled"
+            placeholder={t('calendar.autoFilled')}
             value={form.patientCode}
             readOnly
             className="bg-[var(--color-surface-container-low)] cursor-default"
@@ -382,7 +361,7 @@ export function AppointmentFormModal({
         {/* Notes — full width */}
         <FormField label={t('common.notes')} className="col-span-2">
           <Textarea
-            placeholder={t('common.notes')}
+            placeholder={t('calendar.notesPlaceholder')}
             value={form.notes}
             onChange={(e) => setField('notes', e.target.value)}
             rows={2}

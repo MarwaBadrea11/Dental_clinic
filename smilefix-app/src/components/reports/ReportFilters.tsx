@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/utils/cn'
@@ -12,6 +13,7 @@ interface ReportFiltersProps {
 }
 
 export function ReportFilters({ onApply, loading, className, extra }: ReportFiltersProps) {
+  const { t } = useTranslation()
   const [from, setFrom] = useState('')
   const [to,   setTo]   = useState('')
 
@@ -19,7 +21,7 @@ export function ReportFilters({ onApply, loading, className, extra }: ReportFilt
     <div className={cn('flex flex-wrap items-end gap-3', className)}>
       <div className="flex flex-col gap-1">
         <label className="text-[11px] font-semibold text-[var(--color-on-surface-variant)] uppercase tracking-wider">
-          From
+          {t('reports.dateFrom')}
         </label>
         <input
           type="date"
@@ -35,7 +37,7 @@ export function ReportFilters({ onApply, loading, className, extra }: ReportFilt
       </div>
       <div className="flex flex-col gap-1">
         <label className="text-[11px] font-semibold text-[var(--color-on-surface-variant)] uppercase tracking-wider">
-          To
+          {t('reports.dateTo')}
         </label>
         <input
           type="date"
@@ -58,7 +60,7 @@ export function ReportFilters({ onApply, loading, className, extra }: ReportFilt
         loading={loading}
         onClick={() => onApply(from, to)}
       >
-        Apply
+        {t('common.apply')}
       </Button>
     </div>
   )
@@ -66,20 +68,22 @@ export function ReportFilters({ onApply, loading, className, extra }: ReportFilt
 
 /** Minimal inline search input */
 export function TableSearch({
-  value, onChange, placeholder = 'Search…', className,
+  value, onChange, placeholder, className,
 }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
   className?: string
 }) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('common.search')
   return (
     <div className={cn('relative', className)}>
       <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-on-surface-variant)]" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className={cn(
           'pl-8 pr-3 py-1.5 text-sm w-full rounded-[var(--radius-DEFAULT)]',
           'border border-[var(--color-outline-variant)]/40',

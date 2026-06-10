@@ -18,7 +18,7 @@ import { useInventoryStore } from '@/store/inventoryStore'
 import { useReportStore } from '@/store/reportStore'
 import { formatCurrency } from '@/utils/format'
 
-// ── Static chart data (kept for the overview charts) ─────────────────────────
+// ── Static chart data ─────────────────────────────────────────────────────────
 const MONTHLY_REVENUE = [
   { label: 'Jan', value: 3200 }, { label: 'Feb', value: 4100 },
   { label: 'Mar', value: 3750 }, { label: 'Apr', value: 4800 },
@@ -32,25 +32,23 @@ const TREATMENT_DIST = [
   { label: 'Other',       value: 8,  color: 'var(--color-outline-variant)' },
 ]
 
-// ── Tab definition ────────────────────────────────────────────────────────────
 type ReportTab = 'overview' | 'financial' | 'inventory' | 'payroll' | 'audit'
-
-const TABS: { id: ReportTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'overview',   label: 'Overview',   icon: <BarChart3 size={14} /> },
-  { id: 'financial',  label: 'Financial',  icon: <DollarSign size={14} /> },
-  { id: 'inventory',  label: 'Inventory',  icon: <Package size={14} /> },
-  { id: 'payroll',    label: 'Payroll',    icon: <Users size={14} /> },
-  { id: 'audit',      label: 'Audit Log',  icon: <ShieldCheck size={14} /> },
-]
 
 export default function ReportsPage() {
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Persist active tab in URL so refresh restores the correct tab
+  const TABS: { id: ReportTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'overview',  label: t('reports.tabOverview'),  icon: <BarChart3 size={14} /> },
+    { id: 'financial', label: t('reports.tabFinancial'), icon: <DollarSign size={14} /> },
+    { id: 'inventory', label: t('reports.tabInventory'), icon: <Package size={14} /> },
+    { id: 'payroll',   label: t('reports.tabPayroll'),   icon: <Users size={14} /> },
+    { id: 'audit',     label: t('reports.tabAudit'),     icon: <ShieldCheck size={14} /> },
+  ]
+
   const tabParam = searchParams.get('tab') as ReportTab | null
   const [activeTab, setActiveTab] = useState<ReportTab>(
-    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview'
+    tabParam && TABS.some((tb) => tb.id === tabParam) ? tabParam : 'overview',
   )
 
   const handleTabChange = (tab: ReportTab) => {
@@ -58,12 +56,12 @@ export default function ReportsPage() {
     setSearchParams((prev) => { prev.set('tab', tab); return prev }, { replace: true })
   }
 
-  const { patients }      = usePatientStore()
-  const { appointments }  = useAppointmentStore()
-  const { items }         = useInventoryStore()
-  const { financial, exportLoading, exportReport } = useReportStore()
+  const { patients }     = usePatientStore()
+  const { appointments } = useAppointmentStore()
+  const { items }        = useInventoryStore()
+  const { financial }    = useReportStore()
 
-  const typeParam  = searchParams.get('type')
+  const typeParam   = searchParams.get('type')
   const isLabFilter = typeParam === 'lab'
   const clearFilter = () => setSearchParams({}, { replace: true })
 
@@ -71,30 +69,24 @@ export default function ReportsPage() {
   const outstanding   = Number(financial?.totals.total_outstanding ?? 0)
   const lowStockCount = items.filter((i) => i.status === 'low-stock' || i.status === 'out-of-stock').length
 
+  // ── Report catalogue (keys resolve via i18n) ──────────────────────────────
   const REPORT_CATALOGUE = [
-    { title: 'Revenue & Billing Report', description: 'Monthly revenue, outstanding invoices, payment methods breakdown.',     icon: <DollarSign size={18} />,  category: 'Finance',    lastGenerated: 'Today' },
-    { title: 'Inventory Usage Report',   description: 'Consumption rates, reorder alerts, supplier performance metrics.',      icon: <Package size={18} />,     category: 'Inventory',  lastGenerated: 'Today' },
-    { title: 'Staff Payroll Report',     description: 'Monthly salary calculations, bonuses, deductions per staff member.',    icon: <Users size={18} />,       category: 'HR',         lastGenerated: 'Today' },
-    { title: 'Patient Summary Report',   description: 'Total patients, new registrations, demographics and visit frequency.',  icon: <Users size={18} />,       category: 'Clinical',   lastGenerated: 'Oct 15, 2023' },
-    { title: 'Treatment Analysis',       description: 'Most performed procedures, success rates, treatment duration averages.', icon: <Stethoscope size={18} />, category: 'Clinical',   lastGenerated: 'Oct 10, 2023' },
-    { title: 'Appointment Statistics',   description: 'Booking rates, no-shows, cancellations and peak hours analysis.',       icon: <Calendar size={18} />,    category: 'Operations', lastGenerated: 'Oct 12, 2023' },
-    { title: 'Staff Performance Report', description: 'Attendance, productivity, patient satisfaction scores per doctor.',     icon: <TrendingUp size={18} />,  category: 'HR',         lastGenerated: 'Oct 1, 2023' },
-    { title: 'Insurance Claims Report',  description: 'Claims submitted, approved, rejected and pending by provider.',        icon: <FileText size={18} />,    category: 'Finance',    lastGenerated: 'Sep 30, 2023' },
-    { title: 'Clinic Efficiency Report', description: 'Chair utilization, wait times, throughput and operational KPIs.',      icon: <BarChart3 size={18} />,   category: 'Operations', lastGenerated: 'Sep 28, 2023' },
-    { title: 'Lab Results Summary',      description: 'Aggregated lab test results, turnaround times and abnormal findings.',  icon: <FlaskConical size={18} />,category: 'Lab',        lastGenerated: 'Oct 13, 2023' },
-    { title: 'Radiology & X-Ray Log',    description: 'X-ray scans uploaded, reviewed and pending radiologist sign-off.',     icon: <FlaskConical size={18} />,category: 'Lab',        lastGenerated: 'Oct 11, 2023' },
+    { titleKey: 'reportRevenue',    descKey: 'reportRevenueDesc',      icon: <DollarSign size={18} />,  catKey: 'catFinance',    tab: 'financial'  as ReportTab },
+    { titleKey: 'reportInventory',  descKey: 'reportInventoryDesc',    icon: <Package size={18} />,     catKey: 'catInventory',  tab: 'inventory'  as ReportTab },
+    { titleKey: 'reportPayroll',    descKey: 'reportPayrollDesc',      icon: <Users size={18} />,       catKey: 'catHR',         tab: 'payroll'    as ReportTab },
+    { titleKey: 'reportPatient',    descKey: 'reportPatientDesc',      icon: <Users size={18} />,       catKey: 'catClinical',   tab: undefined },
+    { titleKey: 'reportTreatment',  descKey: 'reportTreatmentDesc',    icon: <Stethoscope size={18} />, catKey: 'catClinical',   tab: undefined },
+    { titleKey: 'reportAppointment',descKey: 'reportAppointmentDesc',  icon: <Calendar size={18} />,    catKey: 'catOperations', tab: undefined },
+    { titleKey: 'reportStaffPerf',  descKey: 'reportStaffPerfDesc',    icon: <TrendingUp size={18} />,  catKey: 'catHR',         tab: undefined },
+    { titleKey: 'reportInsurance',  descKey: 'reportInsuranceDesc',    icon: <FileText size={18} />,    catKey: 'catFinance',    tab: undefined },
+    { titleKey: 'reportEfficiency', descKey: 'reportEfficiencyDesc',   icon: <BarChart3 size={18} />,   catKey: 'catOperations', tab: undefined },
+    { titleKey: 'reportLab',        descKey: 'reportLabDesc',          icon: <FlaskConical size={18} />,catKey: 'catLab',        tab: undefined },
+    { titleKey: 'reportXray',       descKey: 'reportXrayDesc',         icon: <FlaskConical size={18} />,catKey: 'catLab',        tab: undefined },
   ]
 
   const visibleReports = isLabFilter
-    ? REPORT_CATALOGUE.filter((r) => r.category === 'Lab')
+    ? REPORT_CATALOGUE.filter((r) => r.catKey === 'catLab')
     : REPORT_CATALOGUE
-
-  // Map catalogue cards to live tabs where applicable
-  const LIVE_TAB_MAP: Record<string, ReportTab> = {
-    'Revenue & Billing Report': 'financial',
-    'Inventory Usage Report':   'inventory',
-    'Staff Payroll Report':     'payroll',
-  }
 
   return (
     <div>
@@ -122,7 +114,7 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {/* ── Overview tab ─────────────────────────────────────────────────────── */}
+      {/* ── Overview ─────────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -135,7 +127,11 @@ export default function ReportsPage() {
           <div className="grid grid-cols-12 gap-6">
             <div className="col-span-12 lg:col-span-7">
               <ChartContainer title={t('reports.monthlyRevenue')} subtitle={t('reports.last6Months')} delay={0.1}>
-                <BarChart data={MONTHLY_REVENUE.map((d) => ({ ...d, color: 'var(--color-primary-container)' }))} formatValue={formatCurrency} delay={0.15} />
+                <BarChart
+                  data={MONTHLY_REVENUE.map((d) => ({ ...d, color: 'var(--color-primary-container)' }))}
+                  formatValue={formatCurrency}
+                  delay={0.15}
+                />
               </ChartContainer>
             </div>
             <div className="col-span-12 lg:col-span-5">
@@ -145,23 +141,42 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <SectionCard title={t('reports.availableReports')} icon={<FileText size={15} />} subtitle={t('reports.reportsDesc')} delay={0.2}>
+          <SectionCard
+            title={t('reports.availableReports')}
+            icon={<FileText size={15} />}
+            subtitle={t('reports.reportsDesc')}
+            delay={0.2}
+          >
             {isLabFilter && (
-              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 mb-4 px-3 py-2 rounded-[var(--radius-DEFAULT)] bg-[var(--color-tertiary-container)]/20 border border-[var(--color-tertiary)]/30">
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 mb-4 px-3 py-2 rounded-[var(--radius-DEFAULT)] bg-[var(--color-tertiary-container)]/20 border border-[var(--color-tertiary)]/30"
+              >
                 <FlaskConical size={14} className="text-[var(--color-tertiary)] shrink-0" />
-                <span className="text-xs font-semibold text-[var(--color-on-tertiary-container)] flex-1">Showing Lab Reports only</span>
-                <button onClick={clearFilter} className="flex items-center gap-1 text-[11px] font-bold text-[var(--color-tertiary)] hover:underline cursor-pointer">
-                  <X size={12} /> Clear filter
+                <span className="text-xs font-semibold text-[var(--color-on-tertiary-container)] flex-1">
+                  {t('reports.labFilterLabel')}
+                </span>
+                <button
+                  onClick={clearFilter}
+                  className="flex items-center gap-1 text-[11px] font-bold text-[var(--color-tertiary)] hover:underline cursor-pointer"
+                >
+                  <X size={12} /> {t('reports.clearFilter')}
                 </button>
               </motion.div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {visibleReports.map((r, i) => (
                 <ReportCard
-                  key={r.title} {...r} delay={0.2 + i * 0.04}
-                  onGenerate={LIVE_TAB_MAP[r.title] ? () => handleTabChange(LIVE_TAB_MAP[r.title]) : undefined}
-                  onDownload={LIVE_TAB_MAP[r.title] ? () => handleTabChange(LIVE_TAB_MAP[r.title]) : undefined}
+                  key={r.titleKey}
+                  title={t(`reports.${r.titleKey}`)}
+                  description={t(`reports.${r.descKey}`)}
+                  icon={r.icon}
+                  category={t(`reports.${r.catKey}`)}
+                  lastGenerated={t('reports.today')}
+                  delay={0.2 + i * 0.04}
+                  onGenerate={r.tab ? () => handleTabChange(r.tab!) : undefined}
+                  onDownload={r.tab ? () => handleTabChange(r.tab!) : undefined}
                 />
               ))}
             </div>
@@ -169,7 +184,7 @@ export default function ReportsPage() {
         </motion.div>
       )}
 
-      {/* ── Live report tabs ──────────────────────────────────────────────────── */}
+      {/* ── Live panels ────────────────────────────────────────────────────────── */}
       {activeTab === 'financial' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <FinancialReportPanel />

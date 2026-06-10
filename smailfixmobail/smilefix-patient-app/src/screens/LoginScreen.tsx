@@ -14,7 +14,6 @@ import {
   ScrollView,
   Animated,
   StatusBar,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -46,21 +45,16 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
-  const [bioLoading, setBioLoading] = useState(false);
   const [emailErr, setEmailErr]   = useState('');
   const [passwordErr, setPasswordErr] = useState('');
   const [generalErr, setGeneralErr]   = useState('');
 
   // ── Animations ────────────────────────────
-  const cardY  = useRef(new Animated.Value(60)).current;
   const cardO  = useRef(new Animated.Value(0)).current;
   const shakeX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(cardY, { toValue: 0, tension: 65, friction: 9, useNativeDriver: true }),
-      Animated.timing(cardO, { toValue: 1, duration: 550, useNativeDriver: true }),
-    ]).start();
+    Animated.timing(cardO, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
 
   function shake() {
@@ -142,45 +136,6 @@ export default function LoginScreen({ navigation }: Props) {
     }
   }
 
-  // ── Biometric — restores session from SecureStore ──
-  async function handleBiometric() {
-    setBioLoading(true);
-    try {
-      const LA = await import('expo-local-authentication');
-      const hasHW    = await LA.hasHardwareAsync();
-      const enrolled = await LA.isEnrolledAsync();
-
-      if (!hasHW || !enrolled) {
-        Alert.alert(t('notAvailable'), t('biometricNotEnabled'), [{ text: t('ok') }]);
-        return;
-      }
-
-      const result = await LA.authenticateAsync({
-        promptMessage:         t('loginToSmileFix'),
-        fallbackLabel:         t('usePassword'),
-        cancelLabel:           t('cancel'),
-        disableDeviceFallback: false,
-      });
-
-      if (result.success) {
-        // Re-hydrate from SecureStore — the session was already saved on last login
-        const hydrateFromStorage = useAppStore.getState().hydrateFromStorage;
-        await hydrateFromStorage();
-        // If no stored session, tell the user to log in with credentials first
-        const isAuth = useAppStore.getState().isAuthenticated;
-        if (!isAuth) {
-          Alert.alert(t('notAvailable'), t('noStoredSession'), [{ text: t('ok') }]);
-        }
-      } else {
-        Alert.alert(t('verificationFailed'), t('fingerprintNotRecognized'));
-      }
-    } catch {
-      Alert.alert(t('error'), t('biometricActivationFailed'));
-    } finally {
-      setBioLoading(false);
-    }
-  }
-
   const s = makeStyles(colors, isRTL, isDark);
 
   return (
@@ -228,7 +183,7 @@ export default function LoginScreen({ navigation }: Props) {
 
             {/* Card */}
             <Animated.View
-              style={[s.card, { opacity: cardO, transform: [{ translateY: cardY }, { translateX: shakeX }] }]}
+              style={[s.card, { opacity: cardO, transform: [{ translateX: shakeX }] }]}
             >
               {/* General error banner */}
               {generalErr ? (
@@ -312,39 +267,6 @@ export default function LoginScreen({ navigation }: Props) {
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* Divider */}
-              <View style={s.divRow}>
-                <View style={s.divLine} />
-                <Text style={s.divText}>{t('or')}</Text>
-                <View style={s.divLine} />
-              </View>
-
-              {/* Biometric */}
-              <TouchableOpacity
-                style={[s.bioBtn, bioLoading && s.btnDisabled]}
-                onPress={handleBiometric}
-                disabled={bioLoading}
-                activeOpacity={0.82}
-              >
-                {bioLoading ? (
-                  <ActivityIndicator color={colors.blue} size="small" />
-                ) : (
-                  <View style={s.bioBtnInner}>
-                    <Text style={s.bioIcon}>🔐</Text>
-                    <View style={s.bioCopy}>
-                      <Text style={s.bioTitle}>{t('loginWithBiometric')}</Text>
-                      <Text style={s.bioSub}>{t('quickSecureLogin')}</Text>
-                    </View>
-                    <Text style={s.bioArrow}>{isRTL ? '←' : '→'}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* Security note */}
-              <View style={s.secNote}>
-                <Text style={s.secIcon}>🔒</Text>
-                <Text style={s.secText}>{t('dataProtectedSSL')}</Text>
-              </View>
             </Animated.View>
 
             {/* Register link */}
@@ -458,33 +380,6 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
     btnDisabled: { opacity: 0.5 },
     btnGrad: { height: 56, alignItems: 'center', justifyContent: 'center' },
     btnText: { fontSize: 17, color: c.onPrimary, fontWeight: '700', letterSpacing: 0.3 },
-
-    divRow: {
-      flexDirection: flexDirection, alignItems: 'center',
-      marginVertical: 18, gap: 10,
-    },
-    divLine: { flex: 1, height: 1, backgroundColor: c.outline + (isDark ? '40' : '80') },
-    divText: { fontSize: 13, color: c.textSub },
-
-    bioBtn: {
-      backgroundColor: c.warm, borderRadius: 16, padding: 16,
-      borderWidth: 1, borderColor: isDark ? c.outline + '40' : c.tealLight + '60',
-      minHeight: 64, justifyContent: 'center', marginBottom: 16,
-    },
-    bioBtnInner: { flexDirection: flexDirection, alignItems: 'center', gap: 12 },
-    bioIcon:  { fontSize: 28 },
-    bioCopy:  { flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' },
-    bioTitle: { fontSize: 15, color: c.blue, textAlign: textAlign, fontWeight: '600' },
-    bioSub:   { fontSize: 12, color: c.textSub, textAlign: textAlign, marginTop: 2 },
-    bioArrow: { fontSize: 18, color: c.teal },
-
-    secNote: {
-      flexDirection: flexDirection, alignItems: 'center', gap: 8,
-      backgroundColor: isDark ? c.successBg + '20' : c.successBg + '40',
-      borderRadius: 12, padding: 12,
-    },
-    secIcon: { fontSize: 16 },
-    secText: { flex: 1, fontSize: 11, color: isDark ? c.success : c.secText, textAlign: textAlign, lineHeight: 17 },
 
     regRow: {
       flexDirection: flexDirection, justifyContent: 'center',

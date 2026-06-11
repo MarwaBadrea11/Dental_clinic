@@ -20,6 +20,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import type { AppColors } from '../theme/colors';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
 const APP_URL = 'https://smilefix.app/download';
 
@@ -33,6 +34,7 @@ export default function QRScreen() {
   const { colors, isDark } = useTheme();
   const { t, isRTL }       = useTranslation();
   const [copied, setCopied] = useState(false);
+  const tabBarHeight = useTabBarHeight();
 
   const s = makeStyles(colors, isRTL, isDark);
 
@@ -40,7 +42,6 @@ export default function QRScreen() {
     { id: 'whatsapp', icon: 'logo-whatsapp',    label: t('whatsapp') },
     { id: 'sms',      icon: 'chatbubble-outline', label: t('sms') },
     { id: 'copy',     icon: 'copy-outline',      label: copied ? t('linkCopied') : t('copyLink') },
-    { id: 'more',     icon: 'share-outline',     label: t('moreOptions') },
   ];
 
   const handleShare = async (id: string) => {
@@ -77,7 +78,7 @@ export default function QRScreen() {
 
       <SafeAreaView style={s.safe}>
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* ── Header ── */}
@@ -137,15 +138,6 @@ export default function QRScreen() {
             ))}
           </View>
 
-          {/* ── Main share button ── */}
-          <TouchableOpacity
-            style={s.mainBtn}
-            onPress={() => handleShare('more')}
-            activeOpacity={0.82}
-          >
-            <Ionicons name="share-outline" size={20} color={colors.onPrimaryContainer} />
-            <Text style={s.mainBtnText}>{t('moreOptions')}</Text>
-          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -159,7 +151,6 @@ function makeStyles(c: AppColors, isRTL: boolean, isDark: boolean) {
     safe: { flex: 1 },
     scroll: {
       paddingHorizontal: 20,
-      paddingBottom: 110,
       alignItems: 'center',
     },
 
@@ -270,21 +261,6 @@ function makeStyles(c: AppColors, isRTL: boolean, isDark: boolean) {
       fontSize: 10, color: c.textSub,
       textAlign: 'center', fontWeight: '600',
       fontFamily: 'Inter_600SemiBold',
-    },
-
-    // Main button
-    mainBtn: {
-      flexDirection: 'row', alignItems: 'center',
-      gap: 8, width: '100%',
-      backgroundColor: isDark ? c.surfaceCard : '#FFFFFF',
-      borderRadius: 16, paddingVertical: 16,
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: isDark ? c.surfaceCardBorder : c.outlineVariant,
-    },
-    mainBtnText: {
-      fontSize: 16, color: isDark ? c.onPrimaryContainer : c.blue,
-      fontWeight: '700', fontFamily: 'Manrope_700Bold',
     },
   });
 }

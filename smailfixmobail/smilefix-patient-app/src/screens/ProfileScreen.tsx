@@ -20,12 +20,14 @@ import { useTheme } from '../hooks/useTheme';
 import { useAppStore } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
 export default function ProfileScreen() {
   const { t, isRTL, locale, i18n } = useTranslation();
   const { colors, isDark, toggleTheme } = useTheme();
   const { patient, logout, setLocale } = useAppStore();
   const [langLoading, setLangLoading] = useState(false);
+  const tabBarHeight = useTabBarHeight();
 
   const s = makeStyles(colors, isRTL);
   
@@ -94,7 +96,7 @@ export default function ProfileScreen() {
 
       <SafeAreaView style={s.safe}>
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* ── Page title ── */}
@@ -257,7 +259,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
   return StyleSheet.create({
     root:  { flex: 1, backgroundColor: c.bg },
     safe:  { flex: 1 },
-    scroll: { paddingHorizontal: 20, paddingBottom: 110 },
+    scroll: { paddingHorizontal: 20 },
 
     pageTitle: {
       fontSize: 28, fontWeight: '700',

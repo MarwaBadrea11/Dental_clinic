@@ -25,6 +25,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore, Appointment } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import {
   listAppointments,
   deleteAppointment,
@@ -246,6 +247,7 @@ export default function AppointmentsScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [detailItem, setDetailItem] = useState<Appointment | null>(null);
+  const tabBarHeight = useTabBarHeight();
 
   // ── Fetch appointments from backend ───────
   const fetchAppointments = useCallback(async (silent = false) => {
@@ -453,7 +455,7 @@ export default function AppointmentsScreen({ navigation }: any) {
           keyExtractor={(i) => i.id}
           renderItem={renderItem}
           ListEmptyComponent={renderEmpty}
-          contentContainerStyle={s.list}
+          contentContainerStyle={[s.list, { paddingBottom: tabBarHeight + 16 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -521,7 +523,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       fontWeight: '700', fontFamily: 'Inter_600SemiBold',
     },
 
-    list: { paddingHorizontal: 20, paddingBottom: 110 },
+    list: { paddingHorizontal: 20 },
 
     card: {
       backgroundColor: c.surfaceCard,

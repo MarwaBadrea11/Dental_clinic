@@ -18,11 +18,13 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
 export default function HomeScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
   const { t, isRTL }       = useTranslation();
   const { patient, appointments } = useAppStore();
+  const tabBarHeight = useTabBarHeight();
 
   const now = new Date().toISOString().split('T')[0];
   const nextAppt = appointments
@@ -55,7 +57,7 @@ export default function HomeScreen({ navigation }: any) {
 
       <SafeAreaView style={s.safe}>
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* ── Header ── */}
@@ -165,7 +167,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: c.bg },
     safe: { flex: 1 },
-    scroll: { paddingHorizontal: 20, paddingBottom: 110 },
+    scroll: { paddingHorizontal: 20 },
 
     // Header
     header: {

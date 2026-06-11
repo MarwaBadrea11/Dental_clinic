@@ -4,6 +4,7 @@ import { DollarSign, TrendingUp } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/utils/cn'
 import { formatCurrency } from '@/utils/format'
+import { getStaffRoleLabel } from '@/i18n/staffOptions'
 import type { StaffMember } from '@/types'
 
 interface SalaryCardProps {
@@ -33,7 +34,7 @@ export function SalaryCard({ member: m, delay = 0, className }: SalaryCardProps)
         <Avatar name={fullName} src={m.avatar} size="sm" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm text-[var(--color-on-surface)] truncate">{fullName}</p>
-          <p className="text-[11px] text-[var(--color-on-surface-variant)] capitalize">{m.role}</p>
+          <p className="text-[11px] text-[var(--color-on-surface-variant)]">{getStaffRoleLabel(t, m.role)}</p>
         </div>
         <div className="w-8 h-8 rounded-[var(--radius-DEFAULT)] bg-[var(--color-secondary-container)]/20 flex items-center justify-center text-[var(--color-secondary)]">
           <DollarSign size={14} />

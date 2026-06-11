@@ -27,6 +27,30 @@ const CATEGORIES: InventoryCategory[] = [
   'Impression Materials', 'Restorative', 'Sterilization', 'Equipment',
 ]
 
+const categoryKey: Record<InventoryCategory, string> = {
+  'Consumables':          'inventory.cat_Consumables',
+  'Instruments':          'inventory.cat_Instruments',
+  'Medications':          'inventory.cat_Medications',
+  'Protective Equipment': 'inventory.cat_ProtectiveEquipment',
+  'Impression Materials': 'inventory.cat_ImpressionMaterials',
+  'Restorative':          'inventory.cat_Restorative',
+  'Sterilization':        'inventory.cat_Sterilization',
+  'Equipment':            'inventory.cat_Equipment',
+}
+
+function buildCategorySelectOptions(
+  t: (key: string) => string,
+  { includeAll = false }: { includeAll?: boolean } = {},
+) {
+  const categoryOptions = CATEGORIES.map((c) => ({
+    value: c,
+    label: t(categoryKey[c]),
+  }))
+  return includeAll
+    ? [{ value: 'all', label: t('inventory.allCategories') }, ...categoryOptions]
+    : categoryOptions
+}
+
 // ── Restock Modal ─────────────────────────────────────────────────────────────
 
 function RestockModal({
@@ -167,7 +191,7 @@ function ItemModal({
     }
   }
 
-  const CATS = CATEGORIES.map((c) => ({ value: c, label: c }))
+  const CATS = buildCategorySelectOptions(t)
 
   return (
     <Modal
@@ -234,10 +258,7 @@ export default function InventoryPage() {
 
   useEffect(() => { loadInventory() }, [])
 
-  const CATEGORY_OPTIONS = [
-    { value: 'all', label: t('inventory.allCategories') },
-    ...CATEGORIES.map((c) => ({ value: c, label: c })),
-  ]
+  const CATEGORY_OPTIONS = buildCategorySelectOptions(t, { includeAll: true })
   const STATUS_OPTIONS = [
     { value: 'all',          label: t('inventory.allStatuses') },
     { value: 'in-stock',     label: t('inventory.inStock') },

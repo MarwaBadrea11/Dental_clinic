@@ -5,6 +5,12 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/utils/cn'
 import { formatDate } from '@/utils/format'
+import {
+  getEmployeeStatusBadgeVariant,
+  getShiftTypeLabel,
+  getStaffRoleLabel,
+  getStaffStatusLabel,
+} from '@/i18n/staffOptions'
 import type { StaffMember } from '@/types'
 
 interface EmployeeCardProps {
@@ -24,15 +30,10 @@ const roleColors: Record<string, string> = {
   manager:      'bg-[var(--color-error-container)] text-[var(--color-error)]',
 }
 
-const statusVariant = {
-  active:    'success',
-  inactive:  'neutral',
-  'on-leave':'warning',
-} as const
-
 export function EmployeeCard({ member: m, onClick, delay = 0, className }: EmployeeCardProps) {
   const { t } = useTranslation()
   const fullName = `${m.firstName} ${m.lastName}`
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -48,7 +49,6 @@ export function EmployeeCard({ member: m, onClick, delay = 0, className }: Emplo
         className
       )}
     >
-      {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar name={fullName} src={m.avatar} size="md" ring />
@@ -57,22 +57,20 @@ export function EmployeeCard({ member: m, onClick, delay = 0, className }: Emplo
             <p className="text-[11px] text-[var(--color-on-surface-variant)]">{m.employeeCode}</p>
           </div>
         </div>
-        <Badge variant={statusVariant[m.status]} dot size="sm">
-          {m.status === 'on-leave' ? t('status.onLeave') : m.status === 'active' ? t('status.active') : t('status.inactive')}
+        <Badge variant={getEmployeeStatusBadgeVariant(m.status)} dot size="sm">
+          {getStaffStatusLabel(t, m.status)}
         </Badge>
       </div>
 
-      {/* Role + department */}
       <div className="flex items-center gap-2 mb-3">
-        <span className={cn('px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize', roleColors[m.role] ?? roleColors.admin)}>
-          {t(`staff.${m.role}`, { defaultValue: m.role.charAt(0).toUpperCase() + m.role.slice(1) })}
+        <span className={cn('px-2 py-0.5 rounded-full text-[11px] font-semibold', roleColors[m.role] ?? roleColors.admin)}>
+          {getStaffRoleLabel(t, m.role)}
         </span>
         {m.specialty && (
           <span className="text-[11px] text-[var(--color-on-surface-variant)]">· {m.specialty}</span>
         )}
       </div>
 
-      {/* Contact */}
       <div className="space-y-1.5 mb-3">
         <div className="flex items-center gap-1.5 text-xs text-[var(--color-on-surface-variant)]">
           <Mail size={11} className="text-[var(--color-outline)] shrink-0" />
@@ -88,10 +86,9 @@ export function EmployeeCard({ member: m, onClick, delay = 0, className }: Emplo
         </div>
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-[var(--color-outline-variant)]/15">
         <span className="text-[11px] text-[var(--color-on-surface-variant)]">
-          {m.department ?? t('staff.noDepartment')} · {m.shift ?? t('staff.noShift')}
+          {m.department ?? t('staff.noDepartment')} · {m.shift ? getShiftTypeLabel(t, m.shift) : t('staff.noShift')}
         </span>
         {onClick && <ChevronRight size={14} className="text-[var(--color-outline)]" />}
       </div>

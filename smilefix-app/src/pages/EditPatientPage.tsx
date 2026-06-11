@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PatientForm, type PatientFormValues } from '@/components/patients/PatientForm'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -11,6 +12,7 @@ import { ROUTES } from '@/constants/routes'
 export default function EditPatientPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { getPatientById, updatePatientById } = usePatientStore()
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -20,8 +22,8 @@ export default function EditPatientPage() {
   if (!patient) {
     return (
       <EmptyState
-        title="Patient not found"
-        action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>Back to Patients</Button>}
+        title={t('patients.patientNotFound')}
+        action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>{t('patients.backToPatients')}</Button>}
       />
     )
   }
@@ -53,7 +55,7 @@ export default function EditPatientPage() {
       if (err instanceof ApiError) {
         setApiError(err.message)
       } else {
-        setApiError('Failed to update patient. Please try again.')
+        setApiError(t('patients.updateFailed'))
       }
     } finally {
       setLoading(false)
@@ -63,32 +65,32 @@ export default function EditPatientPage() {
   return (
     <div>
       <PageHeader
-        title={`Edit — ${patient.firstName} ${patient.lastName}`}
+        title={t('patients.editPatientTitle', { name: `${patient.firstName} ${patient.lastName}` })}
         subtitle={patient.patientCode}
         breadcrumb={[
-          { label: 'Dashboard', href: '/' },
-          { label: 'Patients', href: ROUTES.PATIENTS },
+          { label: t('nav.dashboard'), href: '/' },
+          { label: t('nav.patients'), href: ROUTES.PATIENTS },
           { label: `${patient.firstName} ${patient.lastName}`, href: `${ROUTES.PATIENTS}/${patient.id}` },
-          { label: 'Edit' },
+          { label: t('common.edit') },
         ]}
       />
       {apiError && (
-        <div style={{ 
-          marginBottom: '1rem', 
-          padding: '0.75rem 1rem', 
-          background: 'var(--color-error-container)', 
-          color: 'var(--color-on-error-container)', 
-          borderRadius: 'var(--radius-DEFAULT)', 
-          fontSize: '0.875rem' 
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.75rem 1rem',
+          background: 'var(--color-error-container)',
+          color: 'var(--color-on-error-container)',
+          borderRadius: 'var(--radius-DEFAULT)',
+          fontSize: '0.875rem',
         }}>
           {apiError}
         </div>
       )}
       <div className="max-w-4xl">
-        <PatientForm 
-          initialData={patient} 
-          onSubmit={handleSubmit} 
-          loading={loading} 
+        <PatientForm
+          initialData={patient}
+          onSubmit={handleSubmit}
+          loading={loading}
         />
       </div>
     </div>

@@ -1,9 +1,10 @@
 import { cn } from '@/utils/cn'
 import { useTranslation } from 'react-i18next'
+import { getTreatmentCategoryLabel, isKnownTreatmentCategory } from '@/i18n/treatmentCategoryOptions'
 import type { TreatmentCategory } from '@/types'
 
 interface ProcedureBadgeProps {
-  category: TreatmentCategory
+  category: string
   size?: 'sm' | 'md'
   className?: string
 }
@@ -19,27 +20,21 @@ const categoryConfig: Record<TreatmentCategory, { color: string; bg: string }> =
   'Cosmetic':      { color: 'text-amber-700',                 bg: 'bg-amber-100' },
 }
 
-const categoryKey: Record<TreatmentCategory, string> = {
-  'Preventive':    'treatments.cat_Preventive',
-  'Restorative':   'treatments.cat_Restorative',
-  'Endodontic':    'treatments.cat_Endodontic',
-  'Periodontic':   'treatments.cat_Periodontic',
-  'Prosthodontic': 'treatments.cat_Prosthodontic',
-  'Orthodontic':   'treatments.cat_Orthodontic',
-  'Oral Surgery':  'treatments.cat_OralSurgery',
-  'Cosmetic':      'treatments.cat_Cosmetic',
-}
+const defaultConfig = categoryConfig['Preventive']
 
 export function ProcedureBadge({ category, size = 'sm', className }: ProcedureBadgeProps) {
   const { t } = useTranslation()
-  const c = categoryConfig[category] ?? categoryConfig['Preventive']
+  const c = isKnownTreatmentCategory(category)
+    ? categoryConfig[category]
+    : defaultConfig
+
   return (
     <span className={cn(
       'inline-flex items-center font-semibold rounded-full',
       size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-xs',
       c.color, c.bg, className
     )}>
-      {t(categoryKey[category] ?? 'treatments.cat_Preventive')}
+      {getTreatmentCategoryLabel(t, category)}
     </span>
   )
 }

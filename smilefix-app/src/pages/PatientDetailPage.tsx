@@ -100,8 +100,8 @@ export default function PatientDetailPage() {
           <Loader />
         ) : (
           <EmptyState
-            title="Patient not found"
-            description={fetchError ?? "This patient record doesn't exist or has been removed."}
+            title={t('patients.patientNotFound')}
+            description={fetchError ?? t('patients.patientNotFoundDesc')}
             action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>{t('patients.backToPatients')}</Button>}
           />
         )}

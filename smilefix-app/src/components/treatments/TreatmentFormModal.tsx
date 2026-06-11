@@ -7,19 +7,9 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/FormField'
 import type { Treatment, TreatmentCategory } from '@/types'
+import { buildTreatmentCategorySelectOptionsWithApiValues } from '@/i18n/treatmentCategoryOptions'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const CATEGORY_OPTIONS: { value: TreatmentCategory; label: string }[] = [
-  { value: 'Preventive',    label: 'Preventive' },
-  { value: 'Restorative',   label: 'Restorative' },
-  { value: 'Endodontic',    label: 'Endodontic' },
-  { value: 'Periodontic',   label: 'Periodontic' },
-  { value: 'Prosthodontic', label: 'Prosthodontic' },
-  { value: 'Orthodontic',   label: 'Orthodontic' },
-  { value: 'Oral Surgery',  label: 'Oral Surgery' },
-  { value: 'Cosmetic',      label: 'Cosmetic' },
-]
 
 const ICON_OPTIONS = [
   { value: '🦷', label: '🦷 Tooth' },
@@ -137,6 +127,10 @@ export function TreatmentFormModal({
 
   const isEdit = Boolean(initialData?.id)
   const isBusy = submitting || loading
+  const categoryOptions = buildTreatmentCategorySelectOptionsWithApiValues(
+    t,
+    initialData?.category ? [initialData.category] : [],
+  )
 
   return (
     <Modal
@@ -161,7 +155,7 @@ export function TreatmentFormModal({
         {/* Category + Icon */}
         <FormField label={t('common.category') ?? 'Category'}>
           <Select
-            options={CATEGORY_OPTIONS}
+            options={categoryOptions}
             value={form.category}
             onChange={(e) => set('category', e.target.value as TreatmentCategory)}
             disabled={isBusy}

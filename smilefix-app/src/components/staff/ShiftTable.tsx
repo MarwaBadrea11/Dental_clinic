@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/utils/cn'
+import { getShiftTypeLabel, getStaffRoleLabel } from '@/i18n/staffOptions'
 import type { StaffMember } from '@/types'
 
 interface ShiftTableProps {
@@ -59,7 +60,7 @@ export function ShiftTable({ staff, delay = 0, className }: ShiftTableProps) {
                   <Avatar name={`${m.firstName} ${m.lastName}`} size="xs" />
                   <div>
                     <p className="text-xs font-semibold text-[var(--color-on-surface)]">{m.firstName} {m.lastName}</p>
-                    <p className="text-[10px] text-[var(--color-on-surface-variant)] capitalize">{m.role}</p>
+                    <p className="text-[10px] text-[var(--color-on-surface-variant)]">{getStaffRoleLabel(t, m.role)}</p>
                   </div>
                 </div>
               </td>
@@ -70,7 +71,7 @@ export function ShiftTable({ staff, delay = 0, className }: ShiftTableProps) {
                 return (
                   <td key={d} className="px-2 py-3 text-center">
                     <span className={cn('inline-block px-2 py-0.5 rounded text-[10px] font-semibold', cfg)}>
-                      {works ? (m.shift ?? 'AM') : '—'}
+                      {works ? getShiftTypeLabel(t, shift) : '—'}
                     </span>
                   </td>
                 )

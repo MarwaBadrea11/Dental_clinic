@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/cn'
+import { getAppointmentStatusLabel } from '@/i18n/appointmentOptions'
 import type { AppointmentStatus } from '@/types'
 
 interface AppointmentStatusBadgeProps {
@@ -20,15 +21,7 @@ const styleMap: Record<AppointmentStatus, { classes: string; dot: string }> = {
 export function AppointmentStatusBadge({ status, size = 'sm', dot = true }: AppointmentStatusBadgeProps) {
   const { t } = useTranslation()
 
-  const labelMap: Record<AppointmentStatus, string> = {
-    scheduled:    t('status.scheduled'),
-    confirmed:    t('status.confirmed'),
-    'in-progress':t('status.inProgress'),
-    completed:    t('status.completed'),
-    cancelled:    t('status.cancelled'),
-    'no-show':    t('status.noShow'),
-  }
-
+  const label = getAppointmentStatusLabel(t, status)
   const c = styleMap[status]
 
   return (
@@ -38,7 +31,7 @@ export function AppointmentStatusBadge({ status, size = 'sm', dot = true }: Appo
       c.classes
     )}>
       {dot && <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', c.dot)} />}
-      {labelMap[status]}
+      {label}
     </span>
   )
 }

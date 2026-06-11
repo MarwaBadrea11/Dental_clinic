@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PatientForm, type PatientFormValues } from '@/components/patients/PatientForm'
 import { usePatientStore } from '@/store/patientStore'
@@ -8,6 +9,7 @@ import { ROUTES } from '@/constants/routes'
 
 export default function AddPatientPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { createPatient } = usePatientStore()
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -42,7 +44,7 @@ export default function AddPatientPage() {
       if (err instanceof ApiError) {
         setApiError(err.message)
       } else {
-        setApiError('Failed to create patient. Please try again.')
+        setApiError(t('patients.createFailed'))
       }
     } finally {
       setLoading(false)
@@ -52,22 +54,22 @@ export default function AddPatientPage() {
   return (
     <div>
       <PageHeader
-        title="Register New Patient"
-        subtitle="Fill in the patient's information to create their record."
+        title={t('patients.registerNew')}
+        subtitle={t('patients.registerSubtitle')}
         breadcrumb={[
-          { label: 'Dashboard', href: '/' },
-          { label: 'Patients', href: ROUTES.PATIENTS },
-          { label: 'New Patient' },
+          { label: t('nav.dashboard'), href: '/' },
+          { label: t('nav.patients'), href: ROUTES.PATIENTS },
+          { label: t('patients.newPatient') },
         ]}
       />
       {apiError && (
-        <div style={{ 
-          marginBottom: '1rem', 
-          padding: '0.75rem 1rem', 
-          background: 'var(--color-error-container)', 
-          color: 'var(--color-on-error-container)', 
-          borderRadius: 'var(--radius-DEFAULT)', 
-          fontSize: '0.875rem' 
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.75rem 1rem',
+          background: 'var(--color-error-container)',
+          color: 'var(--color-on-error-container)',
+          borderRadius: 'var(--radius-DEFAULT)',
+          fontSize: '0.875rem',
         }}>
           {apiError}
         </div>

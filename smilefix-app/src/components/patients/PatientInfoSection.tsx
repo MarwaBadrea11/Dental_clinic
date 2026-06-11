@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Phone, MapPin, User, Shield, Stethoscope } from 'lucide-react'
 import { InfoGrid } from '@/components/ui/InfoGrid'
 import { SectionCard } from '@/components/ui/SectionCard'
+import { getGenderLabel } from '@/i18n/patientOdontogramOptions'
 import type { Patient } from '@/types'
 
 interface PatientInfoSectionProps {
@@ -21,7 +22,7 @@ export function PatientInfoSection({ patient, delay = 0 }: PatientInfoSectionPro
           items={[
             { label: t('patients.fullName'),    value: `${patient.firstName} ${patient.lastName}` },
             { label: t('patients.patientCode'), value: <span className="font-mono text-[var(--color-primary)]">{patient.patientCode}</span> },
-            { label: t('patients.gender'),      value: patient.gender },
+            { label: t('patients.gender'),      value: getGenderLabel(t, patient.gender) },
             { label: t('patients.phone'),       value: patient.phone },
             { label: t('patients.city'),        value: patient.city || '—' },
             { label: t('patients.email'),       value: patient.email || '—' },

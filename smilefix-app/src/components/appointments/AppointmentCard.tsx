@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { Clock, User, Stethoscope, ChevronRight } from 'lucide-react'
 import { AppointmentStatusBadge } from './AppointmentStatusBadge'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/utils/cn'
+import { getAppointmentTreatmentLabel } from '@/i18n/appointmentOptions'
 import type { Appointment } from '@/types'
 
 interface AppointmentCardProps {
@@ -14,6 +16,7 @@ interface AppointmentCardProps {
 }
 
 export function AppointmentCard({ appointment: a, onClick, compact = false, delay = 0, className }: AppointmentCardProps) {
+  const { t } = useTranslation()
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -48,7 +51,7 @@ export function AppointmentCard({ appointment: a, onClick, compact = false, dela
         {/* Treatment */}
         <div className="flex items-center gap-1.5 mb-2">
           <Stethoscope size={12} className="text-[var(--color-primary)] shrink-0" />
-          <p className="text-xs font-medium text-[var(--color-on-surface)]">{a.treatment}</p>
+          <p className="text-xs font-medium text-[var(--color-on-surface)]">{getAppointmentTreatmentLabel(t, a.treatment)}</p>
         </div>
 
         {/* Meta */}

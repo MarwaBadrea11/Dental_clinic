@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/cn'
+import { getAppointmentTreatmentLabel } from '@/i18n/appointmentOptions'
 import type { Appointment } from '@/types'
 
 interface TimeSlotProps {
@@ -74,10 +75,10 @@ export function TimeSlot({ hour, appointments, onSlotClick, onSlotAddClick, onAp
             >
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold truncate">{a.patientName}</p>
-                <p className="text-[10px] opacity-80 truncate">{a.treatment} · {a.startTime}–{a.endTime}</p>
+                <p className="text-[10px] opacity-80 truncate">{getAppointmentTreatmentLabel(t, a.treatment)} · {a.startTime}–{a.endTime}</p>
               </div>
               {a.chair && (
-                <span className="text-[10px] font-bold opacity-60 shrink-0">C{a.chair}</span>
+                <span className="text-[10px] font-bold opacity-60 shrink-0">{t('calendar.chairShort', { n: a.chair })}</span>
               )}
             </motion.div>
           ))}

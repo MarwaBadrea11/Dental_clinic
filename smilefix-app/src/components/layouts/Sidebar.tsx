@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -27,13 +28,27 @@ const iconMap: Record<string, React.ReactNode> = {
 const SIDEBAR_WIDTH = 256
 const SIDEBAR_COLLAPSED_WIDTH = 72
 
+/** Returns true when the viewport is ≥ lg (1024 px) */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  return isDesktop
+}
+
 export function Sidebar() {
   const { sidebarOpen, sidebarCollapsed, setSidebarOpen, toggleSidebarCollapsed, language } = useUIStore()
   const { t } = useTranslation()
   const isRTL = language === 'ar'
-
-  // فحص حجم الشاشة الحالي لتفادي تداخل قيم x بين الموبايل والدسكتوب
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024
+  const isDesktop = useIsDesktop()
 
   // Nav item labels from i18n
   const navLabels: Record<string, string> = {
@@ -49,11 +64,26 @@ export function Sidebar() {
     settings:      t('nav.settings'),
   }
 
+  /*
+    Translation logic:
+    - Desktop (≥ lg): x is always 0 — sidebar is always visible.
+    - Mobile  (< lg): x follows sidebarOpen state.
+      • Open  → 0  (visible)
+      • Closed → ±SIDEBAR_WIDTH (off-screen, direction depends on RTL)
+  */
+  const xValue = isDesktop
+    ? 0
+    : sidebarOpen
+      ? 0
+      : isRTL
+        ? SIDEBAR_WIDTH
+        : -SIDEBAR_WIDTH
+
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay — only shown when sidebar is open on small screens */}
       <AnimatePresence>
-        {sidebarOpen && (
+        {!isDesktop && sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -68,10 +98,7 @@ export function Sidebar() {
       <motion.aside
         initial={false}
         animate={{
-          // هنا يكمن الحل: في الشاشات الكبيرة يكون الـ x دائماً 0، وفي الموبايل يتحرك حسب الاتجاه وحالة الفتح
-          x: isMobile 
-            ? (sidebarOpen ? 0 : (isRTL ? SIDEBAR_WIDTH : -SIDEBAR_WIDTH)) 
-            : 0,
+          x: xValue,
           width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 32 }}
@@ -82,7 +109,6 @@ export function Sidebar() {
           isRTL ? 'border-l' : 'border-r',
           'shadow-[var(--shadow-sidebar)]',
           'flex flex-col'
-          // تم إزالة lg:translate-x-0 لمنع التضارب مع حركات Framer Motion
         )}
         style={{ width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
       >
@@ -92,7 +118,7 @@ export function Sidebar() {
             ? <SmilefixLogo size="sm" variant="icon" />
             : <SmilefixLogo size="sm" />
           }
-          {/* Mobile close */}
+          {/* Mobile close button */}
           <button
             onClick={() => setSidebarOpen(false)}
             className="p-2 rounded-[var(--radius-DEFAULT)] text-[var(--color-outline)] hover:bg-[var(--color-surface-container-high)] transition-colors lg:hidden focus:outline-none"
@@ -109,8 +135,7 @@ export function Sidebar() {
               key={item.id}
               to={item.path}
               end={item.path === '/'}
-              // عند الضغط على أي عنصر في الموبايل، يغلق السايد بار تلقائياً لتسهيل تجربة المستخدم
-              onClick={() => isMobile && setSidebarOpen(false)}
+              onClick={() => !isDesktop && setSidebarOpen(false)}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-DEFAULT)]',
@@ -157,7 +182,7 @@ export function Sidebar() {
             <NavLink
               key={item.id}
               to={item.path}
-              onClick={() => isMobile && setSidebarOpen(false)}
+              onClick={() => !isDesktop && setSidebarOpen(false)}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-DEFAULT)]',

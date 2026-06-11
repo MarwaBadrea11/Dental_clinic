@@ -110,10 +110,10 @@ export function AddTimelineNoteModal({ open, onClose, patientId, onSave }: AddTi
       description="Record a clinical note, treatment, diagnosis or prescription to the patient's history."
       size="lg"
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
 
         {/* Type selector — full width pill row */}
-        <div className="col-span-2">
+        <div className="col-span-full sm:col-span-2">
           <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-on-surface-variant)', marginBottom: '0.5rem' }}>
             {t('common.type') ?? 'Type'}
           </p>
@@ -150,7 +150,7 @@ export function AddTimelineNoteModal({ open, onClose, patientId, onSave }: AddTi
         </div>
 
         {/* Title — full width */}
-        <FormField label={t('common.title') ?? 'Title'} required error={errors.title} className="col-span-2">
+        <FormField label={t('common.title') ?? 'Title'} required error={errors.title} className="col-span-full sm:col-span-2">
           <Input
             placeholder={`e.g. ${selectedTypeCfg.label} summary…`}
             value={form.title}
@@ -194,7 +194,7 @@ export function AddTimelineNoteModal({ open, onClose, patientId, onSave }: AddTi
         </FormField>
 
         {/* Description — full width */}
-        <FormField label={t('treatments.description') ?? 'Description'} required error={errors.description} className="col-span-2">
+        <FormField label={t('treatments.description') ?? 'Description'} required error={errors.description} className="col-span-full sm:col-span-2">
           <Textarea
             placeholder="Describe the clinical findings, procedure performed, or notes for this entry…"
             value={form.description}

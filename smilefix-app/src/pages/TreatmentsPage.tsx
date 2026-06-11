@@ -257,7 +257,7 @@ export default function TreatmentsPage() {
                 <p className="text-sm text-[var(--color-on-surface-variant)] mt-1">{selected.description}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { label: t('treatments.duration'), value: `${selected.duration} ${t('treatments.minutes')}` },
                 { label: t('treatments.price'),    value: formatCurrency(selected.price) },

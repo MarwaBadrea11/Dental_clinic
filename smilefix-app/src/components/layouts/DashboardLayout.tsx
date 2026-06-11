@@ -1,12 +1,13 @@
+import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useUIStore } from '@/store/uiStore'
 import { useNotificationSync } from '@/hooks/useNotificationSync'
-import { motion } from 'framer-motion'
 
-const SIDEBAR_FULL = 256
+const SIDEBAR_FULL      = 256
 const SIDEBAR_COLLAPSED = 72
 
 // Map path → i18n key
@@ -31,41 +32,57 @@ function getPageKey(pathname: string): string {
   return match ? PATH_TO_KEY[match] : 'nav.dashboard'
 }
 
+/** Reactive desktop breakpoint hook — updates on window resize */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
+}
+
 interface DashboardLayoutProps {
   children: React.ReactNode
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { sidebarCollapsed, language } = useUIStore()
-  const { t } = useTranslation()
-  const location = useLocation()
-  const isRTL = language === 'ar'
+  const { t }        = useTranslation()
+  const location     = useLocation()
+  const isRTL        = language === 'ar'
+  const isDesktop    = useIsDesktop()
 
-  // Load notifications on mount and poll badge count every 60 s
   useNotificationSync()
 
-  const title = t(getPageKey(location.pathname))
+  const title       = t(getPageKey(location.pathname))
   const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED : SIDEBAR_FULL
+
+  /*
+    Content offset rules:
+    - Mobile  (<lg): no margin — sidebar is a drawer overlay
+    - Desktop (≥lg): margin-left (LTR) or margin-right (RTL) = sidebarWidth
+  */
+  const marginStyle = isDesktop
+    ? isRTL
+      ? { marginRight: sidebarWidth, marginLeft: 0 }
+      : { marginLeft: sidebarWidth, marginRight: 0 }
+    : { marginLeft: 0, marginRight: 0 }
 
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
       <Sidebar />
       <Topbar title={title} sidebarWidth={sidebarWidth} />
 
-      {/*
-        Responsive content offset:
-        - Mobile (<lg): sidebar is a drawer overlay → NO margin on content
-        - Desktop (≥lg): content shifts by sidebarWidth via CSS variable
-        We avoid Framer Motion inline-style on mobile by using a CSS class
-        that sets the margin only above the lg breakpoint.
-      */}
-      <main
-        className="main-content min-h-screen pt-16 min-w-0"
-        style={
-          {
-            '--sidebar-w': `${sidebarWidth}px`,
-          } as React.CSSProperties
-        }
+      <motion.main
+        animate={marginStyle}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="min-h-screen pt-16 min-w-0"
+        style={marginStyle}
       >
         <motion.div
           key={location.pathname}
@@ -76,24 +93,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         >
           {children}
         </motion.div>
-      </main>
-
-      {/* Inject scoped CSS so the margin only activates on desktop */}
-      <style>{`
-        /* Mobile: sidebar is a drawer — content fills full width */
-        .main-content {
-          margin-left: 0;
-          margin-right: 0;
-          transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        /* Desktop: push content past the sidebar */
-        @media (min-width: 1024px) {
-          ${isRTL
-            ? '.main-content { margin-right: var(--sidebar-w); margin-left: 0; }'
-            : '.main-content { margin-left: var(--sidebar-w); margin-right: 0; }'
-          }
-        }
-      `}</style>
+      </motion.main>
     </div>
   )
 }

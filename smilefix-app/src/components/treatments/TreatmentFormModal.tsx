@@ -146,10 +146,10 @@ export function TreatmentFormModal({
       description={isEdit ? undefined : 'Fill in the details to add a new treatment to the catalogue.'}
       size="lg"
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
 
         {/* Name — full width */}
-        <FormField label={t('common.name') ?? 'Name'} required error={errors.name} className="col-span-2">
+        <FormField label={t('common.name') ?? 'Name'} required error={errors.name} className="col-span-full sm:col-span-2">
           <Input
             placeholder="e.g. Dental Cleaning"
             value={form.name}
@@ -200,7 +200,7 @@ export function TreatmentFormModal({
         </FormField>
 
         {/* Color picker */}
-        <FormField label="Color" className="col-span-2">
+        <FormField label="Color" className="col-span-full sm:col-span-2">
           <div className="flex items-center gap-2 flex-wrap">
             {COLOR_PRESETS.map((c) => (
               <button
@@ -234,7 +234,7 @@ export function TreatmentFormModal({
         </FormField>
 
         {/* Description */}
-        <FormField label={t('treatments.description')} className="col-span-2">
+        <FormField label={t('treatments.description')} className="col-span-full sm:col-span-2">
           <Textarea
             placeholder="Brief description of the procedure..."
             value={form.description}

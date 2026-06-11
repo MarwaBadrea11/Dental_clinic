@@ -41,7 +41,6 @@ export default function DashboardPage() {
   } = useTodaySchedule()
 
   // ── Stat cards ─────────────────────────────────────────────────────────────
-  // Show skeleton dashes while loading; show '!' on error so the user knows
   const statValue = (v: string | number | undefined, loading: boolean, error: boolean) => {
     if (loading) return '—'
     if (error)   return '!'
@@ -95,27 +94,28 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div>
+    <div className="w-full overflow-x-hidden p-1"> {/* حماية إضافية للـ Overflow */}
       <PageHeader
         title={t('dashboard.title')}
         subtitle={t('dashboard.subtitle')}
         actions={
           <Button leftIcon={<CalendarPlus size={16} />} size="sm" onClick={() => navigate(ROUTES.CALENDAR)}>
-            {t('dashboard.newAppointment')}
+            {/* إخفاء النص على الشاشات الصغيرة جداً لتجنب تداخل الهيدر */}
+            <span className="hidden sm:inline">{t('dashboard.newAppointment')}</span>
           </Button>
         }
       />
 
-      {/* Stats fetch error — non-blocking banner with retry */}
+      {/* Stats fetch error */}
       {statsError && (
         <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-on-error-container)] text-sm">
           <div className="flex items-center gap-2">
             <AlertCircle size={15} />
-            <span>Could not load dashboard stats. Check your connection or permissions.</span>
+            <span className="line-clamp-2 sm:line-clamp-none">Could not load dashboard stats. Check your connection or permissions.</span>
           </div>
           <button
             onClick={() => refetchStats()}
-            className="flex items-center gap-1 text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+            className="flex items-center gap-1 text-xs font-semibold underline underline-offset-2 hover:opacity-80 shrink-0"
           >
             <RefreshCw size={12} /> Retry
           </button>
@@ -162,7 +162,7 @@ export default function DashboardPage() {
             transition={{ duration: 0.35, delay: 0.38 }}
             className="grid grid-cols-12 gap-4"
           >
-            <div className="col-span-12 lg:col-span-5 bg-[var(--color-primary)] rounded-[var(--radius-xl)] p-8 text-[var(--color-on-primary)] relative overflow-hidden group">
+            <div className="col-span-12 lg:col-span-5 bg-[var(--color-primary)] rounded-[var(--radius-xl)] p-6 sm:p-8 text-[var(--color-on-primary)] relative overflow-hidden group">
               <div className="relative z-10 space-y-3">
                 <h2 className="text-xl font-bold" style={{ fontFamily: 'Manrope, sans-serif' }}>
                   {t('dashboard.precisionImaging')}
@@ -174,12 +174,14 @@ export default function DashboardPage() {
               </div>
               <div className="absolute -right-6 -bottom-6 opacity-[0.08] text-[160px] leading-none select-none pointer-events-none">⚕</div>
             </div>
-            <div className="col-span-12 lg:col-span-7 grid grid-cols-2 gap-4">
+            
+            {/* تعديل الريسبونسف هنا: grid-cols-1 للأجهزة الصغيرة جداً و sm:grid-cols-2 للأكبر */}
+            <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 { emoji: '💊', title: t('dashboard.pharmacy'),  desc: t('dashboard.pharmacyDesc'),  hoverBorder: 'hover:border-[var(--color-tertiary)]/50', iconBg: 'bg-[var(--color-tertiary-container)]/20 text-[var(--color-tertiary)]' },
                 { emoji: '📊', title: t('dashboard.analytics'), desc: t('dashboard.analyticsDesc'), hoverBorder: 'hover:border-[var(--color-secondary)]/50', iconBg: 'bg-[var(--color-secondary-container)]/20 text-[var(--color-secondary)]' },
               ].map((item) => (
-                <Card key={item.title} hover className={`flex flex-col items-center text-center gap-3 py-6 transition-colors ${item.hoverBorder}`}>
+                <Card key={item.title} hover className={`flex flex-col items-center text-center gap-3 px-4 py-6 transition-colors ${item.hoverBorder}`}>
                   <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${item.iconBg}`}>{item.emoji}</div>
                   <h4 className="font-semibold text-sm text-[var(--color-on-surface)]">{item.title}</h4>
                   <p className="text-xs text-[var(--color-on-surface-variant)] leading-relaxed">{item.desc}</p>
@@ -210,7 +212,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* FAB */}
+      {/* FAB - ممتع ومتجاوب تماماً للموبايل */}
       <motion.button
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -218,7 +220,7 @@ export default function DashboardPage() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.92 }}
         onClick={() => navigate(ROUTES.CALENDAR)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[var(--color-primary)] text-[var(--color-on-primary)] rounded-full shadow-[var(--shadow-modal)] flex items-center justify-center z-20 text-2xl"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-[var(--color-primary)] text-[var(--color-on-primary)] rounded-full shadow-[var(--shadow-modal)] flex items-center justify-center z-20 text-2xl sm:hidden" // يظهر فقط على الموبايل كونه يعوض الزر العلوي
         aria-label={t('dashboard.newAppointment')}
       >
         +

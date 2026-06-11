@@ -295,17 +295,36 @@ svg *, img {
 }
 
 
-/* ── Patient profile responsive helpers ── */
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL RESPONSIVE HELPERS
+   All inline-style grids use these CSS class overrides so they
+   respond correctly on every screen size.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tables: always scrollable on small screens ── */
+.table-scroll-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Patient profile ── */
 @media (max-width: 767px) {
   .patient-stats-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .patient-finance-grid  { grid-template-columns: 1fr !important; }
   .patient-overview-grid { grid-template-columns: 1fr !important; }
   .info-grid             { grid-template-columns: 1fr !important; }
-  .patients-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .patients-card-grid    { grid-template-columns: 1fr !important; }
+  .attachments-grid      { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 1023px) {
   .patient-overview-grid { grid-template-columns: 1fr !important; }
+  .attachments-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Patients list page ── */
+@media (max-width: 767px) {
+  .patients-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .patients-card-grid    { grid-template-columns: 1fr !important; }
 }
 @media (min-width: 768px) and (max-width: 1023px) {
   .patients-card-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -314,7 +333,7 @@ svg *, img {
   .patients-card-grid    { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
 
-/* ── Treatments page responsive helpers ── */
+/* ── Treatments page ── */
 @media (max-width: 767px) {
   .treatments-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .treatments-card-grid  { grid-template-columns: 1fr !important; }
@@ -325,3 +344,68 @@ svg *, img {
 @media (min-width: 1024px) and (max-width: 1279px) {
   .treatments-card-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
+
+/* ── Calendar page ── */
+@media (max-width: 767px) {
+  .calendar-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .calendar-day-grid     { grid-template-columns: 1fr !important; }
+  /* Week grid: compress to 3-col on very small screens */
+  .calendar-week-days    { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* ── Finance page ── */
+@media (max-width: 639px) {
+  .finance-kpi-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Staff page ── */
+@media (max-width: 767px) {
+  .staff-stats-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Reports page ── */
+@media (max-width: 639px) {
+  .reports-kpi-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Settings page: sidebar nav stacks on top on mobile ── */
+@media (max-width: 1023px) {
+  .settings-layout       { grid-template-columns: 1fr !important; }
+}
+
+/* ── Odontogram page ── */
+@media (max-width: 1023px) {
+  .odontogram-layout     { grid-template-columns: 1fr !important; }
+}
+
+/* ── PatientDetail quick stats ── */
+@media (max-width: 639px) {
+  .patient-quickstats    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Login page ── */
+@media (max-width: 1023px) {
+  .login-left-panel      { display: none !important; }
+  .login-mobile-logo     { display: block !important; }
+  .reg-name-grid         { grid-template-columns: 1fr !important; }
+}
+
+/* ── PageHeader: title truncates nicely on mobile ── */
+@media (max-width: 639px) {
+  .page-header-title { font-size: 1.25rem !important; }
+}
+
+/* ── DataTable: scrollable wrapper ── */
+.data-table-outer {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Tab bars: horizontally scrollable on tiny screens ── */
+.tab-bar-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-bar-scroll::-webkit-scrollbar { display: none; }

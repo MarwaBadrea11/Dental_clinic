@@ -95,7 +95,7 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
     <form onSubmit={handleSubmit} className="space-y-6">
 
       {/* ── Personal Info ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input
           label="First Name"
           value={form.firstName}
@@ -160,7 +160,7 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
       {/* ── Insurance ── */}
       <div className="border-t pt-4 space-y-4">
         <h3 className="font-semibold text-[var(--color-on-surface)]">Insurance Information</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Insurance Provider"
             value={form.insuranceProvider}
@@ -177,7 +177,7 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
       {/* ── Emergency Contact ── */}
       <div className="border-t pt-4 space-y-4">
         <h3 className="font-semibold text-[var(--color-on-surface)]">Emergency Contact</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input
             label="Name"
             value={form.emergencyContactName}

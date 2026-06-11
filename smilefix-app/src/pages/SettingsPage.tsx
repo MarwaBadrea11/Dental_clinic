@@ -144,17 +144,17 @@ export default function SettingsPage() {
         }
       />
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="settings-layout grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ── Sidebar nav ── */}
-        <div className="col-span-12 lg:col-span-3">
+        <div className="lg:col-span-3">
           <SectionCard delay={0}>
-            <nav className="space-y-0.5">
+            <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 tab-bar-scroll">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-DEFAULT)] text-sm font-medium transition-all duration-200',
+                    'flex-shrink-0 lg:w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-DEFAULT)] text-sm font-medium transition-all duration-200 whitespace-nowrap',
                     activeTab === tab.id
                       ? 'bg-[var(--color-primary-container)]/20 text-[var(--color-primary)]'
                       : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-container-high)] hover:text-[var(--color-on-surface)]',
@@ -177,7 +177,7 @@ export default function SettingsPage() {
         </div>
 
         {/* ── Content ── */}
-        <div className="col-span-12 lg:col-span-9">
+        <div className="lg:col-span-9">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                           onChange={(e) => setProfileForm((f) => ({ ...f, phone: e.target.value }))}
                         />
                       </FormField>
-                      <FormField label={t('settings.bio')} className="col-span-2">
+                      <FormField label={t('settings.bio')} className="col-span-full sm:col-span-2">
                         <Input
                           value={profileForm.bio}
                           onChange={(e) => setProfileForm((f) => ({ ...f, bio: e.target.value }))}

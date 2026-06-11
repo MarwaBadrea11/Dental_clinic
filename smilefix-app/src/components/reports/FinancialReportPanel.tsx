@@ -89,9 +89,9 @@ export function FinancialReportPanel() {
         </div>
       )}
 
-      <div className="grid grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Monthly breakdown */}
-        <div className="col-span-12 lg:col-span-7">
+        <div className="lg:col-span-7">
           <SectionCard title="Monthly Breakdown" icon={<TrendingUp size={15} />} delay={0.05}>
             <ReportTable<MonthlyBreakdown>
               columns={monthlyColumns}
@@ -104,7 +104,7 @@ export function FinancialReportPanel() {
         </div>
 
         {/* Payment methods */}
-        <div className="col-span-12 lg:col-span-5">
+        <div className="lg:col-span-5">
           <SectionCard title="Payment Methods" icon={<DollarSign size={15} />} delay={0.1}>
             {financialLoading ? (
               <div className="flex justify-center py-10">

@@ -16,16 +16,22 @@ interface InfoGridProps {
   className?: string
 }
 
-export function InfoGrid({ items, cols = 2, className }: InfoGridProps) {
-  const colCount = cols
+const colsClass: Record<number, string> = {
+  2: 'grid-cols-1 sm:grid-cols-2',
+  3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+  4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+}
 
+export function InfoGrid({ items, cols = 2, className }: InfoGridProps) {
   return (
     <div
-      className={cn('info-grid', className)}
-      style={{ display: 'grid', gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`, gap: '1rem 1.5rem' }}
+      className={cn('info-grid grid gap-4 sm:gap-x-6', colsClass[cols] ?? colsClass[2], className)}
     >
       {items.map((item, i) => (
-        <div key={i} className="min-w-0" style={item.span === 2 ? { gridColumn: '1 / -1' } : undefined}>
+        <div
+          key={i}
+          className={cn('min-w-0', item.span === 2 && 'sm:col-span-2')}
+        >
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)] mb-0.5">
             {item.label}
           </p>

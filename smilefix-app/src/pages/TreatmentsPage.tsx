@@ -149,8 +149,7 @@ export default function TreatmentsPage() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}
-        className="treatments-stats-grid"
+        className="treatments-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"
       >
         {[
           { label: t('nav.treatments'),        value: treatments.length,                          color: 'text-[var(--color-primary)]' },
@@ -212,7 +211,7 @@ export default function TreatmentsPage() {
                         {items.length} {items.length > 1 ? t('treatments.procedures') : t('treatments.procedure')}
                       </span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem' }} className="treatments-card-grid">
+                    <div className="treatments-card-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {items.map((tr, i) => (
                         <TreatmentCard
                           key={tr.id}

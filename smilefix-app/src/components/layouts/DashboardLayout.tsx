@@ -1,11 +1,10 @@
 import { useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useUIStore } from '@/store/uiStore'
-import { NAV_ITEMS, BOTTOM_NAV_ITEMS } from '@/constants/navigation'
 import { useNotificationSync } from '@/hooks/useNotificationSync'
+import { motion } from 'framer-motion'
 
 const SIDEBAR_FULL = 256
 const SIDEBAR_COLLAPSED = 72
@@ -53,17 +52,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar />
       <Topbar title={title} sidebarWidth={sidebarWidth} />
 
-      {/* Main content — margin flips for RTL */}
-      <motion.main
-        animate={isRTL
-          ? { marginRight: sidebarWidth, marginLeft: 0 }
-          : { marginLeft: sidebarWidth, marginRight: 0 }
-        }
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="min-h-screen pt-16 min-w-0"
-        style={isRTL
-          ? { marginRight: sidebarWidth, marginLeft: 0 }
-          : { marginLeft: sidebarWidth, marginRight: 0 }
+      {/*
+        Responsive content offset:
+        - Mobile (<lg): sidebar is a drawer overlay → NO margin on content
+        - Desktop (≥lg): content shifts by sidebarWidth via CSS variable
+        We avoid Framer Motion inline-style on mobile by using a CSS class
+        that sets the margin only above the lg breakpoint.
+      */}
+      <main
+        className="main-content min-h-screen pt-16 min-w-0"
+        style={
+          {
+            '--sidebar-w': `${sidebarWidth}px`,
+          } as React.CSSProperties
         }
       >
         <motion.div
@@ -71,11 +72,28 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="p-6 max-w-[1600px] mx-auto min-w-0 w-full"
+          className="p-3 sm:p-5 lg:p-6 max-w-[1600px] mx-auto min-w-0 w-full"
         >
           {children}
         </motion.div>
-      </motion.main>
+      </main>
+
+      {/* Inject scoped CSS so the margin only activates on desktop */}
+      <style>{`
+        /* Mobile: sidebar is a drawer — content fills full width */
+        .main-content {
+          margin-left: 0;
+          margin-right: 0;
+          transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Desktop: push content past the sidebar */
+        @media (min-width: 1024px) {
+          ${isRTL
+            ? '.main-content { margin-right: var(--sidebar-w); margin-left: 0; }'
+            : '.main-content { margin-left: var(--sidebar-w); margin-right: 0; }'
+          }
+        }
+      `}</style>
     </div>
   )
 }

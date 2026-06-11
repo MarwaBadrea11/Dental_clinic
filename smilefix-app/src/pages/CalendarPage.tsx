@@ -189,8 +189,7 @@ export default function CalendarPage() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}
-        className="calendar-stats-grid"
+        className="calendar-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"
       >
         {[
           { label: t('calendar.today'),    value: stats?.today    ?? getByDate(todayStr).length,                               color: 'text-[var(--color-primary)]' },
@@ -220,8 +219,10 @@ export default function CalendarPage() {
                 <Button variant="ghost" size="sm" onClick={() => setSelectedDate(todayStr)}>Today</Button>
               </div>
 
+              {/* Day headers + cells — horizontally scrollable on small screens */}
+              <div className="overflow-x-auto">
               {/* Day headers */}
-              <div className="grid grid-cols-7 border-b border-[var(--color-outline-variant)]/20">
+              <div className="grid grid-cols-7 border-b border-[var(--color-outline-variant)]/20 min-w-[480px]">
                 {weekDays.map((d, i) => {
                   const ds = d.toISOString().split('T')[0]
                   const isToday = ds === todayStr
@@ -255,7 +256,7 @@ export default function CalendarPage() {
               </div>
 
               {/* Calendar cells */}
-              <div className="grid grid-cols-7 gap-px bg-[var(--color-outline-variant)]/10 p-2">
+              <div className="grid grid-cols-7 gap-px bg-[var(--color-outline-variant)]/10 p-2 min-w-[480px]">
                 {weekDays.map((d, i) => {
                   const ds = d.toISOString().split('T')[0]
                   return (
@@ -270,6 +271,7 @@ export default function CalendarPage() {
                   )
                 })}
               </div>
+              </div> {/* end overflow-x-auto */}
             </SectionCard>
 
             {/* Day schedule below */}
@@ -291,7 +293,7 @@ export default function CalendarPage() {
         {/* ── DAY VIEW ── */}
         {viewMode === 'day' && (
           <motion.div key="day" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'start' }} className="calendar-day-grid">
+            <div className="calendar-day-grid grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-start">
               <div>
                 <SectionCard noPadding>
                   <ScheduleWidget
@@ -373,12 +375,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <style>{`
-        @media (max-width: 767px) {
-          .calendar-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-          .calendar-day-grid   { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+      </div>
     </div>
   )
 }

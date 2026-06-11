@@ -21,8 +21,14 @@ export function QuickActions({ actions, className, delay = 0 }: QuickActionsProp
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay }}
-      className={cn('grid gap-4', `grid-cols-${Math.min(actions.length, 4)}`, className)}
-      style={{ gridTemplateColumns: `repeat(${Math.min(actions.length, 4)}, minmax(0, 1fr))` }}
+      className={cn(
+        'grid gap-3 sm:gap-4',
+        actions.length === 1 && 'grid-cols-1',
+        actions.length === 2 && 'grid-cols-2',
+        actions.length === 3 && 'grid-cols-1 sm:grid-cols-3',
+        actions.length >= 4 && 'grid-cols-2 sm:grid-cols-4',
+        className
+      )}
     >
       {actions.map((action, i) => (
         <motion.div

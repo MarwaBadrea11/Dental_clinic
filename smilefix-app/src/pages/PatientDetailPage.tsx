@@ -157,10 +157,10 @@ export default function PatientDetailPage() {
         }}
       >
         {/* ── Avatar + name + buttons row ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.25rem', flexWrap: 'wrap' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
           {/* Left: avatar + text */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             {/* Avatar */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <Avatar
@@ -178,7 +178,7 @@ export default function PatientDetailPage() {
             </div>
 
             {/* Name + meta */}
-            <div>
+            <div className="min-w-0">
               <h2 style={{
                 fontFamily: 'Manrope, sans-serif',
                 fontSize: '1.5rem',
@@ -207,7 +207,7 @@ export default function PatientDetailPage() {
           </div>
 
           {/* Right: Call / Email buttons */}
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+          <div className="flex gap-2 items-center flex-shrink-0 flex-wrap">
             {patient.phone && (
               <a href={`tel:${patient.phone}`}>
                 <Button variant="outline" size="sm" leftIcon={<Phone size={14} />}>Call</Button>
@@ -223,11 +223,8 @@ export default function PatientDetailPage() {
 
         {/* ── Quick stats — 4-card grid ── */}
           <div
-            className="patient-stats-grid"
+            className="patient-quickstats patient-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4"
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-              gap: '1rem',
               marginTop: '1.5rem',
               paddingTop: '1.25rem',
               borderTop: '1px solid rgba(189,201,201,0.15)',
@@ -273,15 +270,10 @@ export default function PatientDetailPage() {
           </div>
       </motion.div>
 
-      {/* Responsive: stack stats to 2 cols on small screens */}
-      <style>{`
-        @media (max-width: 767px) {
-          .patient-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-        }
-      `}</style>
+      {/* Responsive: stack stats to 2 cols on small screens — handled in index.css */}
 
       {/* ── Tabs ── */}
-      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 overflow-x-auto">
+      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 overflow-x-auto tab-bar-scroll">
         {TABS_CONFIG.map((tab) => (
           <button
             key={tab.id}
@@ -310,7 +302,7 @@ export default function PatientDetailPage() {
         >
           {/* OVERVIEW */}
           {activeTab === 'overview' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'start' }} className="patient-overview-grid">
+            <div className="patient-overview-grid grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-start">
               <div>
                 <PatientInfoSection patient={patient} />
               </div>
@@ -341,12 +333,7 @@ export default function PatientDetailPage() {
             </div>
           )}
 
-          {/* Responsive: stack overview on small screens */}
-          <style>{`
-            @media (max-width: 1023px) {
-              .patient-overview-grid { grid-template-columns: 1fr !important; }
-            }
-          `}</style>
+          {/* Responsive: handled in index.css */}
 
           {/* MEDICAL HISTORY */}
           {activeTab === 'history' && (
@@ -400,7 +387,7 @@ export default function PatientDetailPage() {
                   }
                 />
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1rem' }} className="attachments-grid">
+                <div className="attachments-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {allAttachments.map((att) => (
                     <motion.div
                       key={att.id}
@@ -454,16 +441,13 @@ export default function PatientDetailPage() {
             </SectionCard>
           )}
 
-          <style>{`
-            @media (max-width: 1023px) { .attachments-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
-            @media (max-width: 639px)  { .attachments-grid { grid-template-columns: 1fr !important; } }
-          `}</style>
+          {/* Responsive attachments grid: handled in index.css */}
 
           {/* FINANCE */}
           {activeTab === 'finance' && (
             <div className="space-y-5">
               {/* Summary cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1rem' }} className="patient-finance-grid">
+              <div className="patient-finance-grid grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { label: t('patients.totalBilled'),  value: formatCurrency(totalSpent),                                                    color: 'text-[var(--color-primary)]' },
                   { label: t('patients.outstanding'),  value: formatCurrency(patient.balance ?? 0),                                          color: patient.balance ? 'text-[var(--color-error)]' : 'text-[var(--color-secondary)]' },

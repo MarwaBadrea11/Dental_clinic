@@ -97,7 +97,7 @@ export default function ReportsPage() {
       />
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-6 border-b border-[var(--color-outline-variant)]/20 overflow-x-auto">
+      <div className="flex items-center gap-1 mb-6 border-b border-[var(--color-outline-variant)]/20 overflow-x-auto tab-bar-scroll">
         {TABS.map((tab) => (
           <button
             key={tab.id}

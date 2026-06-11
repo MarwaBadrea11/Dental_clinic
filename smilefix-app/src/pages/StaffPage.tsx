@@ -118,8 +118,8 @@ function StaffModal({
 
   return (
     <Modal open={open} onClose={onClose} title={editMember ? t('staff.editStaff') : t('staff.addStaff')} size="lg">
-      <div className="grid grid-cols-2 gap-4">
-        <FormField label={t('common.fullName')} required error={errors.full_name} className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label={t('common.fullName')} required error={errors.full_name} className="col-span-full sm:col-span-2">
           <Input placeholder="Dr. Ahmed Al-Rashid" value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
         </FormField>
         <FormField label={t('common.role')}>
@@ -140,7 +140,7 @@ function StaffModal({
         <FormField label={t('staff.shiftEnd')}>
           <Input type="time" value={form.shift_end} onChange={(e) => set('shift_end', e.target.value)} />
         </FormField>
-        <FormField label={t('staff.baseSalary')} className="col-span-2">
+        <FormField label={t('staff.baseSalary')} className="col-span-full sm:col-span-2">
           <Input type="number" placeholder="0.00" value={form.base_salary} onChange={(e) => set('base_salary', e.target.value)} />
         </FormField>
       </div>
@@ -195,8 +195,8 @@ function AttendanceModal({
 
   return (
     <Modal open={open} onClose={onClose} title={t('staff.logAttendance')} size="md">
-      <div className="grid grid-cols-2 gap-4">
-        <FormField label={t('nav.staff')} required className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label={t('nav.staff')} required className="col-span-full sm:col-span-2">
           <Select options={[{ value: '', label: 'Select staff member...' }, ...STAFF_OPTS]} value={form.staff_id} onChange={(e) => set('staff_id', e.target.value)} />
         </FormField>
         <FormField label={t('common.date')}>
@@ -261,8 +261,8 @@ function SalaryModal({
 
   return (
     <Modal open={open} onClose={onClose} title={t('staff.addSalaryRecord')} size="md">
-      <div className="grid grid-cols-2 gap-4">
-        <FormField label={t('nav.staff')} required className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label={t('nav.staff')} required className="col-span-full sm:col-span-2">
           <Select options={[{ value: '', label: 'Select staff member...' }, ...STAFF_OPTS]} value={form.staff_id} onChange={(e) => set('staff_id', e.target.value)} />
         </FormField>
         <FormField label={t('common.month')}>
@@ -277,7 +277,7 @@ function SalaryModal({
         <FormField label={t('staff.bonus')}>
           <Input type="number" placeholder="0.00" value={form.bonus} onChange={(e) => set('bonus', e.target.value)} />
         </FormField>
-        <FormField label={t('staff.deductions')} className="col-span-2">
+        <FormField label={t('staff.deductions')} className="col-span-full sm:col-span-2">
           <Input type="number" placeholder="0.00" value={form.deductions} onChange={(e) => set('deductions', e.target.value)} />
         </FormField>
       </div>
@@ -425,7 +425,7 @@ export default function StaffPage() {
       </motion.div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 w-fit">
+      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 overflow-x-auto tab-bar-scroll max-w-full">
         {TABS.map((tab) => (
           <button key={tab.id} onClick={() => setViewMode(tab.id)}
             className={cn('px-4 py-2 rounded-[var(--radius-DEFAULT)] text-sm font-medium transition-all duration-200 whitespace-nowrap',

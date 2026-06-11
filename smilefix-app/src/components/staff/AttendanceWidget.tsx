@@ -45,7 +45,7 @@ export function AttendanceWidget({ attendance, staff, delay = 0, className }: At
       className={className}
     >
       {/* Summary pills */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         {[
           { label: t('staff.present'), value: present,  color: 'text-[var(--color-secondary)]',         bg: 'bg-[var(--color-secondary-container)]/20' },
           { label: t('staff.late'),    value: late,      color: 'text-amber-600',                         bg: 'bg-amber-100' },

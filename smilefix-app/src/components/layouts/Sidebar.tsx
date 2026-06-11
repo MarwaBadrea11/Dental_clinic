@@ -32,6 +32,9 @@ export function Sidebar() {
   const { t } = useTranslation()
   const isRTL = language === 'ar'
 
+  // فحص حجم الشاشة الحالي لتفادي تداخل قيم x بين الموبايل والدسكتوب
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024
+
   // Nav item labels from i18n
   const navLabels: Record<string, string> = {
     dashboard:     t('nav.dashboard'),
@@ -55,28 +58,31 @@ export function Sidebar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar panel — left in LTR, right in RTL */}
+      {/* Sidebar panel */}
       <motion.aside
         initial={false}
         animate={{
-          x: sidebarOpen ? 0 : (isRTL ? SIDEBAR_WIDTH : -SIDEBAR_WIDTH),
+          // هنا يكمن الحل: في الشاشات الكبيرة يكون الـ x دائماً 0، وفي الموبايل يتحرك حسب الاتجاه وحالة الفتح
+          x: isMobile 
+            ? (sidebarOpen ? 0 : (isRTL ? SIDEBAR_WIDTH : -SIDEBAR_WIDTH)) 
+            : 0,
           width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
         }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 32 }}
         className={cn(
           'fixed top-0 h-full z-40',
           isRTL ? 'right-0' : 'left-0',
           'glass-sidebar border-[var(--color-outline-variant)]/20',
           isRTL ? 'border-l' : 'border-r',
           'shadow-[var(--shadow-sidebar)]',
-          'flex flex-col',
-          'lg:translate-x-0'
+          'flex flex-col'
+          // تم إزالة lg:translate-x-0 لمنع التضارب مع حركات Framer Motion
         )}
         style={{ width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
       >
@@ -89,10 +95,10 @@ export function Sidebar() {
           {/* Mobile close */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-1 rounded-[var(--radius-DEFAULT)] text-[var(--color-outline)] hover:bg-[var(--color-surface-container-high)] transition-colors lg:hidden"
+            className="p-2 rounded-[var(--radius-DEFAULT)] text-[var(--color-outline)] hover:bg-[var(--color-surface-container-high)] transition-colors lg:hidden focus:outline-none"
             aria-label="Close sidebar"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
@@ -103,6 +109,8 @@ export function Sidebar() {
               key={item.id}
               to={item.path}
               end={item.path === '/'}
+              // عند الضغط على أي عنصر في الموبايل، يغلق السايد بار تلقائياً لتسهيل تجربة المستخدم
+              onClick={() => isMobile && setSidebarOpen(false)}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-DEFAULT)]',
@@ -134,7 +142,7 @@ export function Sidebar() {
                   {isActive && !sidebarCollapsed && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]"
+                      className={cn('w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]', isRTL ? 'mr-auto' : 'ml-auto')}
                     />
                   )}
                 </>
@@ -149,6 +157,7 @@ export function Sidebar() {
             <NavLink
               key={item.id}
               to={item.path}
+              onClick={() => isMobile && setSidebarOpen(false)}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-DEFAULT)]',

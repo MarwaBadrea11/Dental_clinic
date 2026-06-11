@@ -24,6 +24,7 @@ export {
   listAppointments,
   getAppointment,
   updateAppointment,
+  deleteAppointment,
   toScheduledAt,
 } from './appointmentService';
 export type {

@@ -100,19 +100,19 @@ export default function LoginScreen({ navigation }: Props) {
       // because setAuthenticated() hasn't been called yet, so the store is empty
       const backendPatient = await fetchMyPatient(result.accessToken);
 
+      if (!backendPatient) {
+        // No patient record linked to this account.
+        // This should not happen for accounts registered via the app (register()
+        // auto-creates the patient row). If it does, we must NOT use result.user.id
+        // as patient.id — that is a users table UUID, not a patients table UUID,
+        // and sending it as patient_id to POST /appointments causes a FK 404 error.
+        setGeneralErr(t('noPatientRecord'));
+        setLoading(false);
+        return;
+      }
+
       // Step 3: build the Patient object for the store
-      const patient = backendPatient
-        ? adaptPatient(backendPatient, result.user.email)
-        : {
-            // Fallback: no patient record yet — use user account data as placeholder
-            id:          result.user.id,   // NOTE: this is the user UUID, not a patient UUID
-            fullName:    result.user.username,
-            phone:       '',
-            nationalId:  '',
-            dateOfBirth: '',
-            gender:      'male' as const,
-            email:       result.user.email,
-          };
+      const patient = adaptPatient(backendPatient, result.user.email);
 
       await setAuthenticated(patient, result.accessToken, result.refreshToken);
       // Navigator reacts to isAuthenticated automatically — no navigation.replace needed

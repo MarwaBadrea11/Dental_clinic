@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth Service — SmileFix Web App
-// Connects to dental-clinic-backend at http://localhost:3000/api/v1/auth
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE_URL = 'http://localhost:3000/api/v1/auth'
+import { API_BASE } from './apiClient'
+
+const BASE_URL = `${API_BASE}/auth`
 
 const ACCESS_TOKEN_KEY  = 'smilefix_access_token'
 const REFRESH_TOKEN_KEY = 'smilefix_refresh_token'

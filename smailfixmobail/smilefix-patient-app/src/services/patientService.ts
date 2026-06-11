@@ -54,7 +54,7 @@ export async function fetchMyPatient(accessToken?: string): Promise<BackendPatie
 export function adaptPatient(bp: BackendPatient, fallbackEmail?: string): Patient {
   return {
     id:          bp.id,
-    fullName:    `${bp.first_name} ${bp.last_name}`.trim(),
+    fullName:    [bp.first_name, bp.last_name].filter(Boolean).join(' ').trim(),
     phone:       bp.phone,
     nationalId:  bp.national_id,
     dateOfBirth: bp.date_of_birth,

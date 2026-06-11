@@ -1,5 +1,5 @@
 import { authenticate } from '../../middleware/authenticate.js';
-import { authorize, authorizeOwner } from '../../middleware/authorize.js';
+import { authorizeOwner } from '../../middleware/authorize.js';
 import {
   bookAppointmentHandler,
   listAppointmentsHandler,
@@ -12,6 +12,21 @@ import {
  * تعريف مسارات موديول المواعيد لـ Fastify
  */
 export async function appointmentsRoutes(fastify) {
+
+  // Allow DELETE (and other methods) to have an empty body even when
+  // Content-Type: application/json is present — some HTTP clients send it.
+  fastify.addContentTypeParser('application/json', { parseAs: 'string' }, function (req, body, done) {
+    if (!body || body.length === 0) {
+      done(null, undefined);
+      return;
+    }
+    try {
+      done(null, JSON.parse(body));
+    } catch (err) {
+      err.statusCode = 400;
+      done(err, undefined);
+    }
+  });
 
   /**
    * POST / — book a new appointment
@@ -62,9 +77,11 @@ export async function appointmentsRoutes(fastify) {
   }, updateAppointmentHandler);
 
   /**
-   * DELETE /:id — hard delete (staff only)
+   * DELETE /:id — hard delete
+   * Staff (appointments:*) can delete any appointment.
+   * PATIENT can delete only their own appointment (checked in controller).
    */
   fastify.delete('/:id', {
-    preHandler: [authenticate, authorize('appointments:*')],
+    preHandler: [authenticate],
   }, deleteAppointmentHandler);
 }

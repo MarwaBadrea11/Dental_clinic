@@ -47,7 +47,7 @@ export class AuthService {
       // Split username into first/last name (best-effort)
       const nameParts  = dto.username.trim().split(/\s+/);
       const first_name = nameParts[0] ?? dto.username;
-      const last_name  = nameParts.slice(1).join(' ') || '-';
+      const last_name  = nameParts.slice(1).join(' ') || '';
 
       await this.repo.createPatientRecord({
         first_name,

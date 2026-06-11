@@ -31,8 +31,9 @@ export interface BackendAppointment {
   created_at: string;
   updated_at: string;
   // Joined fields (when backend includes them)
-  dentist_name?: string;
-  patient_name?: string;
+  dentist_username?: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
 }
 
 // ── Request shape for creating an appointment ─
@@ -126,6 +127,14 @@ export async function updateAppointment(
   data: UpdateAppointmentRequest,
 ): Promise<BackendAppointment> {
   return api.patch<BackendAppointment>(`/appointments/${id}`, data);
+}
+
+/**
+ * Hard-delete an appointment by ID.
+ * Patients can only delete their own appointments.
+ */
+export async function deleteAppointment(id: string): Promise<void> {
+  return api.delete<void>(`/appointments/${id}`);
 }
 
 /**

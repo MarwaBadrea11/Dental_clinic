@@ -97,6 +97,7 @@ interface AppState {
   setAppointments: (appointments: Appointment[]) => void;
   addAppointment: (appointment: Appointment) => void;
   archiveAppointment: (id: string) => void;
+  removeAppointment: (id: string) => void;
   setDoctors: (doctors: Doctor[]) => void;
   setServices: (services: Service[]) => void;
   setBookingStep: (step: number) => void;
@@ -183,6 +184,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       appointments: s.appointments.map((a) =>
         a.id === id ? { ...a, isArchived: true, status: 'cancelled' } : a
       ),
+    })),
+
+  removeAppointment: (id) =>
+    set((s) => ({
+      appointments: s.appointments.filter((a) => a.id !== id),
     })),
 
   setDoctors:  (doctors)  => set({ doctors }),

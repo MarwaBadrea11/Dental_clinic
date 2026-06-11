@@ -12,6 +12,9 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  ScrollView,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +27,7 @@ import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
 import {
   listAppointments,
-  updateAppointment,
+  deleteAppointment,
   ApiRequestError,
   type BackendAppointment,
 } from '../services';
@@ -33,12 +36,10 @@ type TabKey = 'upcoming' | 'past';
 
 // ── Map backend appointment → store Appointment shape ─
 function adaptAppointment(a: BackendAppointment): Appointment {
-  // Extract date (YYYY-MM-DD) and time (HH:mm) from scheduled_at ISO string
   const dt       = new Date(a.scheduled_at);
   const date     = dt.toISOString().split('T')[0];
-  const timeSlot = dt.toTimeString().slice(0, 5);   // 'HH:mm'
+  const timeSlot = dt.toTimeString().slice(0, 5);
 
-  // Map backend status to store status
   const statusMap: Record<string, Appointment['status']> = {
     SCHEDULED:   'waiting',
     CONFIRMED:   'confirmed',
@@ -59,7 +60,6 @@ function adaptAppointment(a: BackendAppointment): Appointment {
     notes:      a.notes ?? undefined,
     createdAt:  a.created_at,
     isArchived: a.status === 'CANCELLED' || a.status === 'NO_SHOW',
-    // Reconstruct doctor display object from joined fields
     doctor: a.dentist_username ? {
       id:           a.dentist_id,
       name:         a.dentist_username,
@@ -69,7 +69,6 @@ function adaptAppointment(a: BackendAppointment): Appointment {
       rating:       0,
       availableDays: [],
     } : undefined,
-    // treatment_name exposed as service name placeholder
     service: a.treatment_name ? {
       id:       '',
       name:     a.treatment_name,
@@ -80,14 +79,173 @@ function adaptAppointment(a: BackendAppointment): Appointment {
   };
 }
 
+// ── Details Modal ─────────────────────────────
+function DetailsModal({
+  item,
+  visible,
+  onClose,
+  colors,
+  isRTL,
+  t,
+}: {
+  item: Appointment | null;
+  visible: boolean;
+  onClose: () => void;
+  colors: AppColors;
+  isRTL: boolean;
+  t: (k: string) => string;
+}) {
+  if (!item) return null;
+
+  const align = isRTL ? 'right' : 'left';
+  const row   = isRTL ? 'row-reverse' : 'row';
+
+  const statusColors: Record<string, { bg: string; text: string }> = {
+    confirmed: { bg: colors.successBg,   text: colors.success },
+    waiting:   { bg: colors.warningBg,   text: colors.warning },
+    completed: { bg: colors.teal + '20', text: colors.teal },
+    cancelled: { bg: colors.errorBg,     text: colors.error },
+  };
+  const meta = statusColors[item.status] ?? statusColors.waiting;
+
+  const rows: { label: string; value: string }[] = [
+    {
+      label: isRTL ? 'الطبيب'          : 'Doctor',
+      value: (isRTL ? item.doctor?.nameAr : item.doctor?.name) ?? '—',
+    },
+    {
+      label: isRTL ? 'التخصص'          : 'Specialty',
+      value: (isRTL ? item.doctor?.specialtyAr : item.doctor?.specialty) ?? '—',
+    },
+    {
+      label: isRTL ? 'العلاج'           : 'Treatment',
+      value: (isRTL ? item.service?.nameAr : item.service?.name) ?? '—',
+    },
+    {
+      label: isRTL ? 'التاريخ'          : 'Date',
+      value: item.date,
+    },
+    {
+      label: isRTL ? 'الوقت'            : 'Time',
+      value: item.timeSlot,
+    },
+    {
+      label: isRTL ? 'المدة (دقيقة)'    : 'Duration (min)',
+      value: item.service?.duration ? `${item.service.duration}` : '—',
+    },
+    {
+      label: isRTL ? 'ملاحظات'          : 'Notes',
+      value: item.notes ?? (isRTL ? 'لا توجد ملاحظات' : 'No notes'),
+    },
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}
+        onPress={onClose}
+      >
+        {/* Prevent tap-through on the sheet itself */}
+        <Pressable onPress={(e) => e.stopPropagation()}>
+          <View style={{
+            backgroundColor: colors.surfaceCard,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            padding: 24,
+            paddingBottom: 40,
+          }}>
+            {/* Handle */}
+            <View style={{
+              width: 40, height: 4, borderRadius: 2,
+              backgroundColor: colors.outline + '60',
+              alignSelf: 'center', marginBottom: 20,
+            }} />
+
+            {/* Title + status badge */}
+            <View style={{
+              flexDirection: row,
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20,
+            }}>
+              <Text style={{
+                fontSize: 18, fontWeight: '700',
+                color: colors.blue,
+                fontFamily: 'Manrope_700Bold',
+              }}>
+                {isRTL ? 'تفاصيل الموعد' : 'Appointment Details'}
+              </Text>
+              <View style={{
+                paddingHorizontal: 12, paddingVertical: 5,
+                borderRadius: 999, backgroundColor: meta.bg,
+              }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: meta.text }}>
+                  {t(item.status)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Detail rows */}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {rows.map((r, i) => (
+                <View key={i} style={{
+                  flexDirection: row,
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  paddingVertical: 12,
+                  borderBottomWidth: i < rows.length - 1 ? 1 : 0,
+                  borderBottomColor: colors.divider,
+                }}>
+                  <Text style={{
+                    fontSize: 12, color: colors.textSub,
+                    textTransform: 'uppercase', letterSpacing: 0.4,
+                    flex: 1, textAlign: align,
+                  }}>
+                    {r.label}
+                  </Text>
+                  <Text style={{
+                    fontSize: 14, color: colors.text,
+                    fontWeight: '600', flex: 2,
+                    textAlign: isRTL ? 'left' : 'right',
+                  }}>
+                    {r.value}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+
+            {/* Close button */}
+            <TouchableOpacity
+              onPress={onClose}
+              style={{
+                marginTop: 24,
+                backgroundColor: colors.blue,
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700' }}>
+                {isRTL ? 'إغلاق' : 'Close'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ── Main Screen ───────────────────────────────
 export default function AppointmentsScreen({ navigation }: any) {
   const { colors }   = useTheme();
   const { t, isRTL } = useTranslation();
-  const { appointments, setAppointments, archiveAppointment, patient } = useAppStore();
-  const [tab, setTab]           = useState<TabKey>('upcoming');
-  const [loading, setLoading]   = useState(false);
+  const { appointments, setAppointments, removeAppointment, patient } = useAppStore();
+  const [tab, setTab]               = useState<TabKey>('upcoming');
+  const [loading, setLoading]       = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState('');
+  const [detailItem, setDetailItem] = useState<Appointment | null>(null);
 
   // ── Fetch appointments from backend ───────
   const fetchAppointments = useCallback(async (silent = false) => {
@@ -110,11 +268,8 @@ export default function AppointmentsScreen({ navigation }: any) {
     }
   }, [patient?.id]);
 
-  // ── Refresh every time this screen gains focus ─
   useFocusEffect(
-    useCallback(() => {
-      fetchAppointments();
-    }, [fetchAppointments]),
+    useCallback(() => { fetchAppointments(); }, [fetchAppointments]),
   );
 
   const now      = new Date().toISOString().split('T')[0];
@@ -137,22 +292,26 @@ export default function AppointmentsScreen({ navigation }: any) {
     return map[status] ?? map.waiting;
   };
 
-  // ── Cancel an appointment via API ─────────
+  // ── Hard-delete appointment via API ────────
   const handleCancel = (id: string) => {
     Alert.alert(
-      t('cancel'),
-      isRTL ? 'هل أنت متأكد من إلغاء هذا الموعد؟' : 'Are you sure you want to cancel?',
+      isRTL ? 'إلغاء الموعد' : 'Cancel Appointment',
+      isRTL ? 'هل أنت متأكد من إلغاء وحذف هذا الموعد نهائياً؟' : 'Are you sure you want to permanently cancel and delete this appointment?',
       [
-        { text: t('no'), style: 'cancel' },
+        { text: isRTL ? 'لا' : 'No', style: 'cancel' },
         {
-          text: t('yes'), style: 'destructive',
+          text: isRTL ? 'نعم، احذف' : 'Yes, Delete',
+          style: 'destructive',
           onPress: async () => {
             try {
-              await updateAppointment(id, { status: 'CANCELLED' });
-              archiveAppointment(id);     // optimistic local update
-              fetchAppointments(true);    // then sync with server
-            } catch {
-              Alert.alert(t('error'), t('cancelFailed'));
+              await deleteAppointment(id);
+              removeAppointment(id);        // remove from store immediately
+              fetchAppointments(true);      // sync with server
+            } catch (err) {
+              Alert.alert(
+                isRTL ? 'خطأ' : 'Error',
+                isRTL ? 'فشل حذف الموعد. حاول مرة أخرى.' : 'Failed to delete appointment. Please try again.',
+              );
             }
           },
         },
@@ -208,9 +367,15 @@ export default function AppointmentsScreen({ navigation }: any) {
         {/* Actions */}
         {item.status !== 'cancelled' && item.status !== 'completed' ? (
           <View style={s.actions}>
-            <TouchableOpacity style={s.primaryBtn}>
+            {/* View Details */}
+            <TouchableOpacity
+              style={s.primaryBtn}
+              onPress={() => setDetailItem(item)}
+            >
               <Text style={s.primaryBtnText}>{t('viewDetails')}</Text>
             </TouchableOpacity>
+
+            {/* Cancel / Delete */}
             <TouchableOpacity
               style={s.cancelBtn}
               onPress={() => handleCancel(item.id)}
@@ -234,7 +399,6 @@ export default function AppointmentsScreen({ navigation }: any) {
     </View>
   );
 
-  // ── Full-screen loading on first load ─────
   if (loading && appointments.length === 0) {
     return (
       <View style={[s.root, s.center]}>
@@ -244,7 +408,6 @@ export default function AppointmentsScreen({ navigation }: any) {
     );
   }
 
-  // ── Full-screen error ─────────────────────
   if (fetchError && appointments.length === 0) {
     return (
       <View style={[s.root, s.center]}>
@@ -263,7 +426,6 @@ export default function AppointmentsScreen({ navigation }: any) {
       <LinearGradient colors={[colors.gradStart, colors.gradEnd]} style={StyleSheet.absoluteFillObject} />
 
       <SafeAreaView style={s.safe}>
-        {/* Title */}
         <Text style={s.title}>{t('myAppts')}</Text>
 
         {/* Tabs */}
@@ -303,6 +465,16 @@ export default function AppointmentsScreen({ navigation }: any) {
           }
         />
       </SafeAreaView>
+
+      {/* Details Modal */}
+      <DetailsModal
+        item={detailItem}
+        visible={!!detailItem}
+        onClose={() => setDetailItem(null)}
+        colors={colors}
+        isRTL={isRTL}
+        t={t}
+      />
     </View>
   );
 }
@@ -324,7 +496,6 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       paddingLeft: isRTL ? 0 : 20,
     },
 
-    // Tabs
     tabRow: {
       flexDirection: row, alignItems: 'center',
       paddingHorizontal: 20, gap: 8, marginBottom: 14,
@@ -335,14 +506,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       backgroundColor: c.surfaceCard,
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
     },
-    tabBtnActive: {
-      backgroundColor: c.blue,
-      borderColor: c.blue,
-    },
-    tabText: { 
-      fontSize: 13, color: c.textSub, fontWeight: '600',
-      textAlign: align,
-    },
+    tabBtnActive: { backgroundColor: c.blue, borderColor: c.blue },
+    tabText: { fontSize: 13, color: c.textSub, fontWeight: '600', textAlign: align },
     tabTextActive: { color: '#fff' },
     newApptBtn: {
       flexDirection: row, alignItems: 'center', gap: 4,
@@ -358,7 +523,6 @@ function makeStyles(c: AppColors, isRTL: boolean) {
 
     list: { paddingHorizontal: 20, paddingBottom: 110 },
 
-    // Card
     card: {
       backgroundColor: c.surfaceCard,
       borderRadius: 20, padding: 16,
@@ -373,10 +537,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       justifyContent: 'space-between',
       alignItems: 'flex-start',
     },
-    doctorRow: {
-      flexDirection: row, alignItems: 'center',
-      gap: 10, flex: 1,
-    },
+    doctorRow: { flexDirection: row, alignItems: 'center', gap: 10, flex: 1 },
     avatar: {
       width: 46, height: 46, borderRadius: 14,
       backgroundColor: c.teal + '20',
@@ -399,22 +560,14 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       paddingRight: isRTL ? 8 : 0,
       paddingLeft: isRTL ? 0 : 8,
     },
-    badge: {
-      paddingHorizontal: 10, paddingVertical: 4,
-      borderRadius: 999,
-    },
+    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
     badgeText: {
       fontSize: 10, fontWeight: '700',
       fontFamily: 'Inter_600SemiBold',
       textTransform: 'uppercase', letterSpacing: 0.4,
     },
-    divider: {
-      height: 1, backgroundColor: c.divider,
-      marginVertical: 12,
-    },
-    detailsRow: {
-      flexDirection: row, justifyContent: 'space-between',
-    },
+    divider: { height: 1, backgroundColor: c.divider, marginVertical: 12 },
+    detailsRow: { flexDirection: row, justifyContent: 'space-between' },
     detailItem: { flex: 1 },
     detailLabel: {
       fontSize: 10, color: c.textSub,
@@ -429,9 +582,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       paddingRight: isRTL ? 8 : 0,
       paddingLeft: isRTL ? 0 : 8,
     },
-    actions: {
-      flexDirection: row, gap: 8, marginTop: 12,
-    },
+    actions: { flexDirection: row, gap: 8, marginTop: 12 },
     primaryBtn: {
       flex: 1, backgroundColor: c.primary,
       borderRadius: 12, paddingVertical: 11,
@@ -447,11 +598,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       borderRadius: 12,
       borderWidth: 1, borderColor: c.error + '40',
     },
-    cancelBtnText: {
-      fontSize: 13, color: c.error, fontWeight: '600',
-    },
+    cancelBtnText: { fontSize: 13, color: c.error, fontWeight: '600' },
 
-    // Empty
     empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
     emptyText: { fontSize: 15, color: c.textSub, textAlign: 'center' },
     bookBtn: {

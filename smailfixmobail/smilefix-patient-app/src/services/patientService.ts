@@ -1,8 +1,6 @@
 // ─────────────────────────────────────────────
 // Patient Service
-// Wraps: GET /patients/me
-// Resolves the patient record linked to the
-// currently logged-in user account.
+// Wraps: GET /patients/me  |  PUT /patients/me
 // ─────────────────────────────────────────────
 import { api } from './api';
 import type { Patient } from '../store/appStore';
@@ -27,6 +25,10 @@ export interface BackendPatient {
   updated_at: string;
 }
 
+export type UpdatePatientPayload = Partial<
+  Pick<BackendPatient, 'first_name' | 'last_name' | 'email' | 'phone'>
+>;
+
 /**
  * Fetch the patient record that matches the logged-in user account.
  * Returns null if the user has no linked patient record yet.
@@ -46,6 +48,15 @@ export async function fetchMyPatient(accessToken?: string): Promise<BackendPatie
     if (err?.status === 404) return null;
     throw err;
   }
+}
+
+/**
+ * Update the logged-in patient's own profile via PUT /patients/me.
+ */
+export async function updateMyPatient(
+  payload: UpdatePatientPayload,
+): Promise<BackendPatient> {
+  return api.put<BackendPatient>('/patients/me', payload);
 }
 
 /**

@@ -338,8 +338,8 @@ function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
       backgroundColor: c.surfaceCard,
       borderRadius: 24, padding: 22,
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
-      shadowColor: c.blue, shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: isDark ? 0.04 : 0.07, shadowRadius: 28, elevation: 4,
+      shadowColor: c.blue, shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: isDark ? 0.03 : 0.05, shadowRadius: 20, elevation: 3,
       marginBottom: 20,
     },
 

@@ -531,8 +531,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginBottom: 12,
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
     },
     cardHeader: {
       flexDirection: row,

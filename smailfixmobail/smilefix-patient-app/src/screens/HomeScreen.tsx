@@ -19,6 +19,7 @@ import { useAppStore } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
+import GlassCard from '../components/GlassCard';
 
 export default function HomeScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
@@ -210,8 +211,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginBottom: 14,
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03, shadowRadius: 7, elevation: 1,
       // Explicitly enforce column layout so RTL direction on parent
       // does not cause children to stack horizontally
       flexDirection: 'column',

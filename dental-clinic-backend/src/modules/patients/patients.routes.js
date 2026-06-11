@@ -5,6 +5,7 @@ import {
   getPatientHandler,
   listPatientsHandler,
   updatePatientHandler,
+  updateMeHandler,
   deletePatientHandler,
 } from './patients.controller.js';
 import { PatientsRepository } from './patients.repository.js';
@@ -14,11 +15,12 @@ import { successResponse, errorResponse } from '../../utils/response.js';
  * @param {import('fastify').FastifyInstance} fastify
  */
 export async function patientsRoutes(fastify) {
-  // إعداد الصلاحيات المشتركة للعمليات التي تتطلب تعديلاً
-  const writePermissions = [authenticate, authorize('patients:*')];
-  
+  // إعداد الصلاحيات للكتابة/الإنشاء/الحذف (admin + receptionist)
+  const writePermissions  = [authenticate, authorize('patients:*')];
+  // إعداد الصلاحيات للتعديل (admin + receptionist + dentist)
+  const updatePermissions = [authenticate, authorize('patients:update')];
   // إعداد الصلاحيات للقراءة فقط
-  const readPermissions = [authenticate, authorize('patients:read')];
+  const readPermissions   = [authenticate, authorize('patients:read')];
 
   /**
    * GET /api/v1/patients/me
@@ -50,6 +52,12 @@ export async function patientsRoutes(fastify) {
     return reply.status(200).send(successResponse(patient));
   });
 
+  /**
+   * PUT /api/v1/patients/me
+   * Allows a PATIENT-role user to update their own profile data.
+   */
+  fastify.put('/me', { preHandler: [authenticate, authorize('patients:update_self')] }, updateMeHandler);
+
   // مسار إنشاء مريض جديد
   fastify.post('/', { preHandler: writePermissions }, createPatientHandler);
 
@@ -60,7 +68,7 @@ export async function patientsRoutes(fastify) {
   fastify.get('/:id', { preHandler: readPermissions }, getPatientHandler);
 
   // مسار تعديل بيانات مريض موجود
-  fastify.put('/:id', { preHandler: writePermissions }, updatePatientHandler);
+  fastify.put('/:id', { preHandler: updatePermissions }, updatePatientHandler);
 
   // مسار حذف مريض (Soft Delete)
   fastify.delete('/:id', { preHandler: writePermissions }, deletePatientHandler);

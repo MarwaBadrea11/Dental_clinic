@@ -152,6 +152,12 @@ export async function updatePatient(id: string, payload: UpdatePatientPayload): 
   return mapPatient(p)
 }
 
+/** Allows a PATIENT-role user to update their own profile via PUT /patients/me */
+export async function updateMyProfile(payload: UpdatePatientPayload): Promise<Patient> {
+  const p = await apiClient.put<BackendPatient>('/patients/me', payload)
+  return mapPatient(p)
+}
+
 export async function deletePatient(id: string): Promise<void> {
   await apiClient.delete<unknown>(`/patients/${id}`)
 }

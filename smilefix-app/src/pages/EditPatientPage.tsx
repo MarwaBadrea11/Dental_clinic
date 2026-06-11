@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PatientForm, type PatientFormValues } from '@/components/patients/PatientForm'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Loader } from '@/components/ui/Loader'
 import { Button } from '@/components/ui/Button'
 import { usePatientStore } from '@/store/patientStore'
 import { ApiError } from '@/services/apiClient'
@@ -13,16 +14,38 @@ export default function EditPatientPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { getPatientById, updatePatientById } = usePatientStore()
+  const { getPatientById, loadPatientById, updatePatientById } = usePatientStore()
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [fetching, setFetching] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  // Fetch patient from API when not already in the store
+  // (covers page refresh and direct URL navigation)
+  useEffect(() => {
+    if (!id) { setFetching(false); return }
+    const inStore = getPatientById(id)
+    if (inStore) { setFetching(false); return }
+    setFetching(true)
+    loadPatientById(id)
+      .catch(() => setFetchError(t('patients.patientNotFound')))
+      .finally(() => setFetching(false))
+  }, [id])
 
   const patient = getPatientById(id ?? '')
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader />
+      </div>
+    )
+  }
 
   if (!patient) {
     return (
       <EmptyState
-        title={t('patients.patientNotFound')}
+        title={fetchError ?? t('patients.patientNotFound')}
         action={<Button onClick={() => navigate(ROUTES.PATIENTS)}>{t('patients.backToPatients')}</Button>}
       />
     )

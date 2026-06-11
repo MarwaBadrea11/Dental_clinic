@@ -15,6 +15,7 @@ import { ImageUploadArea } from '@/components/ui/ImageUploadArea'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationPreferencesStore } from '@/store/notificationPreferencesStore'
+import { updateMyProfile } from '@/services/patientService'
 import { cn } from '@/utils/cn'
 import {
   buildCurrencySelectOptions,
@@ -83,6 +84,8 @@ export default function SettingsPage() {
   const isRtl = language === 'ar'
   const [activeTab, setActiveTab] = useState<SettingsTabId>('profile')
   const [saved, setSaved]         = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileError, setProfileError]   = useState<string | null>(null)
 
   const {
     preferences: notifs,
@@ -99,11 +102,11 @@ export default function SettingsPage() {
   }, [activeTab, loadPrefs])
 
   const [profileForm, setProfileForm] = useState({
-    name:      user?.name      ?? 'Dr. Smith',
-    email:     user?.email     ?? 'dr.smith@smilefix.com',
-    specialty: user?.specialty ?? 'Orthodontist',
-    phone:     '+1 (555) 100-0001',
-    bio:       'Board-certified orthodontist with 12 years of clinical experience.',
+    name:      user?.name      ?? '',
+    email:     user?.email     ?? '',
+    specialty: user?.specialty ?? '',
+    phone:     '',
+    bio:       '',
   })
 
   const [clinicForm, setClinicForm] = useState({
@@ -118,8 +121,38 @@ export default function SettingsPage() {
     timezone: 'UTC-8',
   })
 
+  /** Save handler — profile tab calls the backend; others just show the saved indicator */
   const handleSave = async () => {
-    if (activeTab === 'notifications') await savePrefs()
+    if (activeTab === 'notifications') {
+      await savePrefs()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      return
+    }
+
+    if (activeTab === 'profile' && user?.role === 'PATIENT') {
+      // PATIENT role: update own patient record via PUT /patients/me
+      setProfileSaving(true)
+      setProfileError(null)
+      try {
+        const [firstName, ...rest] = profileForm.name.trim().split(' ')
+        await updateMyProfile({
+          first_name: firstName || profileForm.name,
+          last_name:  rest.join(' ') || undefined,
+          email:      profileForm.email || undefined,
+          phone:      profileForm.phone || undefined,
+        })
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } catch (err) {
+        setProfileError(err instanceof Error ? err.message : t('common.saveFailed'))
+      } finally {
+        setProfileSaving(false)
+      }
+      return
+    }
+
+    // Non-patient profile / other tabs: local state only (no staff self-update endpoint yet)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -156,10 +189,10 @@ export default function SettingsPage() {
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={notifsSaving}
+            disabled={notifsSaving || profileSaving}
             className={saved ? 'bg-[var(--color-secondary)]' : ''}
           >
-            {notifsSaving
+            {(notifsSaving || profileSaving)
               ? t('settings.saving')
               : saved
               ? `✓ ${t('common.saved')}`
@@ -208,6 +241,11 @@ export default function SettingsPage() {
 
               {activeTab === 'profile' && (
                 <SectionCard title={t('settings.profileSettings')} icon={<User size={15} />}>
+                  {profileError && (
+                    <div className="mb-4 px-4 py-2.5 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-error)] text-sm">
+                      {profileError}
+                    </div>
+                  )}
                   <div className="flex flex-col sm:flex-row gap-6 mb-6">
                     <ImageUploadArea name={profileForm.name} size="lg" label={t('settings.profilePhoto')} className="shrink-0" />
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -229,7 +267,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <Button size="sm" onClick={handleSave}>{t('settings.updateProfile')}</Button>
+                    <Button size="sm" loading={profileSaving} onClick={handleSave}>{t('settings.updateProfile')}</Button>
                   </div>
                 </SectionCard>
               )}

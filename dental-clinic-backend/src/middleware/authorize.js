@@ -5,6 +5,7 @@ export const ROLE_PERMISSIONS = {
   DENTIST: [
     'dashboard:read',
     'patients:read',
+    'patients:update',
     'appointments:read',
     'appointments:update',
     'treatments:*',
@@ -28,11 +29,12 @@ export const ROLE_PERMISSIONS = {
   ACCOUNTANT: ['invoices:*', 'payments:*', 'finance:*', 'reports:financial', 'staff:read'],
   STOREKEEPER: ['inventory:*', 'reports:inventory'],
   HR: ['staff:*', 'reports:payroll'],
-  // PATIENT: self-service only — can read/book own appointments and read procedures
+  // PATIENT: self-service only — can read/book own appointments, read invoices, update own profile
   PATIENT: [
     'appointments:read',
     'appointments:create',
     'invoices:read',
+    'patients:update_self',
   ],
 };
 

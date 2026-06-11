@@ -241,16 +241,6 @@ export default function ProfileScreen() {
             <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
           </TouchableOpacity>
 
-          {/* Privacy */}
-          <TouchableOpacity style={s.settingRow}>
-            <View style={s.settingLeft}>
-              <View style={[s.iconBox, { backgroundColor: colors.warningBg }]}>
-                <Ionicons name="shield-checkmark-outline" size={20} color={colors.warning} />
-              </View>
-              <Text style={[s.settingLabel, getTextAlignment(), getSpacingStyle()]}>{t('privacy')}</Text>
-            </View>
-            <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
-          </TouchableOpacity>
 
           {/* Help */}
           <TouchableOpacity style={s.settingRow}>

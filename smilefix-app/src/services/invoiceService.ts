@@ -219,15 +219,57 @@ export function mapInvoice(b: BackendInvoice, patientName = ''): Invoice {
   }
 }
 
-export function mapPayment(b: BackendPayment, patientId = '', patientName = ''): Payment {
+/** Normalize API payloads that may be a bare array or nested under `payments` / `data`. */
+function extractPaymentRows(res: unknown): BackendPayment[] {
+  if (res == null) return []
+  if (Array.isArray(res)) return res.filter(Boolean) as BackendPayment[]
+  if (typeof res === 'object') {
+    const obj = res as Record<string, unknown>
+    if (Array.isArray(obj.payments)) return obj.payments.filter(Boolean) as BackendPayment[]
+    if (Array.isArray(obj.data)) return obj.data.filter(Boolean) as BackendPayment[]
+  }
+  return []
+}
+
+const PAYMENT_FETCH_BATCH_SIZE = 10
+
+async function fetchPaymentsForInvoice(
+  inv: { id: string; patientId: string; patientName: string },
+): Promise<Payment[]> {
+  try {
+    const res = await apiClient.get<unknown>(`/invoices/${inv.id}/payments`)
+    return extractPaymentRows(res).map((p) => mapPayment(p, inv.patientId, inv.patientName))
+  } catch {
+    return []
+  }
+}
+
+export function mapPayment(
+  b: BackendPayment & {
+    patient_id?: string
+    patient_name?: string
+    payment_method?: BackendPaymentMethod
+    paidAt?: string
+  },
+  patientId = '',
+  patientName = '',
+): Payment {
+  const rawMethod = b.method ?? b.payment_method
+  const paidAt = b.paid_at ?? b.paidAt ?? b.created_at
+  const nestedPatient = (b as { patient?: { id?: string; full_name?: string; first_name?: string; last_name?: string } }).patient
+  const nestedName = nestedPatient?.full_name
+    ?? (nestedPatient?.first_name
+      ? `${nestedPatient.first_name} ${nestedPatient.last_name ?? ''}`.trim()
+      : undefined)
+
   return {
     id: b.id,
     invoiceId: b.invoice_id,
-    patientId,
-    patientName,
-    amount: parseFloat(b.amount),
-    method: METHOD_MAP[b.method] ?? 'cash',
-    date: b.paid_at.split('T')[0],
+    patientId: patientId || b.patient_id || nestedPatient?.id || '',
+    patientName: patientName || b.patient_name || nestedName || '',
+    amount: parseFloat(String(b.amount ?? 0)),
+    method: rawMethod ? (METHOD_MAP[rawMethod] ?? 'cash') : 'cash',
+    date: paidAt ? String(paidAt).slice(0, 10) : '',
     reference: b.reference ?? undefined,
     notes: b.notes ?? undefined,
   }
@@ -293,9 +335,13 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
   return mapInvoice(b)
 }
 
-export async function fetchInvoicePayments(invoiceId: string): Promise<Payment[]> {
-  const payments = await apiClient.get<BackendPayment[]>(`/invoices/${invoiceId}/payments`)
-  return payments.map((p) => mapPayment(p))
+export async function fetchInvoicePayments(
+  invoiceId: string,
+  patientId = '',
+  patientName = '',
+): Promise<Payment[]> {
+  const res = await apiClient.get<unknown>(`/invoices/${invoiceId}/payments`)
+  return extractPaymentRows(res).map((p) => mapPayment(p, patientId, patientName))
 }
 
 export async function recordPayment(
@@ -358,28 +404,24 @@ export async function cancelInvoice(id: string): Promise<Invoice> {
   return mapInvoice(b)
 }
 
-/**
- * Fetches payments for a list of invoice IDs in parallel.
- * Fetches all invoices regardless of paid amount so the Payments tab always
- * reflects the true state after a refresh.
- */
 export async function fetchPaymentsForInvoices(
-  invoices: { id: string; patientId: string; patientName: string; paid: number }[],
+  invoices: { id: string; patientId: string; patientName: string; paid: number }[] | null | undefined,
 ): Promise<Payment[]> {
-  if (invoices.length === 0) return []
+  const list = Array.isArray(invoices) ? invoices.filter((inv) => inv?.id) : []
+  if (list.length === 0) return []
 
-  const results = await Promise.allSettled(
-    invoices.map((inv) =>
-      apiClient
-        .get<BackendPayment[]>(`/invoices/${inv.id}/payments`)
-        .then((payments) =>
-          payments.map((p) => mapPayment(p, inv.patientId, inv.patientName)),
-        ),
-    ),
-  )
+  // Only invoices with recorded payments can have payment rows in the DB
+  const candidates = list.filter((inv) => Number(inv.paid) > 0)
+  if (candidates.length === 0) return []
 
-  return results
-    .filter((r): r is PromiseFulfilledResult<Payment[]> => r.status === 'fulfilled')
-    .flatMap((r) => r.value)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const all: Payment[] = []
+  for (let i = 0; i < candidates.length; i += PAYMENT_FETCH_BATCH_SIZE) {
+    const batch = candidates.slice(i, i + PAYMENT_FETCH_BATCH_SIZE)
+    const settled = await Promise.allSettled(batch.map((inv) => fetchPaymentsForInvoice(inv)))
+    for (const result of settled) {
+      if (result.status === 'fulfilled') all.push(...result.value)
+    }
+  }
+
+  return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }

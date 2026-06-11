@@ -330,7 +330,9 @@ export default function StaffPage() {
     if (viewMode === 'payroll') loadSalaryRecords()
   }, [viewMode])
 
-  const todayAttendance = attendance.filter((a) => a.date === localDateStr())
+  const today = localDateStr()
+  // API already filters by date when the attendance tab loads; compare YYYY-MM-DD only
+  const todayAttendance = attendance.filter((a) => a.date?.slice(0, 10) === today)
 
   const ROLE_OPTIONS = buildStaffRoleSelectOptions(t, { includeAll: true })
   const STATUS_OPTIONS = buildStaffStatusSelectOptions(t, { includeAll: true })
@@ -492,7 +494,7 @@ export default function StaffPage() {
                 {t('staff.logAttendance')}
               </Button>
             </div>
-            <AttendanceWidget attendance={todayAttendance} staff={staff} delay={0.05} />
+            <AttendanceWidget attendance={attendance} staff={staff} delay={0.05} />
           </motion.div>
         )}
 

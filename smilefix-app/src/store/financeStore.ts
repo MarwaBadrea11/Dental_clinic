@@ -6,6 +6,7 @@ import {
   createInvoice,
   updateInvoice as apiUpdateInvoice,
   recordPayment as apiRecordPayment,
+  fetchPaymentsForInvoices,
   fetchFinanceSummary,
   fetchPatientDebt,
   type CreateInvoicePayload,
@@ -34,6 +35,8 @@ interface FinanceState {
   getMonthlyRevenue: (month: number, year: number) => number
 }
 
+let invoicesLoadSeq = 0
+
 export const useFinanceStore = create<FinanceState>((set, get) => ({
   invoices: [],
   payments: [],
@@ -41,6 +44,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   error: null,
 
   loadInvoices: async (params = {}) => {
+    const seq = ++invoicesLoadSeq
     set({ isLoading: true, error: null })
     try {
       const backendStatus =
@@ -52,9 +56,31 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         status: backendStatus,
         limit: 100,
       })
-      set({ invoices: result.invoices, isLoading: false })
+
+      if (seq !== invoicesLoadSeq) return
+
+      let payments: Payment[] = []
+      try {
+        payments = await fetchPaymentsForInvoices(
+          result.invoices.map((inv) => ({
+            id: inv.id,
+            patientId: inv.patientId,
+            patientName: inv.patientName,
+            paid: inv.paid,
+          })),
+        )
+      } catch {
+        // Keep invoices visible even when payment log aggregation fails
+        payments = []
+      }
+
+      if (seq !== invoicesLoadSeq) return
+      set({ invoices: result.invoices, payments })
     } catch (err) {
-      set({ error: (err as Error).message, isLoading: false })
+      if (seq !== invoicesLoadSeq) return
+      set({ error: err instanceof Error ? err.message : 'Failed to load invoices' })
+    } finally {
+      if (seq === invoicesLoadSeq) set({ isLoading: false })
     }
   },
 

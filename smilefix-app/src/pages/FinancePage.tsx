@@ -16,7 +16,9 @@ import { fetchPatients } from '@/services/patientService'
 import type { CreateInvoicePayload } from '@/services/invoiceService'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import type { Invoice, InvoiceStatus, PaymentMethod } from '@/types'
+import type { Invoice, InvoiceStatus, Payment, PaymentMethod } from '@/types'
+import type { BackendFinanceSummary } from '@/services/invoiceService'
+import { fetchFinanceSummary } from '@/services/invoiceService'
 
 type ViewMode = 'overview' | 'invoices' | 'payments'
 
@@ -32,14 +34,19 @@ const FALLBACK_MONTHLY_DATA = [
 
 export default function FinancePage() {
   const { t } = useTranslation()
-  const { invoices, payments, financeSummary, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading, error } = useFinanceStore()
+  const { invoices, payments, updateInvoice, deleteInvoice, addInvoice, recordPayment: storeRecordPayment, getTotalRevenue, getTotalOutstanding, getOverdueAmount, loadInvoices, isLoading, error } = useFinanceStore()
+  const [financeSummary, setFinanceSummary] = useState<BackendFinanceSummary | null>(null)
 
-  // Load real invoices on mount (also loads payments internally)
-  useEffect(() => { loadInvoices() }, [loadInvoices])
+  // Load invoices and payment logs once on mount (stable — no store fn in deps)
+  useEffect(() => {
+    void useFinanceStore.getState().loadInvoices()
+  }, [])
 
   // Load finance summary (for revenue chart + accurate KPI cards)
   useEffect(() => {
-    useFinanceStore.getState().loadFinanceSummaryData?.()
+    fetchFinanceSummary()
+      .then(setFinanceSummary)
+      .catch(() => {/* non-critical — KPI cards fall back to invoice totals */})
   }, [])
 
   // Load patients for the new invoice modal
@@ -53,14 +60,6 @@ export default function FinancePage() {
   }, [])
 
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
-
-  // Reload payments whenever the user switches to the payments tab
-  useEffect(() => {
-    if (viewMode === 'payments') {
-      // loadInvoices already fetches payments internally after loading invoices
-      loadInvoices()
-    }
-  }, [viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
   const [listMode, setListMode] = useState<'table' | 'grid'>('table')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -79,6 +78,8 @@ export default function FinancePage() {
     { value: 'partial', label: t('status.partial') },
     { value: 'draft',   label: t('status.draft') },
   ]
+
+  const paymentsList: Payment[] = Array.isArray(payments) ? payments : []
 
   const filtered = invoices.filter((inv) => {
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter
@@ -153,7 +154,7 @@ export default function FinancePage() {
   const TABS: { id: ViewMode; label: string }[] = [
     { id: 'overview',  label: t('finance.overview') },
     { id: 'invoices',  label: `${t('finance.invoices')} (${invoices.length})` },
-    { id: 'payments',  label: `${t('finance.payments')} (${payments.length})` },
+    { id: 'payments',  label: `${t('finance.payments')} (${paymentsList.length})` },
   ]
 
   return (
@@ -197,7 +198,7 @@ export default function FinancePage() {
           <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 lg:col-span-8"><RevenueStats data={monthlyChartData} delay={0.1} /></div>
-              <div className="col-span-12 lg:col-span-4"><PaymentSummary payments={payments} delay={0.15} /></div>
+              <div className="col-span-12 lg:col-span-4"><PaymentSummary payments={paymentsList} delay={0.15} /></div>
               <div className="col-span-12 lg:col-span-6"><DebtWidget invoices={invoices} delay={0.2} onViewInvoice={setSelectedInvoice} /></div>
               <div className="col-span-12 lg:col-span-6">
                 <SectionCard title={t('finance.recentInvoices')} icon={<FileText size={15} />} action={<Button variant="ghost" size="xs" onClick={() => setViewMode('invoices')}>{t('common.viewAll')}</Button>} delay={0.2}>
@@ -248,23 +249,73 @@ export default function FinancePage() {
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 lg:col-span-8">
                 <SectionCard noPadding action={
-                  <Button variant="ghost" size="xs" leftIcon={<RefreshCw size={12} />} loading={isLoading} onClick={() => loadInvoices()}>
+                  <Button variant="ghost" size="xs" leftIcon={<RefreshCw size={12} />} loading={isLoading} onClick={() => void useFinanceStore.getState().loadInvoices()}>
                     {t('common.refresh')}
                   </Button>
                 }>
                   <DataTable
                     columns={[
-                      { key: 'patientName', header: t('common.patient'), sortable: true, render: (p) => <div className="flex items-center gap-2"><Avatar name={p.patientName} size="xs" /><span className="text-sm">{p.patientName}</span></div> },
-                      { key: 'amount',    header: t('common.amount'),    sortable: true, render: (p) => <span className="text-sm font-bold text-[var(--color-secondary)]">{formatCurrency(p.amount)}</span> },
-                      { key: 'method',    header: t('finance.method'),   sortable: true, render: (p) => <span className="text-sm capitalize">{p.method.replace('-', ' ')}</span> },
-                      { key: 'date',      header: t('common.date'),      sortable: true, render: (p) => <span className="text-sm">{formatDate(p.date)}</span> },
-                      { key: 'reference', header: t('finance.reference'),render: (p) => <span className="text-xs font-mono text-[var(--color-on-surface-variant)]">{p.reference ?? '—'}</span> },
+                      {
+                        key: 'patientName',
+                        header: t('common.patient'),
+                        sortable: true,
+                        render: (p) => {
+                          const name = p.patientName?.trim() || '—'
+                          return (
+                            <div className="flex items-center gap-2">
+                              <Avatar name={name} size="xs" />
+                              <span className="text-sm">{name}</span>
+                            </div>
+                          )
+                        },
+                      },
+                      {
+                        key: 'amount',
+                        header: t('common.amount'),
+                        sortable: true,
+                        render: (p) => (
+                          <span className="text-sm font-bold text-[var(--color-secondary)]">
+                            {formatCurrency(p.amount ?? 0)}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: 'method',
+                        header: t('finance.method'),
+                        sortable: true,
+                        render: (p) => (
+                          <span className="text-sm capitalize">
+                            {(p.method ?? 'cash').replace('-', ' ')}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: 'date',
+                        header: t('common.date'),
+                        sortable: true,
+                        render: (p) => (
+                          <span className="text-sm">{p.date ? formatDate(p.date) : '—'}</span>
+                        ),
+                      },
+                      {
+                        key: 'reference',
+                        header: t('finance.reference'),
+                        render: (p) => (
+                          <span className="text-xs font-mono text-[var(--color-on-surface-variant)]">
+                            {p.reference ?? '—'}
+                          </span>
+                        ),
+                      },
                     ]}
-                    data={payments} pageSize={8} searchPlaceholder={t('finance.searchPayments')} emptyTitle={t('finance.noPayments')}
+                    data={paymentsList}
+                    pageSize={8}
+                    searchPlaceholder={t('finance.searchPayments')}
+                    emptyTitle={t('finance.noPayments')}
+                    loading={isLoading}
                   />
                 </SectionCard>
               </div>
-              <div className="col-span-12 lg:col-span-4"><PaymentSummary payments={payments} delay={0.1} /></div>
+              <div className="col-span-12 lg:col-span-4"><PaymentSummary payments={paymentsList} delay={0.1} /></div>
             </div>
           </motion.div>
         )}

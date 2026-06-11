@@ -134,7 +134,7 @@ export default function PatientDetailPage() {
               onClick={() => navigate(`/patients/${patient.id}/edit`)}>
               Edit
             </Button>
-            <Button variant="ghost" size="sm"
+            <Button variant="primary" size="sm"
               onClick={() => navigate(`/patients/${patient.id}/odontogram`)}>
               🦷 Odontogram
             </Button>

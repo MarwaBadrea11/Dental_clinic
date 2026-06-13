@@ -176,9 +176,13 @@ export const useNotificationStore = create<NotificationState>()(
       refreshUnreadCount: async () => {
         try {
           const count = await fetchUnreadCount()
-          // Add local-only unread items on top
-          const localUnread = get().notifications.filter(
-            (n) => n.actionHandlerId && !n.read,
+          // Add local-only unread items — those with actionHandlerId that aren't
+          // in the backend list. Mirror the same de-dup logic used in load() to
+          // avoid double-counting items that appear in both the store and backend.
+          const all        = get().notifications
+          const backendIds = new Set(all.filter((n) => !n.actionHandlerId).map((n) => n.id))
+          const localUnread = all.filter(
+            (n) => n.actionHandlerId && !backendIds.has(n.id) && !n.read,
           ).length
           set({ unreadCount: count + localUnread })
         } catch {

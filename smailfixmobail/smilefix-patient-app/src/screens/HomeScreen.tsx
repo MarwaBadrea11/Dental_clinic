@@ -27,10 +27,21 @@ export default function HomeScreen({ navigation }: any) {
   const { patient, appointments } = useAppStore();
   const tabBarHeight = useTabBarHeight();
 
-  const now = new Date().toISOString().split('T')[0];
+  // Compare full datetime so a 4 PM appointment is no longer "upcoming" at 7 PM.
+  // `a.date` is 'YYYY-MM-DD' and `a.timeSlot` is 'HH:mm' — combine them into a
+  // real Date object and compare against the current local time.
+  const nowMs = Date.now();
   const nextAppt = appointments
-    .filter((a) => !a.isArchived && a.date >= now && a.status !== 'cancelled')
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
+    .filter((a) => {
+      if (a.isArchived || a.status === 'cancelled') return false;
+      const apptMs = new Date(`${a.date}T${a.timeSlot}:00`).getTime();
+      return apptMs > nowMs;
+    })
+    .sort((a, b) => {
+      const tA = new Date(`${a.date}T${a.timeSlot}:00`).getTime();
+      const tB = new Date(`${b.date}T${b.timeSlot}:00`).getTime();
+      return tA - tB;
+    })[0];
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? t('goodMorning') : hour < 18 ? t('goodAfternoon') : t('goodEvening');

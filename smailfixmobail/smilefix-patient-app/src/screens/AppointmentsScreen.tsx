@@ -50,6 +50,21 @@ function adaptAppointment(a: BackendAppointment): Appointment {
     NO_SHOW:     'cancelled',
   };
 
+  let mappedStatus: Appointment['status'] = statusMap[a.status] ?? 'waiting';
+
+  // Client-side safety net: if the appointment end time has already passed
+  // and the backend hasn't transitioned the status yet (still SCHEDULED /
+  // CONFIRMED / IN_PROGRESS), mark it as 'completed' so the badge is correct
+  // immediately — without waiting for the next autoTransition sweep.
+  const durationMs   = (a.duration_minutes ?? 30) * 60 * 1000;
+  const apptEndMs    = dt.getTime() + durationMs;
+  const isInThePast  = apptEndMs < Date.now();
+  const isActiveStatus = mappedStatus === 'waiting' || mappedStatus === 'confirmed';
+
+  if (isInThePast && isActiveStatus) {
+    mappedStatus = 'completed';
+  }
+
   return {
     id:         a.id,
     patientId:  a.patient_id,
@@ -57,7 +72,7 @@ function adaptAppointment(a: BackendAppointment): Appointment {
     serviceId:  '',
     date,
     timeSlot,
-    status:     statusMap[a.status] ?? 'waiting',
+    status:     mappedStatus,
     notes:      a.notes ?? undefined,
     createdAt:  a.created_at,
     isArchived: a.status === 'CANCELLED' || a.status === 'NO_SHOW',
@@ -274,13 +289,20 @@ export default function AppointmentsScreen({ navigation }: any) {
     useCallback(() => { fetchAppointments(); }, [fetchAppointments]),
   );
 
-  const now      = new Date().toISOString().split('T')[0];
-  const upcoming = appointments.filter(
-    (a) => !a.isArchived && a.date >= now && a.status !== 'cancelled',
-  );
-  const past = appointments.filter(
-    (a) => !a.isArchived && (a.date < now || a.status === 'completed'),
-  );
+  // Compare full datetime (date + timeSlot) against the current moment so that
+  // a 4 PM appointment is moved to "past" at 7 PM on the same day.
+  const nowMs = Date.now();
+  const upcoming = appointments.filter((a) => {
+    if (a.isArchived || a.status === 'cancelled') return false;
+    const apptMs = new Date(`${a.date}T${a.timeSlot}:00`).getTime();
+    return apptMs > nowMs;
+  });
+  const past = appointments.filter((a) => {
+    if (a.isArchived) return false;
+    if (a.status === 'completed') return true;
+    const apptMs = new Date(`${a.date}T${a.timeSlot}:00`).getTime();
+    return apptMs <= nowMs && a.status !== 'cancelled';
+  });
 
   const s = makeStyles(colors, isRTL);
 

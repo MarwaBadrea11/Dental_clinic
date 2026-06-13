@@ -37,18 +37,16 @@ const PERFORMANCE_METRICS = [
   { label: 'New Inquiries',  value: '142',   change: '18%',  changeUp: true },
 ]
 
-/** Map each notification id to a lucide icon element */
-function getNotifIcon(id: string, severity: NotifItem['severity']) {
-  const icons: Record<string, React.ReactNode> = {
-    n1: <AlertTriangle size={18} />,
-    n2: <Package size={18} />,
-    n3: <CheckCircle2 size={18} />,
-    n4: <CalendarX size={18} />,
-    n5: <Upload size={18} />,
-    n6: <CreditCard size={18} />,
-    n7: <Shield size={18} />,
-    n8: <Clock size={18} />,
+/** Map notification category/severity → a lucide icon element */
+function getNotifIcon(category: NotifItem['category'], severity: NotifItem['severity']) {
+  const categoryIcons: Record<Exclude<NotifCategory, 'all'>, React.ReactNode> = {
+    critical:  <AlertTriangle size={18} />,
+    inventory: <Package size={18} />,
+    schedule:  <CalendarX size={18} />,
+    system:    <Shield size={18} />,
   }
+  if (categoryIcons[category]) return categoryIcons[category]
+  // Fallback to severity
   const fallbacks: Record<NotifItem['severity'], React.ReactNode> = {
     error:   <AlertTriangle size={18} />,
     warning: <Package size={18} />,
@@ -56,7 +54,7 @@ function getNotifIcon(id: string, severity: NotifItem['severity']) {
     info:    <Upload size={18} />,
     neutral: <Bell size={18} />,
   }
-  return icons[id] ?? fallbacks[severity]
+  return fallbacks[severity]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -82,7 +80,9 @@ export default function NotificationsPage() {
   const [activeCategory, setActiveCategory] = useState<NotifCategory>('all')
   const [restockOpen, setRestockOpen]        = useState(false)
 
-  const n2Ordered = notifications.find((n) => n.id === 'n2')?.actionLabel === 'notifications.ordered'
+  // Find the low-inventory notification by actionHandlerId rather than hardcoded ID
+  const restockNotif = notifications.find((n) => n.actionHandlerId === 'openRestock')
+  const n2Ordered = restockNotif?.actionLabel === 'notifications.ordered'
 
   // ── Alert panel data (top-4 unread only) ──────────────────────────────────
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set())
@@ -129,11 +129,14 @@ export default function NotificationsPage() {
   // ── Restock confirm ────────────────────────────────────────────────────────
   const handleOrderConfirm = (itemId: string, quantity: number) => {
     restockItem(itemId, quantity)
-    updateNotification('n2', {
-      read: true,
-      actionLabel: 'notifications.ordered',
-      actionHandlerId: undefined,
-    })
+    // Update by actionHandlerId rather than hardcoded seed ID
+    if (restockNotif) {
+      updateNotification(restockNotif.id, {
+        read: true,
+        actionLabel: 'notifications.ordered',
+        actionHandlerId: undefined,
+      })
+    }
     setRestockOpen(false)
   }
 
@@ -186,7 +189,7 @@ export default function NotificationsPage() {
         <div className="col-span-12 lg:col-span-5 space-y-6">
           <NotificationWidget
             alerts={priorityAlerts.map((a) =>
-              a.id === 'n2'
+              restockNotif && a.id === restockNotif.id
                 ? {
                     ...a,
                     actionLabel: n2Ordered
@@ -356,7 +359,9 @@ export default function NotificationsPage() {
                   </div>
                 ) : (
                   filtered.map((notif, i) => {
-                    const isOrdered = notif.id === 'n2' && n2Ordered
+                    const isOrdered = notif.actionHandlerId === undefined
+                      && restockNotif?.id === notif.id
+                      && notif.actionLabel === 'notifications.ordered'
 
                     return (
                       <motion.div
@@ -392,7 +397,7 @@ export default function NotificationsPage() {
                               : 'bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)]',
                           )}
                         >
-                          {getNotifIcon(notif.id, notif.severity)}
+                          {getNotifIcon(notif.category, notif.severity)}
                         </div>
 
                         {/* Content */}

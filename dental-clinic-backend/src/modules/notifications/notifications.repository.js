@@ -117,11 +117,14 @@ export class NotificationsRepository {
   /**
    * Delete all notifications older than `days` days.
    * Used by a periodic cleanup job.
-   * @param {number} days
+   * @param {number} days  - must be a positive integer
    */
   async deleteOlderThan(days) {
+    if (!Number.isInteger(days) || days < 1) {
+      throw new Error(`deleteOlderThan: invalid days value "${days}"`);
+    }
     return this.db('notifications')
-      .where('created_at', '<', this.db.raw(`NOW() - INTERVAL '${days} days'`))
+      .where('created_at', '<', this.db.raw('NOW() - INTERVAL ?? DAY', [days]))
       .delete();
   }
 }

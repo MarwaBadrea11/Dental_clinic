@@ -53,11 +53,12 @@ export async function listNotificationsHandler(request, reply) {
 /**
  * GET /api/v1/notifications/unread-count
  * Lightweight endpoint for the Topbar badge poll.
+ * Calls countUnread directly — avoids running the full findByUser query.
  */
 export async function unreadCountHandler(request, reply) {
   const userId = request.user.sub;
-  const svc    = getService(request);
-  const { unreadCount } = await svc.list(userId, { limit: 1, offset: 0 });
+  const repo   = new NotificationsRepository(request.server.db);
+  const unreadCount = await repo.countUnread(userId);
   return reply.status(200).send(successResponse({ unreadCount }));
 }
 
@@ -89,7 +90,12 @@ export async function markReadHandler(request, reply) {
   const { id }  = request.params;
   const userId  = request.user.sub;
   const svc     = getService(request);
-  await svc.markRead(id, userId);
+  try {
+    await svc.markRead(id, userId);
+  } catch (err) {
+    request.log.error({ err, id, userId }, '[markReadHandler] error');
+    throw err;
+  }
   return reply.status(200).send(successResponse({ id, isRead: true }));
 }
 

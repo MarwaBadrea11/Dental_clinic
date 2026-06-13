@@ -27,6 +27,7 @@ import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { updateMyPatient, adaptPatient } from '../services/patientService';
+import { api } from '../services/api';
 
 export default function ProfileScreen() {
   const { t, isRTL, locale, i18n } = useTranslation();
@@ -43,11 +44,47 @@ export default function ProfileScreen() {
   const [saving,      setSaving]      = useState(false);
   const [saveError,   setSaveError]   = useState<string | null>(null);
 
+  // ── Help modal state ──────────────────────
+  const [helpVisible, setHelpVisible] = useState(false);
+
+  // ── About modal state ─────────────────────
+  const [aboutVisible, setAboutVisible] = useState(false);
+
+  // ── Notifications modal state ─────────────
+  const [notifsVisible,  setNotifsVisible]  = useState(false);
+  const [notifs,         setNotifs]         = useState<any[]>([]);
+  const [notifsLoading,  setNotifsLoading]  = useState(false);
+  const [notifsError,    setNotifsError]    = useState<string | null>(null);
+
   const s = makeStyles(colors, isRTL);
 
+  // ── Open notifications modal + fetch from backend ──
+  const handleOpenNotifs = async () => {
+    setNotifsVisible(true);
+    setNotifsLoading(true);
+    setNotifsError(null);
+    try {
+      const result = await api.get<{ notifications: any[]; unreadCount: number }>('/notifications');
+      setNotifs(result.notifications ?? []);
+    } catch (err: any) {
+      setNotifsError(err?.message ?? t('loadingFailed'));
+    } finally {
+      setNotifsLoading(false);
+    }
+  };
+
+  // ── Mark a single notification as read ───────────
+  const handleMarkRead = async (id: string) => {
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    } catch {
+      // silently ignore — non-critical
+    }
+  };
+
   // ── Open edit modal prefilled with current data ──
-  const handleOpenEdit = () => {
-    setEditName(patient?.fullName  ?? '');
+  const handleOpenEdit = () => {    setEditName(patient?.fullName  ?? '');
     setEditEmail(patient?.email    ?? '');
     setEditPhone(patient?.phone    ?? '');
     setSaveError(null);
@@ -231,7 +268,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* Notifications */}
-          <TouchableOpacity style={s.settingRow}>
+          <TouchableOpacity style={s.settingRow} onPress={handleOpenNotifs}>
             <View style={s.settingLeft}>
               <View style={[s.iconBox, { backgroundColor: colors.successBg }]}>
                 <Ionicons name="notifications-outline" size={20} color={colors.success} />
@@ -243,7 +280,7 @@ export default function ProfileScreen() {
 
 
           {/* Help */}
-          <TouchableOpacity style={s.settingRow}>
+          <TouchableOpacity style={s.settingRow} onPress={() => setHelpVisible(true)}>
             <View style={s.settingLeft}>
               <View style={[s.iconBox, { backgroundColor: colors.teal + '15' }]}>
                 <Ionicons name="help-circle-outline" size={20} color={colors.teal} />
@@ -254,7 +291,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           {/* About */}
-          <TouchableOpacity style={s.settingRow}>
+          <TouchableOpacity style={s.settingRow} onPress={() => setAboutVisible(true)}>
             <View style={s.settingLeft}>
               <View style={[s.iconBox, { backgroundColor: colors.blue + '15' }]}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.blue} />
@@ -374,6 +411,370 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+      {/* ── Notifications Modal ───────────────────── */}
+      <Modal
+        visible={notifsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setNotifsVisible(false)}
+      >
+        <View style={s.modalOverlay}>
+          <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
+
+            {/* Header */}
+            <View style={[s.modalHeader, getFlexDirection()]}>
+              <Text style={[s.modalTitle, { color: colors.text }]}>
+                {locale === 'ar' ? 'الإشعارات' : 'Notifications'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setNotifsVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textSub} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content */}
+            {notifsLoading ? (
+              <View style={s.notifCenter}>
+                <ActivityIndicator color={colors.teal} size="large" />
+              </View>
+            ) : notifsError ? (
+              <View style={s.notifCenter}>
+                <Text style={[s.notifEmpty, { color: colors.error }]}>{notifsError}</Text>
+              </View>
+            ) : notifs.length === 0 ? (
+              <View style={s.notifCenter}>
+                <Text style={{ fontSize: 36 }}>🔔</Text>
+                <Text style={[s.notifEmpty, { color: colors.textSub }]}>
+                  {locale === 'ar' ? 'لا توجد إشعارات حالياً' : 'No notifications yet'}
+                </Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                {notifs.map((n) => (
+                  <TouchableOpacity
+                    key={n.id}
+                    onPress={() => handleMarkRead(n.id)}
+                    activeOpacity={0.75}
+                    style={[
+                      s.notifRow,
+                      {
+                        backgroundColor: n.isRead
+                          ? colors.surfaceCard
+                          : colors.teal + '12',
+                        borderColor: n.isRead
+                          ? colors.outline + '20'
+                          : colors.teal + '40',
+                        flexDirection: isRTL ? 'row-reverse' : 'row',
+                      },
+                    ]}
+                  >
+                    {/* Icon */}
+                    <View style={[s.notifIconWrap, {
+                      backgroundColor: n.severity === 'error'   ? colors.error   + '20'
+                                      : n.severity === 'warning' ? colors.warning + '20'
+                                      : n.severity === 'success' ? colors.successBg
+                                      : colors.teal + '20',
+                    }]}>
+                      <Text style={{ fontSize: 18 }}>
+                        {n.type === 'appointment' ? '🦷'
+                          : n.type === 'finance'  ? '💳'
+                          : n.type === 'inventory'? '📦'
+                          : 'ℹ️'}
+                      </Text>
+                    </View>
+
+                    {/* Text */}
+                    <View style={[s.notifTextWrap, {
+                      paddingLeft:  isRTL ? 0 : 10,
+                      paddingRight: isRTL ? 10 : 0,
+                    }]}>
+                      <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }]}>
+                        <Text style={[s.notifTitle, {
+                          color:     colors.text,
+                          textAlign: isRTL ? 'right' : 'left',
+                        }]} numberOfLines={1}>
+                          {n.title}
+                        </Text>
+                        {!n.isRead && (
+                          <View style={[s.notifDot, { backgroundColor: colors.teal }]} />
+                        )}
+                      </View>
+                      <Text style={[s.notifMsg, {
+                        color:     colors.textSub,
+                        textAlign: isRTL ? 'right' : 'left',
+                      }]} numberOfLines={2}>
+                        {n.message}
+                      </Text>
+                      <Text style={[s.notifTime, {
+                        color:     colors.textDisabled,
+                        textAlign: isRTL ? 'right' : 'left',
+                      }]}>
+                        {new Date(n.createdAt).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US', {
+                          month: 'short', day: 'numeric',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Close button */}
+            <TouchableOpacity
+              style={[s.saveBtn, { backgroundColor: colors.teal, marginTop: 16 }]}
+              onPress={() => setNotifsVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.saveBtnText}>
+                {locale === 'ar' ? 'إغلاق' : 'Close'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Help Modal ───────────────────────────── */}
+      <Modal
+        visible={helpVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHelpVisible(false)}
+      >
+        <View style={s.modalOverlay}>
+          <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
+            {/* Header */}
+            <View style={[s.modalHeader, getFlexDirection()]}>
+              <Text style={[s.modalTitle, { color: colors.text }]}>
+                {locale === 'ar' ? 'كيفية استخدام التطبيق' : 'How to Use the App'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setHelpVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textSub} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+              {[
+                {
+                  icon: '🔑',
+                  ar: { title: 'تسجيل الدخول', desc: 'أدخل بريدك الإلكتروني وكلمة المرور للدخول إلى حسابك.' },
+                  en: { title: 'Login', desc: 'Enter your email and password to access your account.' },
+                },
+                {
+                  icon: '🏠',
+                  ar: { title: 'الشاشة الرئيسية', desc: 'اطّلع على موعدك القادم وتقدّم علاجك وإجراءاتك السريعة من الصفحة الرئيسية.' },
+                  en: { title: 'Home Screen', desc: 'View your next appointment, treatment progress, and quick actions from the home screen.' },
+                },
+                {
+                  icon: '📅',
+                  ar: { title: 'حجز موعد', desc: 'اضغط على زر "+" أو "حجز موعد"، ثم اختر الطبيب والخدمة والتاريخ والوقت المناسب.' },
+                  en: { title: 'Book an Appointment', desc: 'Tap the "+" button or "Book Appointment", then choose your doctor, service, date and time.' },
+                },
+                {
+                  icon: '🗓️',
+                  ar: { title: 'عرض المواعيد', desc: 'انتقل إلى تبويب "مواعيدي" لعرض مواعيدك القادمة والسابقة أو إلغاء موعد.' },
+                  en: { title: 'View Appointments', desc: 'Go to the "Appointments" tab to see upcoming and past visits, or cancel a booking.' },
+                },
+                {
+                  icon: '👤',
+                  ar: { title: 'تعديل الملف الشخصي', desc: 'اضغط على "تعديل الملف" في صفحة ملفي لتحديث اسمك أو بريدك الإلكتروني أو رقم هاتفك.' },
+                  en: { title: 'Edit Profile', desc: 'Tap "Edit Profile" on the My Profile page to update your name, email, or phone number.' },
+                },
+                {
+                  icon: '🌐',
+                  ar: { title: 'تغيير اللغة', desc: 'اضغط على "اللغة" في الإعدادات للتبديل بين العربية والإنجليزية.' },
+                  en: { title: 'Change Language', desc: 'Tap "Language" in Settings to switch between Arabic and English.' },
+                },
+                {
+                  icon: '🌙',
+                  ar: { title: 'الوضع الداكن', desc: 'فعّل "الوضع الداكن" من الإعدادات لتجربة واجهة أكثر راحة ليلاً.' },
+                  en: { title: 'Dark Mode', desc: 'Enable "Dark Mode" from Settings for a more comfortable nighttime experience.' },
+                },
+                {
+                  icon: '📤',
+                  ar: { title: 'مشاركة التطبيق', desc: 'انتقل إلى تبويب "مشاركة" وشارك رمز QR أو رابط التطبيق مع أصدقائك وعائلتك.' },
+                  en: { title: 'Share the App', desc: 'Go to the "Share" tab and share the QR code or app link with friends and family.' },
+                },
+              ].map((step, i) => (
+                <View
+                  key={i}
+                  style={[
+                    s.helpStep,
+                    { borderColor: colors.outline + '20' },
+                    getFlexDirection(),
+                  ]}
+                >
+                  {/* Step number + icon */}
+                  <View style={[s.helpIconWrap, { backgroundColor: colors.teal + '15' }]}>
+                    <Text style={s.helpIcon}>{step.icon}</Text>
+                    <Text style={[s.helpStepNum, { color: colors.teal }]}>{i + 1}</Text>
+                  </View>
+                  {/* Text */}
+                  <View style={[s.helpTextWrap, {
+                    paddingLeft:  isRTL ? 0 : 12,
+                    paddingRight: isRTL ? 12 : 0,
+                  }]}>
+                    <Text style={[s.helpStepTitle, {
+                      color:     colors.text,
+                      textAlign: isRTL ? 'right' : 'left',
+                    }]}>
+                      {locale === 'ar' ? step.ar.title : step.en.title}
+                    </Text>
+                    <Text style={[s.helpStepDesc, {
+                      color:     colors.textSub,
+                      textAlign: isRTL ? 'right' : 'left',
+                    }]}>
+                      {locale === 'ar' ? step.ar.desc : step.en.desc}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+
+
+            </ScrollView>
+
+            {/* Close button */}
+            <TouchableOpacity
+              style={[s.saveBtn, { backgroundColor: colors.teal, marginTop: 16 }]}
+              onPress={() => setHelpVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.saveBtnText}>
+                {locale === 'ar' ? 'إغلاق' : 'Close'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {/* ── About Modal ──────────────────────────── */}
+      <Modal
+        visible={aboutVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAboutVisible(false)}
+      >
+        <View style={s.modalOverlay}>
+          <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
+
+            {/* Header */}
+            <View style={[s.modalHeader, getFlexDirection()]}>
+              <Text style={[s.modalTitle, { color: colors.text }]}>
+                {locale === 'ar' ? 'حول التطبيق' : 'About the App'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setAboutVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textSub} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+
+              {/* App logo + name */}
+              <View style={s.aboutLogoRow}>
+                <View style={[s.aboutLogoCircle, { backgroundColor: colors.teal }]}>
+                  <Text style={s.aboutLogoText}>SF</Text>
+                </View>
+                <Text style={[s.aboutAppName, { color: colors.blue }]}>SmileFix</Text>
+                <Text style={[s.aboutVersion, { color: colors.textSub }]}>
+                  {locale === 'ar' ? 'الإصدار 1.0.0' : 'Version 1.0.0'}
+                </Text>
+              </View>
+
+              {/* Tagline */}
+              <Text style={[s.aboutTagline, {
+                color:     colors.teal,
+                textAlign: 'center',
+              }]}>
+                {locale === 'ar' ? '✦ ابتسامتك، أولويتنا ✦' : '✦ Your Smile, Our Priority ✦'}
+              </Text>
+
+              {/* Description */}
+              <Text style={[s.aboutDesc, {
+                color:     colors.textSub,
+                textAlign: isRTL ? 'right' : 'left',
+              }]}>
+                {locale === 'ar'
+                  ? 'سمايل فيكس هو تطبيق متكامل لإدارة رعاية الأسنان، يمكّنك من حجز مواعيدك ومتابعة تقدم علاجك والتواصل مع طبيبك بكل سهولة ويسر — في أي وقت ومن أي مكان.'
+                  : 'SmileFix is a comprehensive dental care management app that lets you book appointments, track your treatment progress, and connect with your dentist — anytime, anywhere.'}
+              </Text>
+
+              {/* Feature highlights */}
+              {[
+                {
+                  icon: '📅',
+                  ar: 'حجز المواعيد بسهولة في أي وقت',
+                  en: 'Easy appointment booking anytime',
+                },
+                {
+                  icon: '📊',
+                  ar: 'متابعة تقدم العلاج خطوة بخطوة',
+                  en: 'Step-by-step treatment progress tracking',
+                },
+                {
+                  icon: '🔔',
+                  ar: 'تذكيرات تلقائية قبل موعدك',
+                  en: 'Automatic reminders before your visit',
+                },
+                {
+                  icon: '🔒',
+                  ar: 'بياناتك الطبية محمية وآمنة',
+                  en: 'Your medical data is secure and private',
+                },
+                {
+                  icon: '🌐',
+                  ar: 'واجهة عربية وإنجليزية مع دعم RTL',
+                  en: 'Arabic & English interface with RTL support',
+                },
+              ].map((f, i) => (
+                <View key={i} style={[s.aboutFeatureRow, {
+                  backgroundColor: colors.surfaceCard,
+                  borderColor:     colors.outline + '20',
+                  flexDirection:   isRTL ? 'row-reverse' : 'row',
+                }]}>
+                  <Text style={s.aboutFeatureIcon}>{f.icon}</Text>
+                  <Text style={[s.aboutFeatureText, {
+                    color:     colors.text,
+                    textAlign: isRTL ? 'right' : 'left',
+                    paddingLeft:  isRTL ? 0 : 10,
+                    paddingRight: isRTL ? 10 : 0,
+                  }]}>
+                    {locale === 'ar' ? f.ar : f.en}
+                  </Text>
+                </View>
+              ))}
+
+              {/* Divider */}
+              <View style={[s.aboutDivider, { backgroundColor: colors.outline + '20' }]} />
+
+              {/* Developer / clinic info */}
+              <Text style={[s.aboutMeta, { color: colors.textDisabled, textAlign: 'center' }]}>
+                {locale === 'ar'
+                  ? '© 2025 سمايل فيكس لرعاية الأسنان\nجميع الحقوق محفوظة'
+                  : '© 2025 SmileFix Dental Care\nAll rights reserved'}
+              </Text>
+
+            </ScrollView>
+
+            {/* Close button */}
+            <TouchableOpacity
+              style={[s.saveBtn, { backgroundColor: colors.blue, marginTop: 16 }]}
+              onPress={() => setAboutVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.saveBtnText}>
+                {locale === 'ar' ? 'إغلاق' : 'Close'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -557,6 +958,136 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     saveBtnText: {
       color: '#ffffff', fontSize: 16, fontWeight: '700',
       fontFamily: 'Manrope_700Bold',
+    },
+
+    // ── Help Modal steps ──────────────────────
+    helpStep: {
+      alignItems: 'flex-start',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      marginBottom: 2,
+    },
+    helpIconWrap: {
+      width: 48, height: 48, borderRadius: 14,
+      alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    },
+    helpIcon: { fontSize: 20 },
+    helpStepNum: {
+      fontSize: 10, fontWeight: '700',
+      fontFamily: 'Inter_600SemiBold',
+      marginTop: 2,
+    },
+    helpTextWrap: { flex: 1 },
+    helpStepTitle: {
+      fontSize: 14, fontWeight: '700',
+      fontFamily: 'Manrope_700Bold',
+      marginBottom: 3,
+    },
+    helpStepDesc: {
+      fontSize: 12, lineHeight: 18,
+      fontFamily: 'Inter_400Regular',
+    },
+    helpContact: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      borderRadius: 14, borderWidth: 1,
+      padding: 14, marginTop: 16, marginBottom: 4,
+    },
+    helpContactText: {
+      flex: 1, fontSize: 12, lineHeight: 18,
+      fontFamily: 'Inter_400Regular',
+    },
+
+    // ── Notifications Modal ───────────────────
+    notifCenter: {
+      alignItems: 'center', justifyContent: 'center',
+      paddingVertical: 40, gap: 12,
+    },
+    notifEmpty: {
+      fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center',
+    },
+    notifRow: {
+      alignItems: 'flex-start',
+      borderRadius: 14, borderWidth: 1,
+      padding: 12, marginBottom: 8,
+    },
+    notifIconWrap: {
+      width: 42, height: 42, borderRadius: 12,
+      alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    },
+    notifTextWrap: { flex: 1 },
+    notifTitle: {
+      fontSize: 13, fontWeight: '700',
+      fontFamily: 'Manrope_700Bold', flex: 1,
+    },
+    notifDot: {
+      width: 8, height: 8, borderRadius: 4, flexShrink: 0,
+    },
+    notifMsg: {
+      fontSize: 12, lineHeight: 17, marginTop: 2,
+      fontFamily: 'Inter_400Regular',
+    },
+    notifTime: {
+      fontSize: 10, marginTop: 4,
+      fontFamily: 'Inter_400Regular',
+    },
+
+    // ── About Modal ───────────────────────────
+    aboutLogoRow: {
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    aboutLogoCircle: {
+      width: 72, height: 72, borderRadius: 36,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12, shadowRadius: 12, elevation: 4,
+    },
+    aboutLogoText: {
+      fontSize: 28, color: '#ffffff', fontWeight: '800',
+      fontFamily: 'Manrope_700Bold',
+    },
+    aboutAppName: {
+      fontSize: 22, fontWeight: '800',
+      fontFamily: 'Manrope_700Bold',
+      marginBottom: 2,
+    },
+    aboutVersion: {
+      fontSize: 12,
+      fontFamily: 'Inter_400Regular',
+    },
+    aboutTagline: {
+      fontSize: 14, fontWeight: '700',
+      fontFamily: 'Manrope_700Bold',
+      marginBottom: 14, marginTop: 4,
+    },
+    aboutDesc: {
+      fontSize: 13, lineHeight: 21,
+      fontFamily: 'Inter_400Regular',
+      marginBottom: 16,
+    },
+    aboutFeatureRow: {
+      alignItems: 'center',
+      borderRadius: 12, borderWidth: 1,
+      padding: 12, marginBottom: 8,
+    },
+    aboutFeatureIcon: { fontSize: 20 },
+    aboutFeatureText: {
+      flex: 1, fontSize: 13, fontWeight: '500',
+      fontFamily: 'Inter_400Regular',
+    },
+    aboutDivider: {
+      height: 1, marginVertical: 16, borderRadius: 1,
+    },
+    aboutMeta: {
+      fontSize: 11, lineHeight: 18,
+      fontFamily: 'Inter_400Regular',
+      marginBottom: 4,
     },
   });
 }

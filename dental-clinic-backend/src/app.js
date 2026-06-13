@@ -23,6 +23,7 @@ import { invoicesRoutes, financeRoutes, patientDebtRoute } from './modules/invoi
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import auditHookPlugin from './plugins/auditHook.js';
+import appointmentReminderPlugin from './plugins/appointmentReminder.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { staffRoutes } from './modules/staff/staff.routes.js';
 import { notesRoutes } from './modules/notes/notes.routes.js';
@@ -96,6 +97,9 @@ export async function buildApp(opts = {}) {
 
   // ─── Audit Hook ──────────────────────────────────────────────────────────────
   await fastify.register(auditHookPlugin);
+
+  // ─── Appointment Reminder Scheduler ──────────────────────────────────────────
+  await fastify.register(appointmentReminderPlugin);
 
   // ─── Global Error Handler ────────────────────────────────────────────────────
   fastify.setErrorHandler((error, _request, reply) => {

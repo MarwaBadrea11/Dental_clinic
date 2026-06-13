@@ -78,9 +78,13 @@ export class AppointmentsService {
   }
 
   /**
-   * جلب قائمة المواعيد مع حساب الإحصائيات المطلوبة لواجهة التقويم (Stats Cards)
+   * جلب قائمة المواعيد مع حساب الإحصائيات المطلوبة لواجهة التقويم (Stats Cards).
+   * يُشغَّل auto-transition أولاً لتحديث أي مواعيد انتهت قبل الإرجاع.
    */
   async list(query = {}) {
+    // Auto-mark any appointments whose end time has passed as COMPLETED
+    await this.repo.autoTransitionPastAppointments();
+
     const appointments = await this.repo.listWithFilters({
       date: query.date,
       start_date: query.start_date,

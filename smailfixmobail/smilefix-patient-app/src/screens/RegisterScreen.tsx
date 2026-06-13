@@ -20,6 +20,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore } from '../store/appStore';
 import { register, login, fetchMyPatient, adaptPatient, ApiRequestError } from '../services';
 import type { AppColors } from '../theme/colors';
+import { DatePickerField } from '../components/DatePickerField';
 
 // ─────────────────────────────────────────────
 // Types
@@ -91,9 +92,9 @@ export default function RegisterScreen({ navigation }: any) {
     }
     if (!natId || natId.length < 9) e.natId = t('invalidId');
     if (!gender) e.gender = t('required');
-    // DOB: must be YYYY-MM-DD
+    // DOB: picker always produces YYYY-MM-DD — just check if provided it's valid
     if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-      e.dob = isRTL ? 'الصيغة الصحيحة: YYYY-MM-DD مثال: 2004-05-23' : 'Format must be YYYY-MM-DD e.g. 2004-05-23';
+      e.dob = isRTL ? 'تاريخ الميلاد غير صحيح' : 'Invalid date of birth';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -231,23 +232,7 @@ export default function RegisterScreen({ navigation }: any) {
       maxLength: 12,
       error: errors.natId,
     },
-    {
-      label: t('dateOfBirth'),
-      placeholder: isRTL ? 'مثال: 2004-05-23' : 'e.g. 2004-05-23',
-      value: dob,
-      onChange: (v) => {
-        // Auto-format: insert dashes at positions 4 and 7
-        const digits = v.replace(/\D/g, '').slice(0, 8);
-        let formatted = digits;
-        if (digits.length > 4) formatted = digits.slice(0, 4) + '-' + digits.slice(4);
-        if (digits.length > 6) formatted = formatted.slice(0, 7) + '-' + digits.slice(6);
-        setDob(formatted);
-        setErrors(e => ({ ...e, dob: '' }));
-      },
-      keyboardType: 'numeric',
-      maxLength: 10,
-      error: errors.dob,
-    },
+    // NOTE: dateOfBirth is handled by DatePickerField below — not in this array
   ];
 
   return (
@@ -306,6 +291,17 @@ export default function RegisterScreen({ navigation }: any) {
                       isDark={isDark}
                     />
                   ))}
+
+                  {/* Date of Birth — calendar picker, no keyboard */}
+                  <DatePickerField
+                    label={t('dateOfBirth')}
+                    value={dob}
+                    onChange={(v) => { setDob(v); setErrors(e => ({ ...e, dob: '' })); }}
+                    error={errors.dob}
+                    isRTL={isRTL}
+                    colors={colors}
+                    isDark={isDark}
+                  />
 
                   {/* Gender */}
                   <Text style={s.fieldLabel}>{t('gender')}</Text>

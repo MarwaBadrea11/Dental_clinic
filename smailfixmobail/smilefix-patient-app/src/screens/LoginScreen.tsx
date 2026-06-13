@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────
-// Login Screen — Email + Password + Biometric
-// Wired to POST /api/v1/auth/login
-// Clinical Serenity | Arabic RTL | Expo 54
+// Login Screen — Elite Premium Redesign
+// Cinematic staggered entrance · Neon glow fields
+// Deep dark canvas · Organic spring shake
 // ─────────────────────────────────────────────
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,6 +15,8 @@ import {
   Animated,
   StatusBar,
   ActivityIndicator,
+  Easing,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,67 +26,265 @@ import { RootStackParamList } from '../navigation/types';
 import { useAppStore } from '../store/appStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../hooks/useTheme';
-import {
-  login,
-  fetchMyPatient,
-  adaptPatient,
-  ApiRequestError,
-} from '../services';
+import { login, fetchMyPatient, adaptPatient, ApiRequestError } from '../services';
 import Text from '../components/Text';
+import type { AppColors } from '../theme/colors';
 
+const { width } = Dimensions.get('window');
+
+// ── Cinematic easing curves ────────────────────────────────────────────────
+const EASE_OUT_EXPO = Easing.bezier(0.16, 1, 0.3, 1);   // fast-in, graceful decel
+const EASE_IN_OUT   = Easing.bezier(0.65, 0, 0.35, 1);  // symmetric smooth
+const EASE_BACK_OUT = Easing.bezier(0.34, 1.56, 0.64, 1); // slight overshoot
+
+// ── Stagger timing ─────────────────────────────────────────────────────────
+const STAGGER = 70; // ms between each element
+
+// ── Stagger wrapper ────────────────────────────────────────────────────────
+function StaggerItem({
+  index,
+  children,
+  style,
+}: {
+  index: number;
+  children: React.ReactNode;
+  style?: object;
+}) {
+  const opacity    = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(28)).current;
+
+  useEffect(() => {
+    const delay = index * STAGGER + 100;
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1, duration: 520, delay,
+        easing: EASE_OUT_EXPO, useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0, duration: 560, delay,
+        easing: EASE_OUT_EXPO, useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// ── Premium input field ────────────────────────────────────────────────────
+function PremiumInput({
+  label, placeholder, value, onChange,
+  keyboardType, secure, rightIcon, leftIcon,
+  error, isRTL, colors, isDark,
+  onSubmit,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  keyboardType?: 'default' | 'email-address';
+  secure?: boolean;
+  rightIcon?: React.ReactNode;
+  leftIcon?: React.ComponentProps<typeof Ionicons>['name'];
+  error?: string;
+  isRTL: boolean;
+  colors: AppColors;
+  isDark: boolean;
+  onSubmit?: () => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const focusAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim  = useRef(new Animated.Value(0)).current;
+
+  const align  = isRTL ? 'right' as const : 'left' as const;
+  const rowDir = isRTL ? 'row-reverse' as const : 'row' as const;
+
+  const onFocus = useCallback(() => {
+    setFocused(true);
+    Animated.parallel([
+      Animated.timing(focusAnim, { toValue: 1, duration: 300, easing: EASE_OUT_EXPO, useNativeDriver: false }),
+      Animated.timing(glowAnim,  { toValue: 1, duration: 400, easing: EASE_OUT_EXPO, useNativeDriver: false }),
+    ]).start();
+  }, []);
+
+  const onBlur = useCallback(() => {
+    setFocused(false);
+    Animated.parallel([
+      Animated.timing(focusAnim, { toValue: 0, duration: 240, easing: EASE_IN_OUT, useNativeDriver: false }),
+      Animated.timing(glowAnim,  { toValue: 0, duration: 320, easing: EASE_IN_OUT, useNativeDriver: false }),
+    ]).start();
+  }, []);
+
+  const borderColor = focusAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [
+      error ? colors.error + 'aa' : (isDark ? 'rgba(97,190,197,0.16)' : 'rgba(0,105,111,0.18)'),
+      error ? colors.error        : (isDark ? 'rgba(97,190,197,0.80)' : 'rgba(0,105,111,0.70)'),
+    ],
+  });
+
+  const bgColor = focusAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [
+      isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      isDark ? 'rgba(97,190,197,0.07)'  : 'rgba(0,105,111,0.05)',
+    ],
+  });
+
+  const glowOpacity = glowAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [0, isDark ? 0.50 : 0.20],
+  });
+
+  return (
+    <View style={{ marginBottom: 20 }}>
+      {/* Label */}
+      <Text style={{
+        fontSize: 10, fontWeight: '700',
+        fontFamily: 'Inter_600SemiBold',
+        color: focused
+          ? (isDark ? colors.teal : colors.primary)
+          : colors.textSub,
+        textAlign: align,
+        letterSpacing: 1.3,
+        textTransform: 'uppercase',
+        marginBottom: 8,
+      }}>
+        {label}
+      </Text>
+
+      {/* Glow halo */}
+      <Animated.View style={{
+        position: 'absolute',
+        top: 22, bottom: -4, left: -4, right: -4,
+        borderRadius: 18,
+        shadowColor: error ? colors.error : colors.teal,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: glowOpacity,
+        shadowRadius: 16,
+        elevation: 0,
+      }} />
+
+      {/* Input row */}
+      <Animated.View style={{
+        flexDirection: rowDir,
+        alignItems: 'center',
+        backgroundColor: bgColor,
+        borderRadius: 15,
+        borderWidth: 1.5,
+        borderColor,
+        paddingHorizontal: 16,
+        minHeight: 56,
+      }}>
+        {leftIcon && (
+          <Ionicons
+            name={leftIcon}
+            size={17}
+            color={focused
+              ? (isDark ? colors.teal : colors.primary)
+              : (error ? colors.error : colors.textSub)}
+            style={{ marginRight: isRTL ? 0 : 10, marginLeft: isRTL ? 10 : 0 }}
+          />
+        )}
+        <TextInput
+          style={{
+            flex: 1,
+            fontSize: 15,
+            color: colors.text,
+            textAlign: align,
+            paddingVertical: 14,
+            fontFamily: 'Inter_400Regular',
+          }}
+          placeholder={placeholder}
+          placeholderTextColor={isDark ? 'rgba(139,148,158,0.50)' : 'rgba(62,73,74,0.42)'}
+          value={value}
+          onChangeText={onChange}
+          keyboardType={keyboardType ?? 'default'}
+          secureTextEntry={secure}
+          autoCapitalize="none"
+          autoCorrect={false}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          returnKeyType="done"
+          onSubmitEditing={onSubmit}
+        />
+        {rightIcon && (
+          <View style={{ paddingLeft: isRTL ? 0 : 8, paddingRight: isRTL ? 8 : 0 }}>
+            {rightIcon}
+          </View>
+        )}
+      </Animated.View>
+
+      {/* Error */}
+      {error ? (
+        <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 5, marginTop: 5 }}>
+          <Ionicons name="alert-circle" size={12} color={colors.error} />
+          <Text style={{ fontSize: 11, color: colors.error, textAlign: align, fontFamily: 'Inter_400Regular' }}>
+            {error}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ── Main screen ────────────────────────────────────────────────────────────
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
 export default function LoginScreen({ navigation }: Props) {
-  const setAuthenticated = useAppStore((s) => s.setAuthenticated);
-  const { t, isRTL }    = useTranslation();
+  const setAuthenticated   = useAppStore((s) => s.setAuthenticated);
+  const { t, isRTL }       = useTranslation();
   const { colors, isDark } = useTheme();
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
-  const [emailErr, setEmailErr]   = useState('');
+  const [emailErr, setEmailErr]     = useState('');
   const [passwordErr, setPasswordErr] = useState('');
   const [generalErr, setGeneralErr]   = useState('');
 
-  // ── Animations ────────────────────────────
-  const cardO  = useRef(new Animated.Value(0)).current;
+  // Shake animation for error feedback
   const shakeX = useRef(new Animated.Value(0)).current;
 
+  // Orb slow pulse
+  const orbScale = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
-    Animated.timing(cardO, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(orbScale, { toValue: 1.15, duration: 3800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(orbScale, { toValue: 1.00, duration: 3800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
   }, []);
 
+  // Cinematic shake — springy feel instead of rigid linear bounces
   function shake() {
+    shakeX.setValue(0);
     Animated.sequence([
-      Animated.timing(shakeX, { toValue: 12,  duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -12, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 7,   duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0,   duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 14,  duration: 70,  easing: EASE_BACK_OUT, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -11, duration: 70,  easing: EASE_BACK_OUT, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 7,   duration: 60,  easing: EASE_BACK_OUT, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -4,  duration: 60,  easing: EASE_BACK_OUT, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 0,   duration: 50,  easing: EASE_IN_OUT,   useNativeDriver: true }),
     ]).start();
   }
 
-  // ── Validate fields ───────────────────────
   function validate(): boolean {
     let valid = true;
-    if (!email.trim()) {
-      setEmailErr(t('emailRequired'));
-      valid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setEmailErr(t('invalidEmail'));
-      valid = false;
-    }
-    if (!password) {
-      setPasswordErr(t('passwordRequired'));
-      valid = false;
-    }
+    if (!email.trim()) { setEmailErr(t('emailRequired'));   valid = false; }
+    else if (!/\S+@\S+\.\S+/.test(email.trim())) { setEmailErr(t('invalidEmail')); valid = false; }
+    if (!password) { setPasswordErr(t('passwordRequired')); valid = false; }
     if (!valid) shake();
     return valid;
   }
 
-  // ── Login handler ─────────────────────────
   async function handleLogin() {
     setEmailErr('');
     setPasswordErr('');
@@ -93,41 +293,24 @@ export default function LoginScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      // Step 1: authenticate and get tokens
-      const result = await login({ email: email.trim(), password });
-
-      // Step 2: resolve the linked patient record — pass the token explicitly
-      // because setAuthenticated() hasn't been called yet, so the store is empty
+      const result         = await login({ email: email.trim(), password });
       const backendPatient = await fetchMyPatient(result.accessToken);
 
       if (!backendPatient) {
-        // No patient record linked to this account.
-        // This should not happen for accounts registered via the app (register()
-        // auto-creates the patient row). If it does, we must NOT use result.user.id
-        // as patient.id — that is a users table UUID, not a patients table UUID,
-        // and sending it as patient_id to POST /appointments causes a FK 404 error.
         setGeneralErr(t('noPatientRecord'));
         setLoading(false);
         return;
       }
 
-      // Step 3: build the Patient object for the store
       const patient = adaptPatient(backendPatient, result.user.email);
-
       await setAuthenticated(patient, result.accessToken, result.refreshToken);
-      // Navigator reacts to isAuthenticated automatically — no navigation.replace needed
     } catch (err) {
       shake();
       if (err instanceof ApiRequestError) {
-        if (err.status === 401 || err.status === 400) {
-          setGeneralErr(t('invalidCredentials'));
-        } else if (err.status === 429) {
-          setGeneralErr(t('tooManyRequests'));
-        } else if (err.status === 0) {
-          setGeneralErr(t('networkError'));
-        } else {
-          setGeneralErr(err.body.message || t('loginFailed'));
-        }
+        if (err.status === 401 || err.status === 400) setGeneralErr(t('invalidCredentials'));
+        else if (err.status === 429) setGeneralErr(t('tooManyRequests'));
+        else if (err.status === 0)   setGeneralErr(t('networkError'));
+        else setGeneralErr(err.body.message || t('loginFailed'));
       } else {
         setGeneralErr(t('networkError'));
       }
@@ -136,149 +319,193 @@ export default function LoginScreen({ navigation }: Props) {
     }
   }
 
-  const s = makeStyles(colors, isRTL, isDark);
+  const align  = isRTL ? 'right' as const : 'left' as const;
+  const rowDir = isRTL ? 'row-reverse' as const : 'row' as const;
+
+  const bgColors: readonly [string, string, string] = isDark
+    ? ['#060b10', '#0a1520', '#060e14']
+    : ['#e6f3f6', '#eef7f8', '#e8f2f4'];
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-      <LinearGradient
-        colors={[colors.surface, colors.bg, colors.warm + (isDark ? '40' : '70')]}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={s.blob1} />
-      <View style={s.blob2} />
+      {/* Deep canvas gradient */}
+      <LinearGradient colors={bgColors} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFillObject} />
 
-      <KeyboardAvoidingView
-        style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <SafeAreaView style={s.flex}>
+      {/* Atmospheric pulsing orbs */}
+      <Animated.View style={[styles.orb, styles.orbTR, {
+        backgroundColor: isDark ? 'rgba(97,190,197,0.09)' : 'rgba(97,190,197,0.18)',
+        transform: [{ scale: orbScale }],
+      }]} />
+      <Animated.View style={[styles.orb, styles.orbBL, {
+        backgroundColor: isDark ? 'rgba(30,89,121,0.11)' : 'rgba(121,213,220,0.16)',
+        transform: [{ scale: orbScale }],
+      }]} />
+
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <SafeAreaView style={styles.flex}>
           <ScrollView
-            contentContainerStyle={s.scroll}
+            contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Back */}
-            <TouchableOpacity style={s.backRow} onPress={() => navigation.goBack()}>
-              <Text style={s.backArrow}>{isRTL ? '←' : '→'}</Text>
-              <Text style={s.backText}>{t('back')}</Text>
-            </TouchableOpacity>
 
-            {/* Logo */}
-            <View style={s.logoRow}>
-              <View style={s.logoCircle}>
-                <View style={s.logoShine} />
-                <Text style={s.logoLetters}>SF</Text>
-              </View>
-              <Text style={s.logoBrand}>SmileFix</Text>
-            </View>
-
-            {/* Header */}
-            <View style={s.header}>
-              <Text style={s.title}>{t('welcomeBack')}</Text>
-              <Text style={s.subtitle}>{t('signInWithEmail')}</Text>
-            </View>
-
-            {/* Card */}
-            <Animated.View
-              style={[s.card, { opacity: cardO, transform: [{ translateX: shakeX }] }]}
-            >
-              {/* General error banner */}
-              {generalErr ? (
-                <View style={s.errorBanner}>
-                  <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
-                  <Text style={s.errorBannerText}>{generalErr}</Text>
-                </View>
-              ) : null}
-
-              {/* Email */}
-              <Text style={s.fieldLabel}>{t('email')}</Text>
-              <View style={[s.inputRow, emailErr ? s.inputRowErr : null]}>
-                <Ionicons
-                  name="mail-outline"
-                  size={18}
-                  color={emailErr ? colors.error : colors.textSub}
-                  style={s.inputIcon}
-                />
-                <TextInput
-                  style={s.textInput}
-                  placeholder={t('emailPh')}
-                  placeholderTextColor={colors.textSub + '70'}
-                  value={email}
-                  onChangeText={(v) => { setEmail(v); setEmailErr(''); setGeneralErr(''); }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textAlign={isRTL ? 'right' : 'left'}
-                  returnKeyType="next"
-                />
-              </View>
-              {emailErr ? <Text style={s.fieldErr}>{emailErr}</Text> : null}
-
-              {/* Password */}
-              <Text style={[s.fieldLabel, { marginTop: 16 }]}>{t('password')}</Text>
-              <View style={[s.inputRow, passwordErr ? s.inputRowErr : null]}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={18}
-                  color={passwordErr ? colors.error : colors.textSub}
-                  style={s.inputIcon}
-                />
-                <TextInput
-                  style={s.textInput}
-                  placeholder={t('passwordPh')}
-                  placeholderTextColor={colors.textSub + '70'}
-                  value={password}
-                  onChangeText={(v) => { setPassword(v); setPasswordErr(''); setGeneralErr(''); }}
-                  secureTextEntry={!showPwd}
-                  textAlign={isRTL ? 'right' : 'left'}
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                />
-                <TouchableOpacity onPress={() => setShowPwd(!showPwd)} style={s.eyeBtn}>
-                  <Ionicons
-                    name={showPwd ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color={colors.textSub}
-                  />
-                </TouchableOpacity>
-              </View>
-              {passwordErr ? <Text style={s.fieldErr}>{passwordErr}</Text> : null}
-
-              {/* Login button */}
+            {/* ── Back button ── */}
+            <StaggerItem index={0}>
               <TouchableOpacity
-                style={[s.btnPrimary, loading && s.btnDisabled]}
+                style={[styles.backRow, { flexDirection: rowDir }]}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isRTL ? 'arrow-forward-outline' : 'arrow-back-outline'}
+                  size={18}
+                  color={isDark ? colors.teal : colors.primary}
+                />
+                <Text style={[styles.backText, { color: isDark ? colors.teal : colors.primary }]}>
+                  {t('back')}
+                </Text>
+              </TouchableOpacity>
+            </StaggerItem>
+
+            {/* ── Logo ── */}
+            <StaggerItem index={1} style={styles.logoRow}>
+              <View style={[styles.logoCircle, {
+                backgroundColor: isDark ? 'rgba(97,190,197,0.15)' : colors.teal,
+                borderColor:     isDark ? 'rgba(97,190,197,0.40)' : 'rgba(255,255,255,0.50)',
+                shadowColor:     colors.teal,
+              }]}>
+                <LinearGradient
+                  colors={isDark
+                    ? ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)']
+                    : ['rgba(255,255,255,0.50)', 'rgba(255,255,255,0.02)']}
+                  start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <Text style={[styles.logoLetters, { color: isDark ? colors.teal : '#fff' }]}>SF</Text>
+              </View>
+              <Text style={[styles.logoBrand, { color: isDark ? colors.blue : '#1e5979' }]}>
+                SmileFix
+              </Text>
+            </StaggerItem>
+
+            {/* ── Title ── */}
+            <StaggerItem index={2}>
+              <Text style={[styles.title, { color: isDark ? '#e6edf3' : '#1e5979', textAlign: align }]}>
+                {t('welcomeBack')}
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.textSub, textAlign: align }]}>
+                {t('signInWithEmail')}
+              </Text>
+            </StaggerItem>
+
+            {/* ── General error banner ── */}
+            {generalErr ? (
+              <StaggerItem index={3}>
+                <Animated.View style={[styles.errorBanner, {
+                  backgroundColor: isDark ? 'rgba(186,26,26,0.15)' : 'rgba(255,218,214,0.75)',
+                  borderColor:     colors.error + '50',
+                  flexDirection:   rowDir,
+                  transform:       [{ translateX: shakeX }],
+                }]}>
+                  <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
+                  <Text style={[styles.errorBannerText, { color: colors.error, textAlign: align }]}>
+                    {generalErr}
+                  </Text>
+                </Animated.View>
+              </StaggerItem>
+            ) : null}
+
+            {/* ── Email field ── */}
+            <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
+              <StaggerItem index={generalErr ? 4 : 3}>
+                <PremiumInput
+                  label={t('email')}
+                  placeholder={t('emailPh')}
+                  value={email}
+                  onChange={(v) => { setEmail(v); setEmailErr(''); setGeneralErr(''); }}
+                  keyboardType="email-address"
+                  leftIcon="mail-outline"
+                  error={emailErr}
+                  isRTL={isRTL}
+                  colors={colors}
+                  isDark={isDark}
+                />
+              </StaggerItem>
+
+              {/* ── Password field ── */}
+              <StaggerItem index={generalErr ? 5 : 4}>
+                <PremiumInput
+                  label={t('password')}
+                  placeholder={t('passwordPh')}
+                  value={password}
+                  onChange={(v) => { setPassword(v); setPasswordErr(''); setGeneralErr(''); }}
+                  secure={!showPwd}
+                  leftIcon="lock-closed-outline"
+                  error={passwordErr}
+                  isRTL={isRTL}
+                  colors={colors}
+                  isDark={isDark}
+                  onSubmit={handleLogin}
+                  rightIcon={
+                    <TouchableOpacity onPress={() => setShowPwd(!showPwd)} activeOpacity={0.7}>
+                      <Ionicons
+                        name={showPwd ? 'eye-off-outline' : 'eye-outline'}
+                        size={19}
+                        color={colors.textSub}
+                      />
+                    </TouchableOpacity>
+                  }
+                />
+              </StaggerItem>
+            </Animated.View>
+
+            {/* ── Login button ── */}
+            <StaggerItem index={generalErr ? 6 : 5}>
+              <TouchableOpacity
                 onPress={handleLogin}
                 disabled={loading}
-                activeOpacity={0.82}
+                activeOpacity={0.86}
+                style={[styles.btnWrap, loading && { opacity: 0.60 }, { shadowColor: colors.teal }]}
               >
                 <LinearGradient
-                  colors={loading ? [colors.outline, colors.outline] : [colors.teal, colors.blue]}
+                  colors={['#00818a', '#00696f', '#004f54']}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={s.btnGrad}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.btnGradient}
                 >
+                  {/* Shimmer overlay */}
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.00)']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
+                  />
                   {loading
-                    ? <ActivityIndicator color={colors.onPrimary} size="small" />
-                    : <Text style={s.btnText}>{t('login')}</Text>
+                    ? <ActivityIndicator color="#ffffff" size="small" />
+                    : <Text style={styles.btnText}>{t('login')}</Text>
                   }
                 </LinearGradient>
               </TouchableOpacity>
+            </StaggerItem>
 
-            </Animated.View>
-
-            {/* Register link */}
-            <View style={s.regRow}>
-              <Text style={s.regText}>{t('newPatient')} </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Register')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={s.regLink}>{t('createAccountNow')}</Text>
-              </TouchableOpacity>
-            </View>
+            {/* ── Register link ── */}
+            <StaggerItem index={generalErr ? 7 : 6}>
+              <View style={[styles.regRow, { flexDirection: rowDir }]}>
+                <Text style={[styles.regText, { color: colors.textSub }]}>
+                  {`${t('newPatient')} `}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Register')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.regLink, { color: isDark ? colors.teal : colors.primary }]}>
+                    {t('createAccountNow')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </StaggerItem>
 
           </ScrollView>
         </SafeAreaView>
@@ -287,105 +514,74 @@ export default function LoginScreen({ navigation }: Props) {
   );
 }
 
-// ── Styles ────────────────────────────────────
-function makeStyles(c: any, isRTL: boolean, isDark: boolean) {
-  const textAlign    = isRTL ? 'right' : 'left';
-  const flexDirection = isRTL ? 'row-reverse' : 'row';
-  const alignSelf    = isRTL ? 'flex-end' : 'flex-start';
+// ── Static styles ───────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  root:  { flex: 1, backgroundColor: '#060b10' },
+  flex:  { flex: 1 },
+  scroll: { paddingHorizontal: 22, paddingBottom: 52, paddingTop: 0 },
 
-  return StyleSheet.create({
-    root:  { flex: 1, backgroundColor: c.bg },
-    flex:  { flex: 1 },
-    scroll: { paddingHorizontal: 24, paddingBottom: 48 },
+  // Orbs
+  orb:   { position: 'absolute', borderRadius: 9999 },
+  orbTR: { width: 320, height: 320, top: -90, right: -80 },
+  orbBL: { width: 230, height: 230, bottom: 130, left: -65 },
 
-    blob1: {
-      position: 'absolute', width: 300, height: 300, borderRadius: 150,
-      backgroundColor: isDark ? c.teal + '08' : c.teal + '14', top: -70, right: -70,
-    },
-    blob2: {
-      position: 'absolute', width: 200, height: 200, borderRadius: 100,
-      backgroundColor: isDark ? c.tealLight + '05' : c.tealLight + '10', bottom: 100, left: -60,
-    },
+  // Back
+  backRow: { alignItems: 'center', gap: 6, paddingVertical: 10 },
+  backText: { fontSize: 14, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
 
-    backRow: {
-      flexDirection: flexDirection, alignItems: 'center', gap: 6,
-      paddingTop: 16, paddingBottom: 4, alignSelf: alignSelf,
-    },
-    backArrow: { fontSize: 18, color: c.primary },
-    backText:  { fontSize: 14, color: c.primary, fontWeight: '600' },
+  // Logo
+  logoRow: { alignItems: 'center', marginTop: 10, marginBottom: 22 },
+  logoCircle: {
+    width: 80, height: 80, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden', borderWidth: 1.5,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.42, shadowRadius: 26, elevation: 10,
+  },
+  logoLetters: { fontSize: 30, fontFamily: 'Manrope_700Bold', letterSpacing: 1.5 },
+  logoBrand:   { fontSize: 22, fontFamily: 'Manrope_800ExtraBold', letterSpacing: -0.4 },
 
-    logoRow: { alignItems: 'center', marginVertical: 20 },
-    logoCircle: {
-      width: 64, height: 64, borderRadius: 32, backgroundColor: c.teal,
-      alignItems: 'center', justifyContent: 'center',
-      overflow: 'hidden', marginBottom: 10,
-      shadowColor: c.blue, shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: isDark ? 0.15 : 0.28, shadowRadius: 16, elevation: 6,
-    },
-    logoShine: {
-      position: 'absolute', top: 0, left: 0, right: 0, height: '45%',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.25)',
-      borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    },
-    logoLetters: { fontSize: 24, color: '#ffffff', fontWeight: '700' },
-    logoBrand:   { fontSize: 20, color: c.blue, fontWeight: '800' },
+  // Title
+  title: {
+    fontSize: 30, fontFamily: 'Manrope_700Bold',
+    letterSpacing: -0.7, marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14, fontFamily: 'Inter_400Regular',
+    lineHeight: 22, marginBottom: 26,
+  },
 
-    header:   { marginBottom: 24, alignItems: alignSelf },
-    title:    { fontSize: 26, color: c.blue, textAlign: textAlign, fontWeight: '700', marginBottom: 6 },
-    subtitle: { fontSize: 14, color: c.textSub, textAlign: textAlign, lineHeight: 22 },
+  // Error banner
+  errorBanner: {
+    alignItems: 'center', gap: 9,
+    borderRadius: 13, borderWidth: 1,
+    padding: 13, marginBottom: 18,
+  },
+  errorBannerText: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular' },
 
-    card: {
-      backgroundColor: c.surfaceCard,
-      borderRadius: 24, padding: 22,
-      borderWidth: 0.5, borderColor: c.surfaceCardBorder,
-      shadowColor: c.blue, shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: isDark ? 0.03 : 0.05, shadowRadius: 20, elevation: 3,
-      marginBottom: 20,
-    },
+  // Button
+  btnWrap: {
+    borderRadius: 16, overflow: 'hidden',
+    marginTop: 4, marginBottom: 28,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.40, shadowRadius: 22, elevation: 8,
+  },
+  btnGradient: {
+    height: 58, alignItems: 'center',
+    justifyContent: 'center', borderRadius: 16,
+  },
+  btnText: {
+    fontSize: 17, color: '#ffffff',
+    fontWeight: '700', fontFamily: 'Manrope_700Bold',
+    letterSpacing: 0.3,
+  },
 
-    errorBanner: {
-      flexDirection: flexDirection, alignItems: 'center', gap: 8,
-      backgroundColor: c.errorBg + (isDark ? '40' : '60'),
-      borderRadius: 12, padding: 12, marginBottom: 16,
-    },
-    errorBannerText: { flex: 1, fontSize: 13, color: c.error, textAlign: textAlign },
-
-    fieldLabel: {
-      fontSize: 11, color: c.textSub, letterSpacing: 0.6,
-      textTransform: 'uppercase', textAlign: textAlign,
-      marginBottom: 8, fontWeight: '600',
-    },
-    fieldErr: { fontSize: 12, color: c.error, textAlign: textAlign, marginTop: 4 },
-
-    inputRow: {
-      flexDirection: flexDirection, alignItems: 'center',
-      backgroundColor: c.surfaceInput,
-      borderRadius: 14, borderWidth: 1,
-      borderColor: c.outline + '50', minHeight: 56,
-      overflow: 'hidden', paddingHorizontal: 12,
-    },
-    inputRowErr: { borderColor: c.error, borderWidth: 1.5 },
-    inputIcon:   { marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 },
-    textInput: {
-      flex: 1, fontSize: 16, color: c.text,
-      paddingVertical: 14, textAlign: textAlign,
-    },
-    eyeBtn: { padding: 4 },
-
-    btnPrimary: {
-      borderRadius: 16, overflow: 'hidden', marginTop: 20,
-      shadowColor: c.teal, shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: isDark ? 0.25 : 0.32, shadowRadius: 18, elevation: 5,
-    },
-    btnDisabled: { opacity: 0.5 },
-    btnGrad: { height: 56, alignItems: 'center', justifyContent: 'center' },
-    btnText: { fontSize: 17, color: c.onPrimary, fontWeight: '700', letterSpacing: 0.3 },
-
-    regRow: {
-      flexDirection: flexDirection, justifyContent: 'center',
-      alignItems: 'center', marginBottom: 12,
-    },
-    regText: { fontSize: 14, color: c.textSub },
-    regLink: { fontSize: 14, color: c.primary, fontWeight: '700', textDecorationLine: 'underline' },
-  });
-}
+  // Register link
+  regRow: { justifyContent: 'center', alignItems: 'center' },
+  regText: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  regLink: {
+    fontSize: 13, fontFamily: 'Inter_600SemiBold',
+    fontWeight: '700', textDecorationLine: 'underline',
+  },
+});

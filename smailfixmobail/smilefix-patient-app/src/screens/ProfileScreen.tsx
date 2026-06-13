@@ -11,12 +11,12 @@ import {
   Alert,
   Switch,
   I18nManager,
-  Modal,
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { AnimatedModal } from '../components/AnimatedModal';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -312,14 +312,12 @@ export default function ProfileScreen() {
       </SafeAreaView>
 
       {/* ── Edit Profile Modal ───────────────────── */}
-      <Modal
+      <AnimatedModal
         visible={editVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => !saving && setEditVisible(false)}
+        onClose={() => !saving && setEditVisible(false)}
+        variant="sheet"
       >
         <KeyboardAvoidingView
-          style={s.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
@@ -411,16 +409,14 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
+      </AnimatedModal>
       {/* ── Notifications Modal ───────────────────── */}
-      <Modal
+      <AnimatedModal
         visible={notifsVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setNotifsVisible(false)}
+        onClose={() => setNotifsVisible(false)}
+        variant="sheet"
       >
-        <View style={s.modalOverlay}>
-          <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
+        <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
 
             {/* Header */}
             <View style={[s.modalHeader, getFlexDirection()]}>
@@ -534,18 +530,15 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+      </AnimatedModal>
 
       {/* ── Help Modal ───────────────────────────── */}
-      <Modal
+      <AnimatedModal
         visible={helpVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setHelpVisible(false)}
+        onClose={() => setHelpVisible(false)}
+        variant="sheet"
       >
-        <View style={s.modalOverlay}>
-          <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
+        <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
             {/* Header */}
             <View style={[s.modalHeader, getFlexDirection()]}>
               <Text style={[s.modalTitle, { color: colors.text }]}>
@@ -650,17 +643,14 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+      </AnimatedModal>
       {/* ── About Modal ──────────────────────────── */}
-      <Modal
+      <AnimatedModal
         visible={aboutVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAboutVisible(false)}
+        onClose={() => setAboutVisible(false)}
+        variant="sheet"
       >
-        <View style={s.modalOverlay}>
-          <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
+        <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
 
             {/* Header */}
             <View style={[s.modalHeader, getFlexDirection()]}>
@@ -774,8 +764,7 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+      </AnimatedModal>
     </View>
   );
 }

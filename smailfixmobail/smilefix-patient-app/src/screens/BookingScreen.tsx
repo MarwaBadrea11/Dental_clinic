@@ -2,7 +2,11 @@
 // Booking Screen — 3-step smart booking
 // Step 0: Pick dentist  (real API)
 // Step 1: Pick service  (real API)
-// Step 2: Pick date + time → Confirm (real API)
+// Step 2: Pick date + shift + time → Confirm (real API)
+//
+// Date picker is restricted to clinic working days.
+// Time slots are generated dynamically from the admin-configured
+// morning / evening shift hours fetched from /settings/working-hours.
 // ─────────────────────────────────────────────
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -36,25 +40,27 @@ import {
   type BackendDentist,
   type BackendProcedure,
 } from '../services';
+import {
+  fetchWorkingHours,
+  generateSlots,
+  type WorkingHoursDay,
+} from '../services/settingsService';
 
-// ── Time slots (fixed clinic schedule) ───────
-const TIME_SLOTS = [
-  '09:00','09:30','10:00','10:30','11:00','11:30',
-  '14:00','14:30','15:00','15:30','16:00','16:30','17:00',
-];
+// ── Shift type ────────────────────────────────
+type ShiftKey = 'morning' | 'evening';
 
 const STEPS = ['selectDoctor', 'selectService', 'selectDateTime'] as const;
 
 // ── Adapter: BackendDentist → Doctor store shape ─
 function adaptDentist(d: BackendDentist): Doctor {
   return {
-    id:           d.id,
-    name:         d.username,
-    nameAr:       d.username,     // backend has no separate AR name yet
-    specialty:    'Dentist',
-    specialtyAr:  'طبيب أسنان',
-    rating:       0,
-    availableDays: [0, 1, 2, 3, 4], // Sun–Thu by default
+    id:            d.id,
+    name:          d.username,
+    nameAr:        d.username,
+    specialty:     'Dentist',
+    specialtyAr:   'طبيب أسنان',
+    rating:        0,
+    availableDays: [0, 1, 2, 3, 4],
   };
 }
 
@@ -64,7 +70,7 @@ function adaptProcedure(p: BackendProcedure): Service {
     id:       p.id,
     name:     p.name,
     nameAr:   p.name_ar ?? p.name,
-    duration: p.default_duration_minutes ?? 30,   // fallback to 30 min if not set
+    duration: p.default_duration_minutes ?? 30,
     price:    Number(p.default_price),
   };
 }
@@ -81,37 +87,93 @@ export default function BookingScreen({ navigation }: any) {
   } = useAppStore();
 
   // ── Remote data ───────────────────────────
-  const [doctors, setDoctors]       = useState<Doctor[]>([]);
-  const [services, setServices]     = useState<Service[]>([]);
-  const [loadingDocs, setLoadingDocs]   = useState(false);
-  const [loadingSrvs, setLoadingSrvs]   = useState(false);
+  const [doctors,  setDoctors]  = useState<Doctor[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingDocs,    setLoadingDocs]    = useState(false);
+  const [loadingSrvs,    setLoadingSrvs]    = useState(false);
   const [loadingConfirm, setLoadingConfirm] = useState(false);
-  const [fetchError, setFetchError] = useState('');
+  const [fetchError,     setFetchError]     = useState('');
 
-  // ── Date / time state ─────────────────────
-  const [dates, setDates]           = useState<string[]>([]);
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [showTimeModal, setShowTimeModal] = useState(false);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
+  // ── Working-hours state ────────────────────
+  const [workingHours,    setWorkingHours]    = useState<WorkingHoursDay[]>([]);
+  const [loadingSchedule, setLoadingSchedule] = useState(false);
+
+  // ── Date / time / shift state ─────────────
+  const [dates,          setDates]          = useState<string[]>([]);
+  const [selectedShift,  setSelectedShift]  = useState<ShiftKey | null>(null);
+  const [showDateModal,  setShowDateModal]  = useState(false);
+  const [showTimeModal,  setShowTimeModal]  = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
 
   const s = makeStyles(colors, isRTL);
   const tabBarHeight = useTabBarHeight();
 
-  // ── Generate next 14 dates ─────────────────
+  // ── Fetch working hours once on mount ─────
   useEffect(() => {
+    setLoadingSchedule(true);
+    fetchWorkingHours()
+      .then(setWorkingHours)
+      .catch(() => {/* silently fallback — dates list will just be all 14 days */})
+      .finally(() => setLoadingSchedule(false));
+  }, []);
+
+  // ── Generate next 14 dates, filtered to open days ──
+  useEffect(() => {
+    const openDays = new Set(
+      workingHours.filter((d) => d.isOpen).map((d) => d.dayOfWeek),
+    );
     const d: string[] = [];
-    for (let i = 0; i < 14; i++) {
+    for (let i = 1; i <= 60; i++) {           // look ahead up to 60 days
       const dt = new Date();
       dt.setDate(dt.getDate() + i);
-      d.push(dt.toISOString().split('T')[0]);
+      const dow = dt.getDay();                 // 0 = Sunday
+      // If no working-hours loaded yet, include all days (fallback)
+      if (openDays.size === 0 || openDays.has(dow)) {
+        d.push(dt.toISOString().split('T')[0]);
+      }
+      if (d.length === 14) break;             // stop after 14 open days
     }
     setDates(d);
-  }, []);
+    // Reset date/shift/time if selected date is now blocked
+    if (selectedDate && d.length > 0 && !d.includes(selectedDate)) {
+      setSelectedDate(null);
+      setSelectedTimeSlot(null);
+      setSelectedShift(null);
+    }
+  }, [workingHours]);
+
+  // ── Rebuild slots when date, shift, or doctor changes ──
+  useEffect(() => {
+    if (!selectedDate || !selectedShift) {
+      setAvailableSlots([]);
+      return;
+    }
+    const dow  = new Date(selectedDate).getDay();
+    const dayConfig = workingHours.find((d) => d.dayOfWeek === dow);
+
+    let raw: string[] = [];
+    if (dayConfig) {
+      raw = selectedShift === 'morning'
+        ? generateSlots(dayConfig.morningStart, dayConfig.morningEnd)
+        : generateSlots(dayConfig.eveningStart, dayConfig.eveningEnd);
+    }
+
+    // Filter out local conflicts
+    const filtered = selectedDoctor
+      ? raw.filter((time) => !hasConflict(selectedDoctor.id, selectedDate, time))
+      : raw;
+
+    setAvailableSlots(filtered);
+    // Clear selected time if it's no longer in the valid list
+    if (selectedTimeSlot && !filtered.includes(selectedTimeSlot)) {
+      setSelectedTimeSlot(null);
+    }
+  }, [selectedDate, selectedShift, selectedDoctor, workingHours, hasConflict]);
 
   // ── Fetch dentists when step 0 is shown ───
   useEffect(() => {
     if (bookingStep !== 0) return;
-    if (doctors.length > 0) return; // already loaded
+    if (doctors.length > 0) return;
     setLoadingDocs(true);
     setFetchError('');
     fetchDentists()
@@ -123,7 +185,7 @@ export default function BookingScreen({ navigation }: any) {
   // ── Fetch procedures when step 1 is shown ─
   useEffect(() => {
     if (bookingStep !== 1) return;
-    if (services.length > 0) return; // already loaded
+    if (services.length > 0) return;
     setLoadingSrvs(true);
     setFetchError('');
     fetchProcedures()
@@ -131,18 +193,6 @@ export default function BookingScreen({ navigation }: any) {
       .catch(() => setFetchError(t('networkError')))
       .finally(() => setLoadingSrvs(false));
   }, [bookingStep]);
-
-  // ── Filter time slots by local conflict ───
-  useEffect(() => {
-    if (selectedDate && selectedDoctor) {
-      const filtered = TIME_SLOTS.filter(
-        (time) => !hasConflict(selectedDoctor.id, selectedDate, time),
-      );
-      setAvailableTimeSlots(filtered);
-    } else {
-      setAvailableTimeSlots(TIME_SLOTS);
-    }
-  }, [selectedDate, selectedDoctor, hasConflict]);
 
   // ── Helpers ───────────────────────────────
   const formatDate = (dateStr: string) =>
@@ -152,14 +202,30 @@ export default function BookingScreen({ navigation }: any) {
 
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
+    setSelectedShift(null);
+    setSelectedTimeSlot(null);
     setShowDateModal(false);
-    if (!selectedTimeSlot) setTimeout(() => setShowTimeModal(true), 300);
+  };
+
+  const handleShiftSelect = (shift: ShiftKey) => {
+    setSelectedShift(shift);
+    setSelectedTimeSlot(null);
+    // Auto-open time modal after a brief delay
+    setTimeout(() => setShowTimeModal(true), 250);
   };
 
   const handleTimeSelect = (time: string) => {
     setSelectedTimeSlot(time);
     setShowTimeModal(false);
   };
+
+  // ── Get the current day's config ──────────
+  const selectedDayConfig = selectedDate
+    ? workingHours.find((d) => d.dayOfWeek === new Date(selectedDate).getDay())
+    : null;
+
+  const hasMorningShift = !!(selectedDayConfig?.morningStart && selectedDayConfig.morningEnd);
+  const hasEveningShift = !!(selectedDayConfig?.eveningStart && selectedDayConfig.eveningEnd);
 
   // ── Confirm booking → real API ────────────
   const handleConfirm = useCallback(async () => {
@@ -176,7 +242,6 @@ export default function BookingScreen({ navigation }: any) {
         treatment_name:   selectedService.name,
       });
 
-      // Add to local store so AppointmentsScreen shows it immediately
       addAppointment({
         id:        booked.id,
         patientId: booked.patient_id,
@@ -193,6 +258,7 @@ export default function BookingScreen({ navigation }: any) {
 
       Alert.alert(t('bookConfirmed'), t('bookSuccess'));
       resetBookingFlow();
+      setSelectedShift(null);
       navigation.navigate('Appointments');
     } catch (err) {
       if (err instanceof ApiRequestError) {
@@ -211,16 +277,13 @@ export default function BookingScreen({ navigation }: any) {
     }
   }, [selectedDoctor, selectedService, selectedDate, selectedTimeSlot, patient]);
 
-  // ── Retry fetch on error ──────────────────
   const handleRetry = () => {
     setFetchError('');
-    // Reset step triggers the useEffect fetch again
     setBookingStep(bookingStep);
     if (bookingStep === 0) setDoctors([]);
     if (bookingStep === 1) setServices([]);
   };
 
-  // ── Loading / error state placeholder ─────
   function LoadingOrError({ loading }: { loading: boolean }) {
     if (loading) {
       return (
@@ -251,7 +314,6 @@ export default function BookingScreen({ navigation }: any) {
       <LinearGradient colors={[colors.gradStart, colors.gradEnd]} style={StyleSheet.absoluteFillObject} />
 
       <SafeAreaView style={s.safe}>
-        {/* Title */}
         <Text style={s.title}>{t('bookAppointment')}</Text>
 
         {/* Step indicator */}
@@ -275,9 +337,12 @@ export default function BookingScreen({ navigation }: any) {
           ))}
         </View>
 
-        <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]}
+          showsVerticalScrollIndicator={false}
+        >
 
-          {/* ── Step 0: Select Dentist ─────────── */}
+          {/* ── Step 0: Select Dentist ──────── */}
           {bookingStep === 0 && (
             loadingDocs || fetchError
               ? <LoadingOrError loading={loadingDocs} />
@@ -316,7 +381,7 @@ export default function BookingScreen({ navigation }: any) {
                 ))
           )}
 
-          {/* ── Step 1: Select Service ─────────── */}
+          {/* ── Step 1: Select Service ──────── */}
           {bookingStep === 1 && (
             loadingSrvs || fetchError
               ? <LoadingOrError loading={loadingSrvs} />
@@ -341,9 +406,19 @@ export default function BookingScreen({ navigation }: any) {
                 ))
           )}
 
-          {/* ── Step 2: Date & Time ────────────── */}
+          {/* ── Step 2: Date / Shift / Time ─── */}
           {bookingStep === 2 && (
             <View style={s.dateTimeSection}>
+
+              {/* Loading overlay while fetching working hours */}
+              {loadingSchedule && (
+                <View style={s.scheduleLoader}>
+                  <ActivityIndicator color={colors.teal} size="small" />
+                  <Text style={[s.centerText, { marginTop: 6 }]}>{t('loading')}</Text>
+                </View>
+              )}
+
+              {/* Date picker */}
               <Dropdown
                 label={t('selectDate')}
                 value={selectedDate ? formatDate(selectedDate) : null}
@@ -352,19 +427,65 @@ export default function BookingScreen({ navigation }: any) {
                 isRTL={isRTL}
               />
 
-              <Dropdown
-                label={t('selectTime')}
-                value={selectedTimeSlot}
-                placeholder={t('selectTime')}
-                onPress={() => {
-                  if (!selectedDate) {
-                    Alert.alert(t('selectDateFirst'), t('pleaseSelectDateFirst'));
-                    return;
-                  }
-                  setShowTimeModal(true);
-                }}
-                isRTL={isRTL}
-              />
+              {/* Shift selector — shown only after a date is chosen */}
+              {selectedDate && (hasMorningShift || hasEveningShift) && (
+                <View style={s.shiftSection}>
+                  <Text style={s.shiftLabel}>{t('selectShift')}</Text>
+                  <View style={s.shiftRow}>
+                    {hasMorningShift && (
+                      <TouchableOpacity
+                        style={[s.shiftBtn, selectedShift === 'morning' && s.shiftBtnActive]}
+                        onPress={() => handleShiftSelect('morning')}
+                      >
+                        <Ionicons
+                          name="sunny-outline"
+                          size={18}
+                          color={selectedShift === 'morning' ? '#fff' : colors.teal}
+                        />
+                        <Text style={[s.shiftBtnText, selectedShift === 'morning' && s.shiftBtnTextActive]}>
+                          {t('morningShift')}
+                        </Text>
+                        {selectedDayConfig?.morningStart && selectedDayConfig.morningEnd && (
+                          <Text style={[s.shiftTime, selectedShift === 'morning' && s.shiftTimeActive]}>
+                            {selectedDayConfig.morningStart} – {selectedDayConfig.morningEnd}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                    {hasEveningShift && (
+                      <TouchableOpacity
+                        style={[s.shiftBtn, selectedShift === 'evening' && s.shiftBtnActive]}
+                        onPress={() => handleShiftSelect('evening')}
+                      >
+                        <Ionicons
+                          name="moon-outline"
+                          size={18}
+                          color={selectedShift === 'evening' ? '#fff' : colors.blue}
+                        />
+                        <Text style={[s.shiftBtnText, selectedShift === 'evening' && s.shiftBtnTextActive]}>
+                          {t('eveningShift')}
+                        </Text>
+                        {selectedDayConfig?.eveningStart && selectedDayConfig.eveningEnd && (
+                          <Text style={[s.shiftTime, selectedShift === 'evening' && s.shiftTimeActive]}>
+                            {selectedDayConfig.eveningStart} – {selectedDayConfig.eveningEnd}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Time slot picker — shown only after a shift is chosen */}
+              {selectedDate && selectedShift && (
+                <Dropdown
+                  label={t('selectTime')}
+                  value={selectedTimeSlot}
+                  placeholder={t('selectTime')}
+                  onPress={() => setShowTimeModal(true)}
+                  isRTL={isRTL}
+                />
+              )}
 
               {/* Summary card */}
               {(selectedDate || selectedTimeSlot) && (
@@ -374,6 +495,17 @@ export default function BookingScreen({ navigation }: any) {
                     <View style={s.summaryRow}>
                       <Ionicons name="calendar-outline" size={16} color={colors.textSub} />
                       <Text style={s.summaryText}>{formatDate(selectedDate)}</Text>
+                    </View>
+                  )}
+                  {selectedShift && (
+                    <View style={s.summaryRow}>
+                      <Ionicons
+                        name={selectedShift === 'morning' ? 'sunny-outline' : 'moon-outline'}
+                        size={16} color={colors.textSub}
+                      />
+                      <Text style={s.summaryText}>
+                        {selectedShift === 'morning' ? t('morningShift') : t('eveningShift')}
+                      </Text>
                     </View>
                   )}
                   {selectedTimeSlot && (
@@ -399,7 +531,7 @@ export default function BookingScreen({ navigation }: any) {
             </View>
           )}
 
-          {/* ── Confirm button ─────────────────── */}
+          {/* ── Confirm button ─────────────── */}
           {selectedDoctor && selectedService && selectedDate && selectedTimeSlot && (
             <TouchableOpacity
               style={[s.confirmBtn, loadingConfirm && s.confirmBtnDisabled]}
@@ -413,11 +545,17 @@ export default function BookingScreen({ navigation }: any) {
             </TouchableOpacity>
           )}
 
-          {/* ── Back button ────────────────────── */}
+          {/* ── Back button ────────────────── */}
           {bookingStep > 0 && (
             <TouchableOpacity
               style={s.backBtn}
-              onPress={() => setBookingStep(bookingStep - 1)}
+              onPress={() => {
+                setBookingStep(bookingStep - 1);
+                if (bookingStep === 2) {
+                  setSelectedShift(null);
+                  setSelectedTimeSlot(null);
+                }
+              }}
             >
               <Ionicons
                 name={isRTL ? 'arrow-forward' : 'arrow-back'}
@@ -430,7 +568,7 @@ export default function BookingScreen({ navigation }: any) {
         </ScrollView>
       </SafeAreaView>
 
-      {/* ── Date Selection Modal ─────────────── */}
+      {/* ── Date Selection Modal ──────────── */}
       <CustomModal
         visible={showDateModal}
         onClose={() => setShowDateModal(false)}
@@ -443,12 +581,23 @@ export default function BookingScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={modalStyles.modalList}
           renderItem={({ item }) => {
-            const date      = new Date(item);
+            const date       = new Date(item);
             const isSelected = selectedDate === item;
-            const dayName   = date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { weekday: 'long' });
-            const dateStr   = date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+            const dayName    = date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { weekday: 'long' });
+            const dateStr    = date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
               year: 'numeric', month: 'long', day: 'numeric',
             });
+            // Find the day config to show shift summary
+            const dowConfig = workingHours.find((d) => d.dayOfWeek === date.getDay());
+            const shifts = [
+              dowConfig?.morningStart && dowConfig.morningEnd
+                ? `☀ ${dowConfig.morningStart}–${dowConfig.morningEnd}`
+                : null,
+              dowConfig?.eveningStart && dowConfig.eveningEnd
+                ? `🌙 ${dowConfig.eveningStart}–${dowConfig.eveningEnd}`
+                : null,
+            ].filter(Boolean).join('  ');
+
             return (
               <Pressable
                 style={[modalStyles.modalItem, isSelected && modalStyles.modalItemSelected]}
@@ -459,15 +608,26 @@ export default function BookingScreen({ navigation }: any) {
                     {dayName}
                   </Text>
                   <Text style={[modalStyles.modalItemDate, { color: colors.textSub }]}>{dateStr}</Text>
+                  {shifts ? (
+                    <Text style={[modalStyles.modalItemShifts, { color: colors.teal }]}>{shifts}</Text>
+                  ) : null}
                 </View>
                 {isSelected && <Ionicons name="checkmark" size={20} color={colors.teal} />}
               </Pressable>
             );
           }}
+          ListEmptyComponent={
+            <View style={modalStyles.noSlotsContainer}>
+              <Ionicons name="calendar-outline" size={40} color={colors.textSub} />
+              <Text style={[modalStyles.noSlotsText, { color: colors.textSub, textAlign: 'center' }]}>
+                {t('noOpenDays')}
+              </Text>
+            </View>
+          }
         />
       </CustomModal>
 
-      {/* ── Time Selection Modal ─────────────── */}
+      {/* ── Time Selection Modal ──────────── */}
       <CustomModal
         visible={showTimeModal}
         onClose={() => setShowTimeModal(false)}
@@ -475,23 +635,23 @@ export default function BookingScreen({ navigation }: any) {
         isRTL={isRTL}
       >
         <FlatList
-          data={availableTimeSlots}
+          data={availableSlots}
           keyExtractor={(item) => item}
           numColumns={3}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={modalStyles.modalTimeGrid}
           columnWrapperStyle={modalStyles.modalTimeRow}
           renderItem={({ item }) => {
-            const isSelected  = selectedTimeSlot === item;
-            const isConflict  = selectedDoctor && selectedDate
+            const isSelected = selectedTimeSlot === item;
+            const isConflict = selectedDoctor && selectedDate
               ? hasConflict(selectedDoctor.id, selectedDate, item)
               : false;
             return (
               <Pressable
                 style={[
                   modalStyles.modalTimeItem,
-                  isSelected   && modalStyles.modalTimeItemSelected,
-                  isConflict   && modalStyles.modalTimeItemDisabled,
+                  isSelected  && modalStyles.modalTimeItemSelected,
+                  isConflict  && modalStyles.modalTimeItemDisabled,
                 ]}
                 onPress={() => !isConflict && handleTimeSelect(item)}
                 disabled={isConflict}
@@ -506,34 +666,35 @@ export default function BookingScreen({ navigation }: any) {
               </Pressable>
             );
           }}
+          ListEmptyComponent={
+            <View style={modalStyles.noSlotsContainer}>
+              <Ionicons name="time-outline" size={48} color={colors.textSub} />
+              <Text style={[modalStyles.noSlotsText, { color: colors.textSub, textAlign: 'center' }]}>
+                {t('noAvailableSlots')}
+              </Text>
+            </View>
+          }
         />
-        {availableTimeSlots.length === 0 && (
-          <View style={modalStyles.noSlotsContainer}>
-            <Ionicons name="time-outline" size={48} color={colors.textSub} />
-            <Text style={[modalStyles.noSlotsText, { color: colors.textSub, textAlign: 'center' }]}>
-              {t('noAvailableSlots')}
-            </Text>
-          </View>
-        )}
       </CustomModal>
     </View>
   );
 }
 
-// ── Modal styles (unchanged) ──────────────────
+// ── Modal styles ──────────────────────────────
 const modalStyles = StyleSheet.create({
-  modalList:        { padding: 16 },
+  modalList:             { padding: 16 },
   modalItem: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12,
     marginBottom: 8, backgroundColor: '#f8f9fa',
   },
-  modalItemSelected:  { backgroundColor: '#e8f4f8' },
-  modalItemContent:   { flex: 1 },
-  modalItemDay:       { fontSize: 16, fontWeight: '600', marginBottom: 2 },
-  modalItemDate:      { fontSize: 14 },
-  modalTimeGrid:      { padding: 16 },
-  modalTimeRow:       { justifyContent: 'space-between', marginBottom: 12 },
+  modalItemSelected:     { backgroundColor: '#e8f4f8' },
+  modalItemContent:      { flex: 1 },
+  modalItemDay:          { fontSize: 16, fontWeight: '600', marginBottom: 2 },
+  modalItemDate:         { fontSize: 14 },
+  modalItemShifts:       { fontSize: 11, marginTop: 3, fontWeight: '600' },
+  modalTimeGrid:         { padding: 16 },
+  modalTimeRow:          { justifyContent: 'space-between', marginBottom: 12 },
   modalTimeItem: {
     width: '30%', paddingVertical: 12, borderRadius: 12,
     alignItems: 'center', backgroundColor: '#f8f9fa',
@@ -564,23 +725,23 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     },
 
     // Steps
-    steps: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-    stepItem: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    steps:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
+    stepItem:      { flexDirection: 'row', alignItems: 'center', flex: 1 },
     stepCircle: {
       width: 28, height: 28, borderRadius: 14,
       backgroundColor: c.outline + '40', alignItems: 'center', justifyContent: 'center',
     },
-    stepActive:      { backgroundColor: c.blue },
-    stepDone:        { backgroundColor: c.teal },
-    stepNum:         { fontSize: 12, color: c.textSub, fontWeight: '700' },
-    stepNumActive:   { color: '#fff' },
-    stepLine:        { flex: 1, height: 2, backgroundColor: c.outline + '40', marginHorizontal: 4 },
-    stepLineDone:    { backgroundColor: c.teal },
+    stepActive:    { backgroundColor: c.blue },
+    stepDone:      { backgroundColor: c.teal },
+    stepNum:       { fontSize: 12, color: c.textSub, fontWeight: '700' },
+    stepNumActive: { color: '#fff' },
+    stepLine:      { flex: 1, height: 2, backgroundColor: c.outline + '40', marginHorizontal: 4 },
+    stepLineDone:  { backgroundColor: c.teal },
 
     scroll: { paddingHorizontal: 20 },
 
-    // Loading / error placeholders
-    centerBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },
+    // Loading / error
+    centerBox:  { alignItems: 'center', paddingVertical: 48, gap: 12 },
     centerText: { fontSize: 14, color: c.textSub, textAlign: 'center', lineHeight: 22 },
     retryBtn: {
       marginTop: 8, paddingHorizontal: 24, paddingVertical: 10,
@@ -588,27 +749,53 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     },
     retryText: { fontSize: 14, color: '#ffffff', fontWeight: '700' },
 
-    // Card
+    scheduleLoader: {
+      alignItems: 'center', paddingVertical: 12, marginBottom: 8,
+    },
+
+    // Cards
     card: {
       backgroundColor: c.surfaceCard, borderRadius: 18, padding: 16,
       marginBottom: 12, borderWidth: 0.5, borderColor: c.surfaceCardBorder,
     },
-    doctorRow:     { flexDirection: row, alignItems: 'center', gap: 12 },
+    doctorRow:       { flexDirection: row, alignItems: 'center', gap: 12 },
     docAvatar: {
       width: 52, height: 52, borderRadius: 16, backgroundColor: c.teal + '20',
       alignItems: 'center', justifyContent: 'center',
     },
     docAvatarLetter: { fontSize: 22, color: c.teal, fontWeight: '700', fontFamily: 'Manrope_700Bold' },
-    docInfo:       { flex: 1 },
-    docName: { fontSize: 15, fontWeight: '700', color: c.text, textAlign: align, fontFamily: 'Manrope_700Bold' },
-    docSpec:       { fontSize: 12, color: c.textSub, textAlign: align },
-    docRating:     { fontSize: 12, color: c.teal, marginTop: 2 },
-
-    srvName: { fontSize: 16, fontWeight: '700', color: c.text, textAlign: align, marginBottom: 4, fontFamily: 'Manrope_700Bold' },
-    srvDetail: { fontSize: 13, color: c.textSub, textAlign: align },
+    docInfo:         { flex: 1 },
+    docName:  { fontSize: 15, fontWeight: '700', color: c.text, textAlign: align, fontFamily: 'Manrope_700Bold' },
+    docSpec:         { fontSize: 12, color: c.textSub, textAlign: align },
+    docRating:       { fontSize: 12, color: c.teal, marginTop: 2 },
+    srvName:  { fontSize: 16, fontWeight: '700', color: c.text, textAlign: align, marginBottom: 4, fontFamily: 'Manrope_700Bold' },
+    srvDetail:       { fontSize: 13, color: c.textSub, textAlign: align },
 
     dateTimeSection: { marginTop: 8 },
 
+    // Shift selector
+    shiftSection: { marginTop: 16, marginBottom: 4 },
+    shiftLabel: {
+      fontSize: 12, fontWeight: '600', color: c.textSub,
+      textTransform: 'uppercase', letterSpacing: 0.6,
+      marginBottom: 10, textAlign: align,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    shiftRow: { flexDirection: row, gap: 12 },
+    shiftBtn: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      paddingVertical: 14, borderRadius: 16,
+      backgroundColor: c.surfaceCard,
+      borderWidth: 1.5, borderColor: c.surfaceCardBorder,
+      gap: 4,
+    },
+    shiftBtnActive:    { backgroundColor: c.teal, borderColor: c.teal },
+    shiftBtnText:      { fontSize: 13, fontWeight: '700', color: c.text, fontFamily: 'Manrope_700Bold' },
+    shiftBtnTextActive: { color: '#ffffff' },
+    shiftTime:         { fontSize: 10, color: c.textSub, fontFamily: 'Inter_400Regular' },
+    shiftTimeActive:   { color: 'rgba(255,255,255,0.8)' },
+
+    // Summary
     summaryCard: {
       backgroundColor: c.surfaceCard, borderRadius: 18, padding: 16,
       marginTop: 20, borderWidth: 0.5, borderColor: c.surfaceCardBorder,

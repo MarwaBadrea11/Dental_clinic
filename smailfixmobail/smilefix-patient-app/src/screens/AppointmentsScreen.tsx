@@ -12,10 +12,9 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
-  Modal,
   ScrollView,
-  Pressable,
 } from 'react-native';
+import { AnimatedModal } from '../components/AnimatedModal';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,7 +94,7 @@ function adaptAppointment(a: BackendAppointment): Appointment {
   };
 }
 
-// ── Details Modal ─────────────────────────────
+// ── Details Modal — premium bottom sheet ──────
 function DetailsModal({
   item,
   visible,
@@ -111,7 +110,7 @@ function DetailsModal({
   isRTL: boolean;
   t: (k: string) => string;
 }) {
-  if (!item) return null;
+  if (!item && !visible) return null;
 
   const align = isRTL ? 'right' : 'left';
   const row   = isRTL ? 'row-reverse' : 'row';
@@ -122,68 +121,42 @@ function DetailsModal({
     completed: { bg: colors.teal + '20', text: colors.teal },
     cancelled: { bg: colors.errorBg,     text: colors.error },
   };
-  const meta = statusColors[item.status] ?? statusColors.waiting;
+  const meta = item ? (statusColors[item.status] ?? statusColors.waiting) : statusColors.waiting;
 
-  const rows: { label: string; value: string }[] = [
-    {
-      label: isRTL ? 'الطبيب'          : 'Doctor',
-      value: (isRTL ? item.doctor?.nameAr : item.doctor?.name) ?? '—',
-    },
-    {
-      label: isRTL ? 'التخصص'          : 'Specialty',
-      value: (isRTL ? item.doctor?.specialtyAr : item.doctor?.specialty) ?? '—',
-    },
-    {
-      label: isRTL ? 'العلاج'           : 'Treatment',
-      value: (isRTL ? item.service?.nameAr : item.service?.name) ?? '—',
-    },
-    {
-      label: isRTL ? 'التاريخ'          : 'Date',
-      value: item.date,
-    },
-    {
-      label: isRTL ? 'الوقت'            : 'Time',
-      value: item.timeSlot,
-    },
-    {
-      label: isRTL ? 'المدة (دقيقة)'    : 'Duration (min)',
-      value: item.service?.duration ? `${item.service.duration}` : '—',
-    },
-    {
-      label: isRTL ? 'ملاحظات'          : 'Notes',
-      value: item.notes ?? (isRTL ? 'لا توجد ملاحظات' : 'No notes'),
-    },
-  ];
+  const rows: { label: string; value: string }[] = item ? [
+    { label: isRTL ? 'الطبيب'          : 'Doctor',         value: (isRTL ? item.doctor?.nameAr     : item.doctor?.name)     ?? '—' },
+    { label: isRTL ? 'التخصص'          : 'Specialty',      value: (isRTL ? item.doctor?.specialtyAr : item.doctor?.specialty) ?? '—' },
+    { label: isRTL ? 'العلاج'          : 'Treatment',      value: (isRTL ? item.service?.nameAr    : item.service?.name)    ?? '—' },
+    { label: isRTL ? 'التاريخ'         : 'Date',           value: item.date },
+    { label: isRTL ? 'الوقت'           : 'Time',           value: item.timeSlot },
+    { label: isRTL ? 'المدة (دقيقة)'   : 'Duration (min)', value: item.service?.duration ? `${item.service.duration}` : '—' },
+    { label: isRTL ? 'ملاحظات'         : 'Notes',          value: item.notes ?? (isRTL ? 'لا توجد ملاحظات' : 'No notes') },
+  ] : [];
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}
-        onPress={onClose}
-      >
-        {/* Prevent tap-through on the sheet itself */}
-        <Pressable onPress={(e) => e.stopPropagation()}>
-          <View style={{
-            backgroundColor: colors.surfaceCard,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            padding: 24,
-            paddingBottom: 40,
-          }}>
-            {/* Handle */}
-            <View style={{
-              width: 40, height: 4, borderRadius: 2,
-              backgroundColor: colors.outline + '60',
-              alignSelf: 'center', marginBottom: 20,
-            }} />
+    <AnimatedModal visible={visible} onClose={onClose} variant="sheet">
+      <View style={{
+        backgroundColor: colors.surfaceCard,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        padding: 24,
+        paddingBottom: 40,
+      }}>
+        {/* Handle */}
+        <View style={{
+          width: 40, height: 4, borderRadius: 2,
+          backgroundColor: colors.outline + '60',
+          alignSelf: 'center', marginBottom: 20,
+        }} />
 
-            {/* Title + status badge */}
-            <View style={{
-              flexDirection: row,
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 20,
-            }}>
+        {/* Title + status badge */}
+        <View style={{ flexDirection: row, justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: row, alignItems: 'center', gap: 8 }}>
+              <View style={{
+                width: 4, height: 22, borderRadius: 2,
+                backgroundColor: colors.teal,
+              }} />
               <Text style={{
                 fontSize: 18, fontWeight: '700',
                 color: colors.blue,
@@ -191,64 +164,69 @@ function DetailsModal({
               }}>
                 {isRTL ? 'تفاصيل الموعد' : 'Appointment Details'}
               </Text>
-              <View style={{
-                paddingHorizontal: 12, paddingVertical: 5,
-                borderRadius: 999, backgroundColor: meta.bg,
-              }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: meta.text }}>
-                  {t(item.status)}
-                </Text>
-              </View>
             </View>
-
-            {/* Detail rows */}
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {rows.map((r, i) => (
-                <View key={i} style={{
-                  flexDirection: row,
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  paddingVertical: 12,
-                  borderBottomWidth: i < rows.length - 1 ? 1 : 0,
-                  borderBottomColor: colors.divider,
-                }}>
-                  <Text style={{
-                    fontSize: 12, color: colors.textSub,
-                    textTransform: 'uppercase', letterSpacing: 0.4,
-                    flex: 1, textAlign: align,
-                  }}>
-                    {r.label}
-                  </Text>
-                  <Text style={{
-                    fontSize: 14, color: colors.text,
-                    fontWeight: '600', flex: 2,
-                    textAlign: isRTL ? 'left' : 'right',
-                  }}>
-                    {r.value}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-
-            {/* Close button */}
-            <TouchableOpacity
-              onPress={onClose}
-              style={{
-                marginTop: 24,
-                backgroundColor: colors.blue,
-                borderRadius: 14,
-                paddingVertical: 14,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700' }}>
-                {isRTL ? 'إغلاق' : 'Close'}
-              </Text>
-            </TouchableOpacity>
           </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+          {item && (
+            <View style={{
+              paddingHorizontal: 12, paddingVertical: 5,
+              borderRadius: 999, backgroundColor: meta.bg,
+            }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: meta.text }}>
+                {t(item.status)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Detail rows */}
+        <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
+          {rows.map((r, i) => (
+            <View key={i} style={{
+              flexDirection: row,
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              paddingVertical: 13,
+              borderBottomWidth: i < rows.length - 1 ? StyleSheet.hairlineWidth : 0,
+              borderBottomColor: colors.divider,
+            }}>
+              <Text style={{
+                fontSize: 11, color: colors.textSub,
+                textTransform: 'uppercase', letterSpacing: 0.5,
+                flex: 1, textAlign: align,
+                fontFamily: 'Inter_600SemiBold',
+              }}>
+                {r.label}
+              </Text>
+              <Text style={{
+                fontSize: 14, color: colors.text,
+                fontWeight: '600', flex: 2,
+                textAlign: isRTL ? 'left' : 'right',
+                fontFamily: 'Manrope_600SemiBold',
+              }}>
+                {r.value}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Close button */}
+        <TouchableOpacity
+          onPress={onClose}
+          style={{
+            marginTop: 24,
+            backgroundColor: colors.primary,
+            borderRadius: 14,
+            paddingVertical: 14,
+            alignItems: 'center',
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700', fontFamily: 'Manrope_700Bold' }}>
+            {isRTL ? 'إغلاق' : 'Close'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </AnimatedModal>
   );
 }
 

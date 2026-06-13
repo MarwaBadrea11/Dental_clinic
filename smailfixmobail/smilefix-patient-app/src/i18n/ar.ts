@@ -127,6 +127,10 @@ export default {
   doctorBusy:      'الطبيب غير متاح في هذا الوقت',
   appointmentSummary: 'ملخص الموعد',
   noAvailableSlots: 'لا توجد أوقات متاحة لهذا اليوم',
+  noOpenDays:       'لا توجد أيام عمل متاحة',
+  selectShift:      'اختر الدوام',
+  morningShift:     'الدوام الصباحي',
+  eveningShift:     'الدوام المسائي',
   min:             'دقيقة',
   sar:             'ريال',
 

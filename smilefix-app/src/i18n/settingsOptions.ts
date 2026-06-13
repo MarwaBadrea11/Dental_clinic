@@ -1,16 +1,17 @@
 import type { TFunction } from 'i18next'
 import type { NotificationPreferences } from '@/services/notificationService'
 
-export type SettingsTabId = 'profile' | 'appearance' | 'clinic' | 'notifications' | 'permissions' | 'security'
+export type SettingsTabId = 'profile' | 'appearance' | 'clinic' | 'workingHours' | 'notifications' | 'permissions' | 'security'
 
 export const SETTINGS_TAB_IDS: SettingsTabId[] = [
-  'profile', 'appearance', 'clinic', 'notifications', 'permissions', 'security',
+  'profile', 'appearance', 'clinic', 'workingHours', 'notifications', 'permissions', 'security',
 ]
 
 export const settingsTabKey: Record<SettingsTabId, string> = {
   profile:       'settings.profile',
   appearance:    'settings.appearance',
   clinic:        'settings.clinicInfo',
+  workingHours:  'settings.workingHours',
   notifications: 'settings.notifications',
   permissions:   'settings.permissions',
   security:      'settings.security',

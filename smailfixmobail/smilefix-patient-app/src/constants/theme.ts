@@ -85,11 +85,25 @@ export const Radius = {
 
 export const Shadows = {
   card: {
-    shadowColor: '#1e5979',
+    shadowColor: '#00696f',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  cardElevated: {
+    shadowColor: '#00696f',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  heroCard: {
+    shadowColor: '#00696f',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 32,
+    elevation: 12,
   },
   floating: {
     shadowColor: '#1e5979',
@@ -104,5 +118,12 @@ export const Shadows = {
     shadowOpacity: 0.30,
     shadowRadius: 14,
     elevation: 5,
+  },
+  actionTile: {
+    shadowColor: '#00696f',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.09,
+    shadowRadius: 14,
+    elevation: 4,
   },
 };

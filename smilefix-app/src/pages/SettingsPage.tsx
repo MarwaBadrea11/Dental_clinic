@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sun, Moon, Globe, Shield, User, Bell,
-  Building2, Palette, Lock, ChevronRight, Check,
+  Building2, Palette, Lock, ChevronRight, Check, Clock,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -29,16 +29,24 @@ import {
   getPermissionLabel,
   getPermissionRoleLabel,
   getSettingsTabLabel,
+  getWeekdayLabels,
   NOTIFICATION_PREF_KEYS,
   PERMISSION_ROLES,
   SETTINGS_TAB_IDS,
   type SettingsTabId,
 } from '@/i18n/settingsOptions'
+import {
+  fetchWorkingHours,
+  saveWorkingHours,
+  generateSlots,
+  type WorkingHoursDay,
+} from '@/services/settingsService'
 
 const TAB_ICONS: Record<SettingsTabId, React.ReactNode> = {
   profile:       <User size={15} />,
   appearance:    <Palette size={15} />,
   clinic:        <Building2 size={15} />,
+  workingHours:  <Clock size={15} />,
   notifications: <Bell size={15} />,
   permissions:   <Shield size={15} />,
   security:      <Lock size={15} />,
@@ -121,12 +129,56 @@ export default function SettingsPage() {
     timezone: 'UTC-8',
   })
 
+  // ── Working-hours state ──────────────────────────────────────────────────
+  const [workingHours, setWorkingHours] = useState<WorkingHoursDay[]>([])
+  const [whLoading, setWhLoading]       = useState(false)
+  const [whSaving,  setWhSaving]        = useState(false)
+  const [whError,   setWhError]         = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeTab !== 'workingHours') return
+    if (workingHours.length > 0) return   // already loaded
+    setWhLoading(true)
+    setWhError(null)
+    fetchWorkingHours()
+      .then(setWorkingHours)
+      .catch(() => setWhError(t('common.loadFailed') || 'Failed to load working hours'))
+      .finally(() => setWhLoading(false))
+  }, [activeTab])
+
+  const updateDay = (dow: number, patch: Partial<WorkingHoursDay>) => {
+    setWorkingHours((prev) =>
+      prev.map((d) => (d.dayOfWeek === dow ? { ...d, ...patch } : d)),
+    )
+  }
+
+  const handleSaveWorkingHours = async () => {
+    setWhSaving(true)
+    setWhError(null)
+    try {
+      const saved = await saveWorkingHours(workingHours)
+      setWorkingHours(saved)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save working hours'
+      setWhError(msg)
+    } finally {
+      setWhSaving(false)
+    }
+  }
+
   /** Save handler — profile tab calls the backend; others just show the saved indicator */
   const handleSave = async () => {
     if (activeTab === 'notifications') {
       await savePrefs()
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+      return
+    }
+
+    if (activeTab === 'workingHours') {
+      await handleSaveWorkingHours()
       return
     }
 
@@ -189,10 +241,10 @@ export default function SettingsPage() {
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={notifsSaving || profileSaving}
+            disabled={notifsSaving || profileSaving || whSaving}
             className={saved ? 'bg-[var(--color-secondary)]' : ''}
           >
-            {(notifsSaving || profileSaving)
+            {(notifsSaving || profileSaving || whSaving)
               ? t('settings.saving')
               : saved
               ? `✓ ${t('common.saved')}`
@@ -347,6 +399,176 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex justify-end mt-4">
                     <Button size="sm" onClick={handleSave}>{t('settings.saveClinicInfo')}</Button>
+                  </div>
+                </SectionCard>
+              )}
+
+              {activeTab === 'workingHours' && (
+                <SectionCard
+                  title={t('settings.workingHours')}
+                  icon={<Clock size={15} />}
+                  subtitle={t('settings.workingHoursSubtitle')}
+                >
+                  {/* Error banner */}
+                  {whError && (
+                    <div className="mb-4 px-4 py-2.5 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-error)] text-sm">
+                      {whError}
+                    </div>
+                  )}
+
+                  {/* Loading skeleton */}
+                  {whLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 7 }).map((_, i) => (
+                        <div key={i} className="h-16 rounded-[var(--radius-DEFAULT)] bg-[var(--color-surface-container-high)] animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {workingHours.map((day) => {
+                        const dayLabel = getWeekdayLabels(language)[day.dayOfWeek]
+                        const morningSlots = generateSlots(day.morningStart, day.morningEnd)
+                        const eveningSlots = generateSlots(day.eveningStart, day.eveningEnd)
+
+                        return (
+                          <div
+                            key={day.dayOfWeek}
+                            className={cn(
+                              'rounded-[var(--radius-lg)] border p-4 transition-colors',
+                              day.isOpen
+                                ? 'border-[var(--color-primary)]/20 bg-[var(--color-primary-container)]/5'
+                                : 'border-[var(--color-outline-variant)]/20 bg-[var(--color-surface-container-low)]',
+                            )}
+                          >
+                            {/* Day header row */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <span className="font-semibold text-sm text-[var(--color-on-surface)] w-28">
+                                  {dayLabel}
+                                </span>
+                                <span className={cn(
+                                  'text-xs font-semibold px-2 py-0.5 rounded-full',
+                                  day.isOpen
+                                    ? 'bg-[var(--color-secondary-container)]/30 text-[var(--color-secondary)]'
+                                    : 'bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)]',
+                                )}>
+                                  {day.isOpen ? t('settings.open') : t('settings.closed')}
+                                </span>
+                              </div>
+                              {/* Open / closed toggle */}
+                              <button
+                                type="button"
+                                onClick={() => updateDay(day.dayOfWeek, { isOpen: !day.isOpen })}
+                                className={cn(
+                                  'relative w-10 h-5 shrink-0 rounded-full transition-colors duration-200',
+                                  day.isOpen ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-outline-variant)]',
+                                )}
+                                role="switch"
+                                aria-checked={day.isOpen}
+                                aria-label={`Toggle ${dayLabel}`}
+                              >
+                                <motion.div
+                                  animate={{ x: day.isOpen ? (isRtl ? 2 : 20) : (isRtl ? 20 : 2) }}
+                                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                  className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm"
+                                />
+                              </button>
+                            </div>
+
+                            {/* Shift time pickers — only when day is open */}
+                            {day.isOpen && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                {/* Morning shift */}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wide flex items-center gap-1.5">
+                                    <Sun size={12} /> {t('settings.morningShift')}
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <FormField label={t('settings.startTime')} className="flex-1 mb-0">
+                                      <Input
+                                        type="time"
+                                        value={day.morningStart ?? ''}
+                                        onChange={(e) => updateDay(day.dayOfWeek, { morningStart: e.target.value || null })}
+                                      />
+                                    </FormField>
+                                    <span className="text-[var(--color-on-surface-variant)] mt-5">–</span>
+                                    <FormField label={t('settings.endTime')} className="flex-1 mb-0">
+                                      <Input
+                                        type="time"
+                                        value={day.morningEnd ?? ''}
+                                        onChange={(e) => updateDay(day.dayOfWeek, { morningEnd: e.target.value || null })}
+                                      />
+                                    </FormField>
+                                  </div>
+                                  {/* Slot preview */}
+                                  {morningSlots.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {morningSlots.map((s) => (
+                                        <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-primary-container)]/20 text-[var(--color-primary)] font-mono">
+                                          {s}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Evening shift */}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-[var(--color-tertiary)] uppercase tracking-wide flex items-center gap-1.5">
+                                    <Moon size={12} /> {t('settings.eveningShift')}
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <FormField label={t('settings.startTime')} className="flex-1 mb-0">
+                                      <Input
+                                        type="time"
+                                        value={day.eveningStart ?? ''}
+                                        onChange={(e) => updateDay(day.dayOfWeek, { eveningStart: e.target.value || null })}
+                                      />
+                                    </FormField>
+                                    <span className="text-[var(--color-on-surface-variant)] mt-5">–</span>
+                                    <FormField label={t('settings.endTime')} className="flex-1 mb-0">
+                                      <Input
+                                        type="time"
+                                        value={day.eveningEnd ?? ''}
+                                        onChange={(e) => updateDay(day.dayOfWeek, { eveningEnd: e.target.value || null })}
+                                      />
+                                    </FormField>
+                                  </div>
+                                  {/* Slot preview */}
+                                  {eveningSlots.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {eveningSlots.map((s) => (
+                                        <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-tertiary-container)]/20 text-[var(--color-tertiary)] font-mono">
+                                          {s}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end items-center gap-3 mt-5">
+                    {/* Success indicator */}
+                    {saved && (
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--color-secondary)]">
+                        <Check size={15} />
+                        {t('common.saved') || 'Saved!'}
+                      </span>
+                    )}
+                    <Button
+                      size="sm"
+                      loading={whSaving}
+                      onClick={handleSaveWorkingHours}
+                      disabled={whLoading || whSaving}
+                    >
+                      {t('settings.saveWorkingHours')}
+                    </Button>
                   </div>
                 </SectionCard>
               )}

@@ -26,6 +26,7 @@ import type { AppColors } from '../theme/colors';
 import type { Doctor, Service } from '../store/appStore';
 import Text from '../components/Text';
 import { CustomModal, Dropdown } from '../components/CustomModal';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import {
   fetchDentists,
   fetchProcedures,
@@ -94,6 +95,7 @@ export default function BookingScreen({ navigation }: any) {
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
 
   const s = makeStyles(colors, isRTL);
+  const tabBarHeight = useTabBarHeight();
 
   // ── Generate next 14 dates ─────────────────
   useEffect(() => {
@@ -273,7 +275,7 @@ export default function BookingScreen({ navigation }: any) {
           ))}
         </View>
 
-        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]} showsVerticalScrollIndicator={false}>
 
           {/* ── Step 0: Select Dentist ─────────── */}
           {bookingStep === 0 && (
@@ -575,7 +577,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     stepLine:        { flex: 1, height: 2, backgroundColor: c.outline + '40', marginHorizontal: 4 },
     stepLineDone:    { backgroundColor: c.teal },
 
-    scroll: { paddingHorizontal: 20, paddingBottom: 110 },
+    scroll: { paddingHorizontal: 20 },
 
     // Loading / error placeholders
     centerBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },

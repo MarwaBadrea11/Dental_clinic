@@ -330,7 +330,7 @@ export default function NotificationsPage() {
                   )}
                 </div>
                 {/* Category filter tabs */}
-                <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-full p-1">
+                <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-full p-1 overflow-x-auto tab-bar-scroll">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.id}

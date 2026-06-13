@@ -45,7 +45,7 @@ export function AppointmentViewModal({ appointment: a, open, onClose, onEdit, on
           <AppointmentStatusBadge status={a.status} size="md" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             { icon: <User size={14} />,       label: t('common.patient'), value: `${a.patientName}${a.patientCode ? ` (${a.patientCode})` : ''}` },
             { icon: <Stethoscope size={14} />, label: t('common.doctor'),  value: a.doctorName },
@@ -290,10 +290,10 @@ export function AppointmentFormModal({
       description={t('calendar.newApptDesc')}
       size="lg"
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
 
         {/* Patient — full width dropdown */}
-        <FormField label={t('calendar.patientName')} required error={errors.patientId} className="col-span-2">
+        <FormField label={t('calendar.patientName')} required error={errors.patientId} className="col-span-full sm:col-span-2">
           <Select
             options={patientSelectOptions}
             value={form.patientId}
@@ -321,7 +321,7 @@ export function AppointmentFormModal({
         </FormField>
 
         {/* Treatment — full width */}
-        <FormField label={t('patients.treatment')} required error={errors.treatment} className="col-span-2">
+        <FormField label={t('patients.treatment')} required error={errors.treatment} className="col-span-full sm:col-span-2">
           <Select
             options={[{ value: '', label: t('calendar.selectTreatment') }, ...TREATMENT_OPTIONS]}
             value={form.treatment}
@@ -350,7 +350,7 @@ export function AppointmentFormModal({
         </FormField>
 
         {/* Status — full width */}
-        <FormField label={t('common.status')} className="col-span-2">
+        <FormField label={t('common.status')} className="col-span-full sm:col-span-2">
           <Select
             options={STATUS_OPTIONS}
             value={form.status}
@@ -359,7 +359,7 @@ export function AppointmentFormModal({
         </FormField>
 
         {/* Notes — full width */}
-        <FormField label={t('common.notes')} className="col-span-2">
+        <FormField label={t('common.notes')} className="col-span-full sm:col-span-2">
           <Textarea
             placeholder={t('calendar.notesPlaceholder')}
             value={form.notes}

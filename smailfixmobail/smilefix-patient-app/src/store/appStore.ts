@@ -97,9 +97,11 @@ interface AppState {
   setAppointments: (appointments: Appointment[]) => void;
   addAppointment: (appointment: Appointment) => void;
   archiveAppointment: (id: string) => void;
+  removeAppointment: (id: string) => void;
+  /** Update the patient record in-memory after a profile edit */
+  setPatient: (patient: Patient) => void;
   setDoctors: (doctors: Doctor[]) => void;
-  setServices: (services: Service[]) => void;
-  setBookingStep: (step: number) => void;
+  setServices: (services: Service[]) => void;  setBookingStep: (step: number) => void;
   setSelectedDoctor: (doctor: Doctor | null) => void;
   setSelectedService: (service: Service | null) => void;
   setSelectedDate: (date: string | null) => void;
@@ -175,14 +177,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setAppointments: (appointments) => set({ appointments }),
 
+  setPatient: (patient) => set({ patient }),
+
   addAppointment: (appointment) =>
     set((s) => ({ appointments: [appointment, ...s.appointments] })),
-
   archiveAppointment: (id) =>
     set((s) => ({
       appointments: s.appointments.map((a) =>
         a.id === id ? { ...a, isArchived: true, status: 'cancelled' } : a
       ),
+    })),
+
+  removeAppointment: (id) =>
+    set((s) => ({
+      appointments: s.appointments.filter((a) => a.id !== id),
     })),
 
   setDoctors:  (doctors)  => set({ doctors }),

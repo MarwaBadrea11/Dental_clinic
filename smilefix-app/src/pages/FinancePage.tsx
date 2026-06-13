@@ -183,7 +183,7 @@ export default function FinancePage() {
         <FinancialCard label={t('finance.collectionRate')} value={`${collectionRate}%`} icon={<TrendingUp size={18} />} variant="paid" progress={collectionRate} trend={t('finance.targetRate')} trendUp={collectionRate >= 90} delay={0.21} />
       </div>
 
-      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 w-fit">
+      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 overflow-x-auto tab-bar-scroll max-w-full">
         {TABS.map((tab) => (
           <button key={tab.id} onClick={() => setViewMode(tab.id)}
             className={cn('px-4 py-2 rounded-[var(--radius-DEFAULT)] text-sm font-medium transition-all duration-200 whitespace-nowrap',

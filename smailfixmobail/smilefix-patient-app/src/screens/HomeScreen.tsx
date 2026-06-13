@@ -18,11 +18,14 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
+import GlassCard from '../components/GlassCard';
 
 export default function HomeScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
   const { t, isRTL }       = useTranslation();
   const { patient, appointments } = useAppStore();
+  const tabBarHeight = useTabBarHeight();
 
   const now = new Date().toISOString().split('T')[0];
   const nextAppt = appointments
@@ -55,7 +58,7 @@ export default function HomeScreen({ navigation }: any) {
 
       <SafeAreaView style={s.safe}>
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* ── Header ── */}
@@ -165,7 +168,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: c.bg },
     safe: { flex: 1 },
-    scroll: { paddingHorizontal: 20, paddingBottom: 110 },
+    scroll: { paddingHorizontal: 20 },
 
     // Header
     header: {
@@ -208,8 +211,8 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginBottom: 14,
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03, shadowRadius: 7, elevation: 1,
       // Explicitly enforce column layout so RTL direction on parent
       // does not cause children to stack horizontally
       flexDirection: 'column',

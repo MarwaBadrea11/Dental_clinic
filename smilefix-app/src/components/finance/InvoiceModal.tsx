@@ -378,7 +378,7 @@ export function InvoiceViewModal({ invoice: inv, open, onClose, onStatusChange, 
       {showPayForm && outstanding > 0 && (
         <div className="bg-[var(--color-primary-container)]/10 border border-[var(--color-primary)]/20 rounded-[var(--radius-md)] p-4 mb-4">
           <p className="text-sm font-semibold text-[var(--color-on-surface)] mb-3">{t('finance.recordPayment')}</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField label={t('common.amount')}>
               <Input
                 type="number"
@@ -519,7 +519,7 @@ export function InvoiceFormModal({ open, onClose, onSave, patients = [], isSavin
       size="xl"
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label={t('common.patient')} required>
             <Select
               options={patientOptions}
@@ -536,16 +536,16 @@ export function InvoiceFormModal({ open, onClose, onSave, patients = [], isSavin
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)] mb-2">{t('finance.lineItems')}</p>
           <div className="grid grid-cols-12 gap-2 mb-2">
-            <div className="col-span-5">
+            <div className="col-span-12 sm:col-span-5">
               <Input placeholder={t('common.description')} value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-4 sm:col-span-2">
               <Input type="number" placeholder={t('common.quantity')} value={qty} onChange={(e) => setQty(e.target.value)} />
             </div>
-            <div className="col-span-3">
+            <div className="col-span-4 sm:col-span-3">
               <Input type="number" placeholder={t('finance.unitPrice')} value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-4 sm:col-span-2">
               <Button variant="outline" size="md" fullWidth onClick={addItem}>{t('finance.addLineItem')}</Button>
             </div>
           </div>

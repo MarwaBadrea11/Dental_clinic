@@ -103,7 +103,7 @@ export function PatientForm({ initialData, onSubmit, loading }: PatientFormProps
     <form onSubmit={handleSubmit} className="space-y-6">
 
       {/* ── Personal Info ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input
           label={t('patients.firstName')}
           value={form.firstName}

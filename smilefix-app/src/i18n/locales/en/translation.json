@@ -86,6 +86,7 @@
     "joinDate":      "Join Date",
     "shift":         "Shift",
     "unknown":       "Unknown",
+    "required":      "Required",
     "optional":      "optional",
     "revoke":        "Revoke",
     "currentSession":"Current session",
@@ -218,7 +219,9 @@
     "generateFullView":  "Generate Full View",
     "thisMonth":         "this month",
     "invoicesOverdue":   "invoices overdue",
-    "invoiceOverdue":    "invoice overdue"
+    "invoiceOverdue":    "invoice overdue",
+    "statsError":        "Could not load dashboard stats. Check your connection or permissions.",
+    "patientsError":     "Could not load recent patients."
   },
   "patients": {
     "title":              "Patients",
@@ -823,7 +826,6 @@
   },
   "notifications": {
     "title":             "Notifications",
-    "subtitle":          "Real-time clinical operations and system alerts.",
     "markAllRead":       "Mark All Read",
     "exportPDF":         "Export PDF",
     "all":               "All",
@@ -857,7 +859,16 @@
     "downloadLog":       "Download Log",
     "viewFinancial":     "View Financial Record",
     "resolveCalendar":   "Resolve in Calendar",
-    "performanceStats":  "Performance Stats"
+    "performanceStats":  "Performance Stats",
+    "successRate":       "Success Rate",
+    "avgWaitTime":       "Avg. Wait Time",
+    "newInquiries":      "New Inquiries",
+    "severityWarning":   "Warning",
+    "severitySuccess":   "Success",
+    "severityInfo":      "Info",
+    "activityArchived":  "Archived Patient Record #8892",
+    "activityIntegrity": "Financial Integrity Verification",
+    "activityCredential":"New Staff Credential Provisioning"
   },
   "settings": {
     "title":              "Settings",

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu, Bell, ChevronDown, Sun, Moon, LogIn } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
@@ -17,14 +17,30 @@ interface TopbarProps {
   sidebarWidth: number
 }
 
+/** Reactive desktop breakpoint — updates whenever the viewport crosses 1024 px */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
+}
+
 export function Topbar({ title, sidebarWidth }: TopbarProps) {
   const { toggleSidebar, theme, toggleTheme, language } = useUIStore()
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated, logout }               = useAuthStore()
   const unreadCount = useNotificationStore((s) => s.unreadCount)
-  const { t } = useTranslation()
-  const navigate = useNavigate()
+  const { t }       = useTranslation()
+  const navigate    = useNavigate()
+  const isRTL       = language === 'ar'
+  const isDesktop   = useIsDesktop()
+
   const [search, setSearch] = useState('')
-  const isRTL = language === 'ar'
 
   const handleLogout = async () => {
     await logout()
@@ -38,48 +54,60 @@ export function Topbar({ title, sidebarWidth }: TopbarProps) {
     { id: 'logout',   label: t('topbar.signOut'),   onClick: handleLogout, danger: true },
   ]
 
+  /*
+    Topbar position:
+    - Mobile  (<lg): spans full width  → left: 0, right: 0
+    - Desktop (≥lg): offset by sidebar → left: sidebarWidth (LTR) or right: sidebarWidth (RTL)
+  */
+  const positionStyle = isDesktop
+    ? isRTL
+      ? { right: sidebarWidth, left: 0 }
+      : { left: sidebarWidth, right: 0 }
+    : { left: 0, right: 0 }
+
   return (
     <motion.header
-      animate={isRTL ? { right: sidebarWidth, left: 0 } : { left: sidebarWidth, right: 0 }}
+      animate={positionStyle}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className={cn(
         'fixed top-0 z-30 h-16',
         'glass-panel border-b border-[var(--color-outline-variant)]/20',
         'shadow-[var(--shadow-topbar)]',
-        'flex items-center justify-between px-6 gap-4'
+        'flex items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4'
       )}
-      style={isRTL ? { right: sidebarWidth, left: 0 } : { left: sidebarWidth, right: 0 }}
+      style={positionStyle}
     >
       {/* Start: hamburger + title */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        {/* Hamburger — visible on mobile, hidden on desktop */}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-[var(--radius-DEFAULT)] text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-container-high)] transition-colors lg:hidden"
+          className="flex-shrink-0 p-2 rounded-[var(--radius-DEFAULT)] text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-container-high)] transition-colors lg:hidden"
           aria-label="Toggle sidebar"
         >
           <Menu size={20} />
         </button>
+
         <h2
-          className="text-lg font-bold text-[var(--color-primary)] hidden sm:block"
+          className="text-base sm:text-lg font-bold text-[var(--color-primary)] truncate"
           style={{ fontFamily: 'Manrope, sans-serif' }}
         >
           {title}
         </h2>
       </div>
 
-      {/* Spacer to push elements to the right */}
+      {/* Spacer */}
       <div className="flex-1" />
 
       {/* End: actions + user */}
-      <div className="flex items-center gap-2">
-        {/* Expandable search */}
+      <div className="flex items-center gap-1 sm:gap-2">
         <ExpandableSearch
           value={search}
           onChange={setSearch}
           placeholder={t('topbar.search')}
           ariaLabel={t('topbar.search')}
         />
-        
+
         <button
           onClick={toggleTheme}
           className="p-2 rounded-full text-[var(--color-on-surface-variant)] hover:bg-[var(--color-primary-container)]/15 transition-colors"
@@ -101,20 +129,20 @@ export function Topbar({ title, sidebarWidth }: TopbarProps) {
           )}
         </Link>
 
-        <div className="w-px h-6 bg-[var(--color-outline-variant)]/30 mx-1" />
+        <div className="w-px h-6 bg-[var(--color-outline-variant)]/30 mx-0.5 sm:mx-1" />
 
-        {/* User Dropdown */}
         {isAuthenticated && user ? (
           <Dropdown
-            align={isRTL ? 'start' : 'end'}
+            align={isRTL ? 'left' : 'right'}
             trigger={
-              <div className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full hover:bg-[var(--color-surface-container-high)] transition-colors cursor-pointer">
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-1 sm:pl-2 pr-1 py-1 rounded-full hover:bg-[var(--color-surface-container-high)] transition-colors cursor-pointer">
+                {/* Name + role — only on desktop */}
                 <div className="hidden lg:flex flex-col items-end">
                   <p className="text-xs font-semibold text-[var(--color-on-surface)] leading-none">{user.name}</p>
                   <p className="text-[10px] text-[var(--color-on-surface-variant)] uppercase tracking-tight mt-0.5">{user.role}</p>
                 </div>
                 <Avatar name={user.name} size="sm" ring />
-                <ChevronDown size={14} className="text-[var(--color-outline)]" />
+                <ChevronDown size={14} className="text-[var(--color-outline)] hidden sm:block" />
               </div>
             }
             items={userMenuItems}

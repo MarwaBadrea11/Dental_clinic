@@ -215,9 +215,9 @@ export default function OdontogramPage() {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="odontogram-layout grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Main odontogram */}
-        <div className="col-span-12 lg:col-span-8">
+        <div className="lg:col-span-8">
           <SectionCard
             title={t('odontogram.dentalChart')}
             subtitle={t('odontogram.chartSubtitle')}
@@ -253,7 +253,7 @@ export default function OdontogramPage() {
         </div>
 
         {/* Right panel */}
-        <div className="col-span-12 lg:col-span-4 space-y-5">
+        <div className="lg:col-span-4 space-y-5">
           {/* Treatment history */}
           <SectionCard
             title={t('odontogram.treatmentHistory')}

@@ -6,8 +6,8 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-[var(--color-background)] flex">
-      {/* Left panel — branding */}
+    <div className="min-h-screen bg-[var(--color-background)] flex flex-col lg:flex-row">
+      {/* Left panel — branding — hidden on mobile */}
       <div className="hidden lg:flex lg:w-1/2 bg-[var(--color-primary)] relative overflow-hidden flex-col items-center justify-center p-12">
         {/* Background decoration */}
         <div className="absolute inset-0 opacity-10">

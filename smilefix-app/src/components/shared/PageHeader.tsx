@@ -38,7 +38,7 @@ export function PageHeader({ title, subtitle, actions, breadcrumb, className }: 
           </nav>
         )}
         <h1
-          className="text-2xl font-bold text-[var(--color-on-surface)] leading-tight"
+          className="text-xl sm:text-2xl font-bold text-[var(--color-on-surface)] leading-tight truncate"
           style={{ fontFamily: 'Manrope, sans-serif' }}
         >
           {title}

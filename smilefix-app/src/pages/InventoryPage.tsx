@@ -200,8 +200,8 @@ function ItemModal({
       title={editItem ? t('inventory.editItem') : t('inventory.addItemTitle')}
       size="lg"
     >
-      <div className="grid grid-cols-2 gap-4">
-        <FormField label={t('inventory.itemName')} required error={errors.material_name} className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label={t('inventory.itemName')} required error={errors.material_name} className="col-span-full sm:col-span-2">
           <Input
             placeholder="Nitrile Gloves (M)"
             value={form.material_name}
@@ -226,7 +226,7 @@ function ItemModal({
         <FormField label={t('inventory.expiryDate')}>
           <Input type="date" value={form.expiry_date} onChange={(e) => set('expiry_date', e.target.value)} />
         </FormField>
-        <FormField label={t('inventory.supplierName')} className="col-span-2">
+        <FormField label={t('inventory.supplierName')} className="col-span-full sm:col-span-2">
           <Input placeholder="Supplier name or contact info" value={form.supplier_info} onChange={(e) => set('supplier_info', e.target.value)} />
         </FormField>
       </div>
@@ -387,7 +387,7 @@ export default function InventoryPage() {
       <InventoryStats items={items} delay={0} className="mb-6" />
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 w-fit">
+      <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 overflow-x-auto tab-bar-scroll max-w-full">
         {TABS.map((tab) => (
           <button
             key={tab.id}

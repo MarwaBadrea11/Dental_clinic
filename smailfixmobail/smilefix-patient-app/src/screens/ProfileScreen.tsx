@@ -11,6 +11,11 @@ import {
   Alert,
   Switch,
   I18nManager,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,24 +25,72 @@ import { useTheme } from '../hooks/useTheme';
 import { useAppStore } from '../store/appStore';
 import type { AppColors } from '../theme/colors';
 import Text from '../components/Text';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
+import { updateMyPatient, adaptPatient } from '../services/patientService';
 
 export default function ProfileScreen() {
   const { t, isRTL, locale, i18n } = useTranslation();
   const { colors, isDark, toggleTheme } = useTheme();
-  const { patient, logout, setLocale } = useAppStore();
+  const { patient, logout, setLocale, setPatient } = useAppStore();
   const [langLoading, setLangLoading] = useState(false);
+  const tabBarHeight = useTabBarHeight();
+
+  // ── Edit Profile modal state ──────────────
+  const [editVisible, setEditVisible] = useState(false);
+  const [editName,    setEditName]    = useState('');
+  const [editEmail,   setEditEmail]   = useState('');
+  const [editPhone,   setEditPhone]   = useState('');
+  const [saving,      setSaving]      = useState(false);
+  const [saveError,   setSaveError]   = useState<string | null>(null);
 
   const s = makeStyles(colors, isRTL);
-  
-  // Helper functions for RTL/LTR styling
-  // Note: CSS `direction` is not a valid React Native style property.
-  // RTL layout is handled per-element using textAlign/flexDirection helpers below.
 
+  // ── Open edit modal prefilled with current data ──
+  const handleOpenEdit = () => {
+    setEditName(patient?.fullName  ?? '');
+    setEditEmail(patient?.email    ?? '');
+    setEditPhone(patient?.phone    ?? '');
+    setSaveError(null);
+    setEditVisible(true);
+  };
+
+  // ── Save profile changes to backend ──────
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      setSaveError(t('required'));
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const nameParts  = editName.trim().split(/\s+/);
+      const first_name = nameParts[0];
+      const last_name  = nameParts.slice(1).join(' ') || undefined;
+
+      const updated = await updateMyPatient({
+        first_name,
+        last_name,
+        email: editEmail.trim() || undefined,
+        phone: editPhone.trim() || undefined,
+      });
+
+      // Refresh patient in the global store so the UI reflects the change
+      setPatient(adaptPatient(updated, editEmail.trim() || undefined));
+      setEditVisible(false);
+    } catch (err: any) {
+      setSaveError(err?.message ?? t('networkError'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Helpers for RTL/LTR styling ───────────
   const getTextAlignment = (center = false) => ({
     textAlign: center ? 'center' : (isRTL ? 'right' : 'left'),
     alignSelf: center ? 'center' : (isRTL ? 'flex-end' : 'flex-start'),
     paddingRight: center ? 0 : (isRTL ? 20 : 0),
-    paddingLeft: center ? 0 : (isRTL ? 0 : 20),
+    paddingLeft:  center ? 0 : (isRTL ? 0  : 20),
   });
 
   const getFlexDirection = () => ({
@@ -51,37 +104,27 @@ export default function ProfileScreen() {
     return iconName;
   };
 
-  // For better visual balance in RTL/LTR
   const getSpacingStyle = () => ({
-    paddingLeft: isRTL ? 0 : 4,
+    paddingLeft:  isRTL ? 0 : 4,
     paddingRight: isRTL ? 4 : 0,
   });
 
-  // ── Language toggle with RTL switch ──────────
+  // ── Language toggle ───────────────────────
   const handleToggleLang = () => {
     const next = locale === 'ar' ? 'en' : 'ar';
     setLangLoading(true);
-
-    // Update i18next language
     i18n.changeLanguage(next).then(() => {
-      // Update store
       setLocale(next);
-      // Apply RTL/LTR
-      const shouldRTL = next === 'ar';
-      I18nManager.forceRTL(shouldRTL);
+      I18nManager.forceRTL(next === 'ar');
       setLangLoading(false);
     });
   };
 
-  // ── Logout ────────────────────────────────────
+  // ── Logout ────────────────────────────────
   const handleLogout = () => {
     Alert.alert(t('logout'), t('logoutConfirm'), [
       { text: t('no'), style: 'cancel' },
-      {
-        text: t('yes'),
-        style: 'destructive',
-        onPress: () => logout(), // navigator reacts automatically
-      },
+      { text: t('yes'), style: 'destructive', onPress: () => logout() },
     ]);
   };
 
@@ -94,7 +137,7 @@ export default function ProfileScreen() {
 
       <SafeAreaView style={s.safe}>
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={[s.scroll, { paddingBottom: tabBarHeight + 16 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* ── Page title ── */}
@@ -107,12 +150,14 @@ export default function ProfileScreen() {
                 {patient?.fullName?.charAt(0) ?? 'P'}
               </Text>
             </View>
-            <Text style={[s.patientName, getTextAlignment(true)]}>{patient?.fullName ?? '—'}</Text>
-            <Text style={[s.patientPhone, getTextAlignment(true)]}>{patient?.phone ?? '—'}</Text>
+            <Text style={[s.patientName,  getTextAlignment(true)]}>{patient?.fullName ?? '—'}</Text>
+            <Text style={[s.patientPhone, getTextAlignment(true)]}>{patient?.phone    ?? '—'}</Text>
             {patient?.email ? (
               <Text style={[s.patientEmail, getTextAlignment(true)]}>{patient.email}</Text>
             ) : null}
-            <TouchableOpacity style={s.editBtn}>
+
+            {/* ── Edit Profile button — NOW HAS onPress ── */}
+            <TouchableOpacity style={s.editBtn} onPress={handleOpenEdit} activeOpacity={0.75}>
               <Text style={s.editBtnText}>{t('editProfile')}</Text>
             </TouchableOpacity>
           </View>
@@ -127,7 +172,7 @@ export default function ProfileScreen() {
                     s.progressFill,
                     {
                       width: `${Math.round(
-                        ((patient.alignersCurrent ?? 0) / patient.alignersTotal) * 100
+                        ((patient.alignersCurrent ?? 0) / patient.alignersTotal) * 100,
                       )}%`,
                     },
                   ]}
@@ -144,18 +189,14 @@ export default function ProfileScreen() {
           <Text style={[s.sectionTitle, getTextAlignment()]}>{t('settings')}</Text>
 
           {/* Language toggle */}
-          <TouchableOpacity
-            style={s.settingRow}
-            onPress={handleToggleLang}
-            disabled={langLoading}
-          >
+          <TouchableOpacity style={s.settingRow} onPress={handleToggleLang} disabled={langLoading}>
             <View style={s.settingLeft}>
               <View style={[s.iconBox, { backgroundColor: colors.teal + '20' }]}>
                 <Ionicons name="language" size={20} color={colors.teal} />
               </View>
               <View style={[{ flex: 1 }, getSpacingStyle()]}>
                 <Text style={[s.settingLabel, getTextAlignment()]}>{t('language')}</Text>
-                <Text style={[s.settingDesc, getTextAlignment()]}>
+                <Text style={[s.settingDesc,  getTextAlignment()]}>
                   {locale === 'ar' ? 'العربية → English' : 'English → العربية'}
                 </Text>
               </View>
@@ -171,15 +212,11 @@ export default function ProfileScreen() {
           <View style={s.settingRow}>
             <View style={s.settingLeft}>
               <View style={[s.iconBox, { backgroundColor: (isDark ? '#79d5dc' : '#1e5979') + '20' }]}>
-                <Ionicons
-                  name={isDark ? 'moon' : 'sunny'}
-                  size={20}
-                  color={isDark ? '#79d5dc' : '#1e5979'}
-                />
+                <Ionicons name={isDark ? 'moon' : 'sunny'} size={20} color={isDark ? '#79d5dc' : '#1e5979'} />
               </View>
               <View style={[{ flex: 1 }, getSpacingStyle()]}>
                 <Text style={[s.settingLabel, getTextAlignment()]}>{t('darkMode')}</Text>
-                <Text style={[s.settingDesc, getTextAlignment()]}>
+                <Text style={[s.settingDesc,  getTextAlignment()]}>
                   {isDark ? (locale === 'ar' ? 'مفعّل' : 'Enabled') : (locale === 'ar' ? 'معطّل' : 'Disabled')}
                 </Text>
               </View>
@@ -204,16 +241,6 @@ export default function ProfileScreen() {
             <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
           </TouchableOpacity>
 
-          {/* Privacy */}
-          <TouchableOpacity style={s.settingRow}>
-            <View style={s.settingLeft}>
-              <View style={[s.iconBox, { backgroundColor: colors.warningBg }]}>
-                <Ionicons name="shield-checkmark-outline" size={20} color={colors.warning} />
-              </View>
-              <Text style={[s.settingLabel, getTextAlignment(), getSpacingStyle()]}>{t('privacy')}</Text>
-            </View>
-            <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
-          </TouchableOpacity>
 
           {/* Help */}
           <TouchableOpacity style={s.settingRow}>
@@ -237,27 +264,127 @@ export default function ProfileScreen() {
             <Ionicons name={getIconName('chevron-forward')} size={18} color={colors.textSub} />
           </TouchableOpacity>
 
-          {/* ── Logout ── */}
+          {/* Logout */}
           <TouchableOpacity style={[s.logoutBtn, getFlexDirection()]} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
             <Text style={s.logoutText}>{t('logout')}</Text>
           </TouchableOpacity>
 
-          {/* App version */}
           <Text style={s.version}>SmileFix v1.0.0</Text>
         </ScrollView>
       </SafeAreaView>
+
+      {/* ── Edit Profile Modal ───────────────────── */}
+      <Modal
+        visible={editVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !saving && setEditVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={s.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
+            {/* Header */}
+            <View style={[s.modalHeader, getFlexDirection()]}>
+              <Text style={[s.modalTitle, { color: colors.text }]}>{t('editProfile')}</Text>
+              <TouchableOpacity onPress={() => !saving && setEditVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={22} color={colors.textSub} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Error banner */}
+            {saveError ? (
+              <View style={[s.errorBanner, { backgroundColor: colors.error + '15' }]}>
+                <Text style={[s.errorText, { color: colors.error }]}>{saveError}</Text>
+              </View>
+            ) : null}
+
+            {/* Full name */}
+            <Text style={[s.fieldLabel, { color: colors.textSub, textAlign: isRTL ? 'right' : 'left' }]}>
+              {t('fullName')}
+            </Text>
+            <TextInput
+              style={[s.input, {
+                backgroundColor: colors.inputBg ?? colors.surfaceCard,
+                color:           colors.text,
+                borderColor:     colors.outline,
+                textAlign:       isRTL ? 'right' : 'left',
+              }]}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder={t('fullNamePh')}
+              placeholderTextColor={colors.textDisabled}
+              autoCapitalize="words"
+              editable={!saving}
+            />
+
+            {/* Email */}
+            <Text style={[s.fieldLabel, { color: colors.textSub, textAlign: isRTL ? 'right' : 'left' }]}>
+              {t('email')}
+            </Text>
+            <TextInput
+              style={[s.input, {
+                backgroundColor: colors.inputBg ?? colors.surfaceCard,
+                color:           colors.text,
+                borderColor:     colors.outline,
+                textAlign:       isRTL ? 'right' : 'left',
+              }]}
+              value={editEmail}
+              onChangeText={setEditEmail}
+              placeholder={t('emailPh')}
+              placeholderTextColor={colors.textDisabled}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!saving}
+            />
+
+            {/* Phone */}
+            <Text style={[s.fieldLabel, { color: colors.textSub, textAlign: isRTL ? 'right' : 'left' }]}>
+              {t('phoneNumber')}
+            </Text>
+            <TextInput
+              style={[s.input, {
+                backgroundColor: colors.inputBg ?? colors.surfaceCard,
+                color:           colors.text,
+                borderColor:     colors.outline,
+                textAlign:       isRTL ? 'right' : 'left',
+              }]}
+              value={editPhone}
+              onChangeText={setEditPhone}
+              placeholder="+966 5X XXX XXXX"
+              placeholderTextColor={colors.textDisabled}
+              keyboardType="phone-pad"
+              editable={!saving}
+            />
+
+            {/* Save button */}
+            <TouchableOpacity
+              style={[s.saveBtn, { backgroundColor: colors.teal, opacity: saving ? 0.7 : 1 }]}
+              onPress={handleSaveProfile}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              {saving ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={s.saveBtnText}>{locale === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
 
 // ── Dynamic styles ────────────────────────────
 function makeStyles(c: AppColors, isRTL: boolean) {
-  // Base styles without direction - direction handled by helper functions
   return StyleSheet.create({
     root:  { flex: 1, backgroundColor: c.bg },
     safe:  { flex: 1 },
-    scroll: { paddingHorizontal: 20, paddingBottom: 110 },
+    scroll: { paddingHorizontal: 20 },
 
     pageTitle: {
       fontSize: 28, fontWeight: '700',
@@ -265,7 +392,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginTop: 8, marginBottom: 20,
       fontFamily: 'Manrope_700Bold',
       paddingRight: isRTL ? 20 : 0,
-      paddingLeft: isRTL ? 0 : 20,
+      paddingLeft:  isRTL ? 0  : 20,
     },
 
     // Avatar card
@@ -273,13 +400,12 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       backgroundColor: c.surfaceCard,
       borderRadius: 24, padding: 24,
       alignItems: 'center',
-      // Explicitly column so RTL parent direction doesn't cause horizontal stacking
       flexDirection: 'column',
       borderWidth: 0.5, borderColor: c.surfaceCardBorder,
       marginBottom: 16,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.06, shadowRadius: 16, elevation: 3,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.04, shadowRadius: 12, elevation: 2,
     },
     avatarCircle: {
       width: 84, height: 84, borderRadius: 42,
@@ -321,7 +447,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       marginBottom: 12,
       fontFamily: 'Manrope_600SemiBold',
       paddingRight: isRTL ? 20 : 0,
-      paddingLeft: isRTL ? 0 : 20,
+      paddingLeft:  isRTL ? 0  : 20,
     },
     progressTrack: {
       height: 8, backgroundColor: c.outline + '40',
@@ -330,9 +456,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
     progressFill: {
       height: '100%', backgroundColor: c.teal, borderRadius: 4,
     },
-    progressLabel: {
-      fontSize: 12, color: c.textSub,
-    },
+    progressLabel: { fontSize: 12, color: c.textSub },
 
     // Settings
     sectionTitle: {
@@ -341,7 +465,7 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       letterSpacing: 0.8, textTransform: 'uppercase',
       fontFamily: 'Inter_600SemiBold',
       paddingRight: isRTL ? 20 : 0,
-      paddingLeft: isRTL ? 0 : 20,
+      paddingLeft:  isRTL ? 0  : 20,
     },
     settingRow: {
       flexDirection: 'row',
@@ -364,23 +488,17 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       fontSize: 15, color: c.text, fontWeight: '600',
       fontFamily: 'Inter_600SemiBold',
     },
-    settingDesc: {
-      fontSize: 11, color: c.textSub, marginTop: 1,
-    },
+    settingDesc: { fontSize: 11, color: c.textSub, marginTop: 1 },
     langBadge: {
-      paddingHorizontal: 12, paddingVertical: 5,
-      borderRadius: 999,
+      paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999,
     },
     langBadgeText: {
-      fontSize: 12, fontWeight: '700',
-      fontFamily: 'Inter_600SemiBold',
+      fontSize: 12, fontWeight: '700', fontFamily: 'Inter_600SemiBold',
     },
 
     // Logout
     logoutBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center', justifyContent: 'center',
       gap: 8,
       backgroundColor: c.error + '12',
       borderRadius: 16, paddingVertical: 16,
@@ -391,10 +509,54 @@ function makeStyles(c: AppColors, isRTL: boolean) {
       fontSize: 16, color: c.error, fontWeight: '700',
       fontFamily: 'Manrope_700Bold',
     },
-
     version: {
       fontSize: 11, color: c.textDisabled,
       textAlign: 'center', marginTop: 20,
+    },
+
+    // ── Edit Profile Modal ────────────────────
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    modalSheet: {
+      borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      padding: 24,
+      paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 18, fontWeight: '700',
+      fontFamily: 'Manrope_700Bold',
+    },
+    errorBanner: {
+      borderRadius: 12, padding: 10, marginBottom: 14,
+    },
+    errorText: { fontSize: 13, fontWeight: '600' },
+    fieldLabel: {
+      fontSize: 12, fontWeight: '600',
+      marginBottom: 6, marginTop: 4,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    input: {
+      borderWidth: 1, borderRadius: 12,
+      paddingHorizontal: 14, paddingVertical: 11,
+      fontSize: 15, marginBottom: 14,
+    },
+    saveBtn: {
+      borderRadius: 14, paddingVertical: 14,
+      alignItems: 'center', justifyContent: 'center',
+      marginTop: 4,
+    },
+    saveBtnText: {
+      color: '#ffffff', fontSize: 16, fontWeight: '700',
+      fontFamily: 'Manrope_700Bold',
     },
   });
 }

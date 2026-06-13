@@ -61,10 +61,14 @@ export async function apiRequest<T>(
 
   // ── Build headers ─────────────────────────
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
     ...(extraHeaders as Record<string, string>),
   };
+
+  // Only set Content-Type for requests that actually send a body
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (!skipAuth) {
     const token = useAppStore.getState().authToken;

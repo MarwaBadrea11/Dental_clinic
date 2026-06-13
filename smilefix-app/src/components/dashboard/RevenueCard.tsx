@@ -24,8 +24,14 @@ export function RevenueCard({ title = 'Performance Stats', metrics, delay = 0, c
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
-      className={cn('grid gap-4', className)}
-      style={{ gridTemplateColumns: `repeat(${Math.min(metrics.length, 4)}, minmax(0, 1fr))` }}
+      className={cn(
+        'grid gap-4',
+        metrics.length === 1 && 'grid-cols-1',
+        metrics.length === 2 && 'grid-cols-2',
+        metrics.length === 3 && 'grid-cols-1 sm:grid-cols-3',
+        metrics.length >= 4 && 'grid-cols-2 sm:grid-cols-4',
+        className
+      )}
     >
       {metrics.map((m, i) => (
         <motion.div

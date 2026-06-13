@@ -1,8 +1,6 @@
 // ─────────────────────────────────────────────
 // Patient Service
-// Wraps: GET /patients/me
-// Resolves the patient record linked to the
-// currently logged-in user account.
+// Wraps: GET /patients/me  |  PUT /patients/me
 // ─────────────────────────────────────────────
 import { api } from './api';
 import type { Patient } from '../store/appStore';
@@ -27,6 +25,10 @@ export interface BackendPatient {
   updated_at: string;
 }
 
+export type UpdatePatientPayload = Partial<
+  Pick<BackendPatient, 'first_name' | 'last_name' | 'email' | 'phone'>
+>;
+
 /**
  * Fetch the patient record that matches the logged-in user account.
  * Returns null if the user has no linked patient record yet.
@@ -49,12 +51,21 @@ export async function fetchMyPatient(accessToken?: string): Promise<BackendPatie
 }
 
 /**
+ * Update the logged-in patient's own profile via PUT /patients/me.
+ */
+export async function updateMyPatient(
+  payload: UpdatePatientPayload,
+): Promise<BackendPatient> {
+  return api.put<BackendPatient>('/patients/me', payload);
+}
+
+/**
  * Map a BackendPatient to the Patient shape the Zustand store expects.
  */
 export function adaptPatient(bp: BackendPatient, fallbackEmail?: string): Patient {
   return {
     id:          bp.id,
-    fullName:    `${bp.first_name} ${bp.last_name}`.trim(),
+    fullName:    [bp.first_name, bp.last_name].filter(Boolean).join(' ').trim(),
     phone:       bp.phone,
     nationalId:  bp.national_id,
     dateOfBirth: bp.date_of_birth,

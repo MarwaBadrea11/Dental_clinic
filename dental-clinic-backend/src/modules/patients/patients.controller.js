@@ -52,6 +52,34 @@ export async function updatePatientHandler(request, reply) {
   return reply.status(200).send(successResponse(patient));
 }
 
+/**
+ * PUT /patients/me
+ * Allows a PATIENT-role user to update their own profile.
+ * The patient record is resolved from the JWT (by email or phone).
+ */
+export async function updateMeHandler(request, reply) {
+  const data = parseValidation(UpdatePatientSchema, request.body, reply);
+  if (!data) return;
+
+  // Resolve the linked patient record for the logged-in user
+  const patient = await request.server.db('patients as p')
+    .whereNull('p.deleted_at')
+    .join('users as u', function () {
+      this.on(request.server.db.raw('LOWER(p.email) = LOWER(u.email)'))
+        .orOn(request.server.db.raw('p.phone = u.username'));
+    })
+    .where('u.id', request.user.sub)
+    .select('p.*')
+    .first();
+
+  if (!patient) {
+    return reply.status(404).send(errorResponse('No patient record linked to this account'));
+  }
+
+  const updated = await getService(request).update(patient.id, data);
+  return reply.status(200).send(successResponse(updated));
+}
+
 export async function deletePatientHandler(request, reply) {
   await getService(request).delete(request.params.id);
   return reply.status(200).send(successResponse({ id: request.params.id }));

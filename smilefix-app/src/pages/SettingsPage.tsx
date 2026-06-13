@@ -15,6 +15,7 @@ import { ImageUploadArea } from '@/components/ui/ImageUploadArea'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationPreferencesStore } from '@/store/notificationPreferencesStore'
+import { updateMyProfile } from '@/services/patientService'
 import { cn } from '@/utils/cn'
 import {
   buildCurrencySelectOptions,
@@ -83,15 +84,17 @@ export default function SettingsPage() {
   const isRtl = language === 'ar'
   const [activeTab, setActiveTab] = useState<SettingsTabId>('profile')
   const [saved, setSaved]         = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileError, setProfileError]   = useState<string | null>(null)
 
   const {
     preferences: notifs,
-    isLoading:   notifsLoading,
-    isSaving:    notifsSaving,
-    error:       notifsError,
-    load:        loadPrefs,
-    toggle:      togglePref,
-    save:        savePrefs,
+    isLoading: notifsLoading,
+    isSaving: notifsSaving,
+    error: notifsError,
+    load: loadPrefs,
+    toggle: togglePref,
+    save: savePrefs,
   } = useNotificationPreferencesStore()
 
   useEffect(() => {
@@ -99,29 +102,57 @@ export default function SettingsPage() {
   }, [activeTab, loadPrefs])
 
   const [profileForm, setProfileForm] = useState({
-    name: user?.name ?? 'Dr. Smith',
-    email: user?.email ?? 'dr.smith@smilefix.com',
-    specialty: user?.specialty ?? 'Orthodontist',
-    phone: '+1 (555) 100-0001',
-    bio: 'Board-certified orthodontist with 12 years of clinical experience.',
+    name:      user?.name      ?? '',
+    email:     user?.email     ?? '',
+    specialty: user?.specialty ?? '',
+    phone:     '',
+    bio:       '',
   })
 
   const [clinicForm, setClinicForm] = useState({
-    name: 'SmileFix Dental Clinic',
-    address: '500 Medical Center Drive',
-    city: 'Los Angeles, CA 90001',
-    phone: '+1 (800) SMILEFIX',
-    email: 'info@smilefix.com',
-    website: 'www.smilefix.com',
-    taxId: 'TAX-88421',
+    name:     'SmileFix Dental Clinic',
+    address:  '500 Medical Center Drive',
+    city:     'Los Angeles, CA 90001',
+    phone:    '+1 (800) SMILEFIX',
+    email:    'info@smilefix.com',
+    website:  'www.smilefix.com',
+    taxId:    'TAX-88421',
     currency: 'USD',
     timezone: 'UTC-8',
   })
 
+  /** Save handler — profile tab calls the backend; others just show the saved indicator */
   const handleSave = async () => {
     if (activeTab === 'notifications') {
       await savePrefs()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      return
     }
+
+    if (activeTab === 'profile' && user?.role === 'PATIENT') {
+      // PATIENT role: update own patient record via PUT /patients/me
+      setProfileSaving(true)
+      setProfileError(null)
+      try {
+        const [firstName, ...rest] = profileForm.name.trim().split(' ')
+        await updateMyProfile({
+          first_name: firstName || profileForm.name,
+          last_name:  rest.join(' ') || undefined,
+          email:      profileForm.email || undefined,
+          phone:      profileForm.phone || undefined,
+        })
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } catch (err) {
+        setProfileError(err instanceof Error ? err.message : t('common.saveFailed'))
+      } finally {
+        setProfileSaving(false)
+      }
+      return
+    }
+
+    // Non-patient profile / other tabs: local state only (no staff self-update endpoint yet)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -158,10 +189,10 @@ export default function SettingsPage() {
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={notifsSaving}
+            disabled={notifsSaving || profileSaving}
             className={saved ? 'bg-[var(--color-secondary)]' : ''}
           >
-            {notifsSaving
+            {(notifsSaving || profileSaving)
               ? t('settings.saving')
               : saved
               ? `✓ ${t('common.saved')}`
@@ -182,7 +213,7 @@ export default function SettingsPage() {
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-DEFAULT)] text-sm font-medium transition-all duration-200',
                     activeTab === tabId
                       ? 'bg-[var(--color-primary-container)]/20 text-[var(--color-primary)]'
-                      : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-container-high)] hover:text-[var(--color-on-surface)]'
+                      : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-container-high)] hover:text-[var(--color-on-surface)]',
                   )}
                 >
                   <span className={activeTab === tabId ? 'text-[var(--color-primary)]' : 'text-[var(--color-outline)]'}>
@@ -210,6 +241,11 @@ export default function SettingsPage() {
 
               {activeTab === 'profile' && (
                 <SectionCard title={t('settings.profileSettings')} icon={<User size={15} />}>
+                  {profileError && (
+                    <div className="mb-4 px-4 py-2.5 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-error)] text-sm">
+                      {profileError}
+                    </div>
+                  )}
                   <div className="flex flex-col sm:flex-row gap-6 mb-6">
                     <ImageUploadArea name={profileForm.name} size="lg" label={t('settings.profilePhoto')} className="shrink-0" />
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -231,7 +267,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <Button size="sm" onClick={handleSave}>{t('settings.updateProfile')}</Button>
+                    <Button size="sm" loading={profileSaving} onClick={handleSave}>{t('settings.updateProfile')}</Button>
                   </div>
                 </SectionCard>
               )}
@@ -249,12 +285,14 @@ export default function SettingsPage() {
                             'flex-1 flex flex-col items-center gap-3 p-4 rounded-[var(--radius-lg)] border-2 transition-all duration-200',
                             theme === themeOpt
                               ? 'border-[var(--color-primary)] bg-[var(--color-primary-container)]/10'
-                              : 'border-[var(--color-outline-variant)]/30 hover:border-[var(--color-outline)]'
+                              : 'border-[var(--color-outline-variant)]/30 hover:border-[var(--color-outline)]',
                           )}
                         >
                           <div className={cn(
                             'w-12 h-12 rounded-full flex items-center justify-center',
-                            themeOpt === 'light' ? 'bg-amber-100 text-amber-600' : 'bg-[var(--color-inverse-surface)] text-[var(--color-inverse-on-surface)]'
+                            themeOpt === 'light'
+                              ? 'bg-amber-100 text-amber-600'
+                              : 'bg-[var(--color-inverse-surface)] text-[var(--color-inverse-on-surface)]',
                           )}>
                             {themeOpt === 'light' ? <Sun size={22} /> : <Moon size={22} />}
                           </div>
@@ -391,8 +429,12 @@ export default function SettingsPage() {
                     {sessionRows.map((s, i) => (
                       <div key={i} className="flex items-center justify-between gap-3 py-3 border-b border-[var(--color-outline-variant)]/10 last:border-0">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-[var(--color-on-surface)]">{s.device}</p>
-                          <p className="text-xs text-[var(--color-on-surface-variant)]">{s.location} · {s.time}</p>
+                          <p className="text-sm font-medium text-[var(--color-on-surface)]">
+                            {s.device}
+                          </p>
+                          <p className="text-xs text-[var(--color-on-surface-variant)]">
+                            {s.location} · {s.time}
+                          </p>
                         </div>
                         {s.current
                           ? <span className="text-xs text-[var(--color-secondary)] font-semibold shrink-0">{t('settings.active')}</span>
@@ -403,7 +445,6 @@ export default function SettingsPage() {
                   </SectionCard>
                 </div>
               )}
-
             </motion.div>
           </AnimatePresence>
         </div>

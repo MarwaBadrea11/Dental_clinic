@@ -122,8 +122,7 @@ export default function PatientsPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}
-        className="patients-stats-grid"
+        className="patients-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"
       >
         {[
           { label: t('patients.total'),   value: patients.length,                                    color: 'text-[var(--color-primary)]' },
@@ -196,7 +195,7 @@ export default function PatientsPage() {
                 {t('patients.noPatients')}
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem' }} className="patients-card-grid">
+              <div className="patients-card-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filtered.map((p, i) => (
                   <PatientCard
                     key={p.id}

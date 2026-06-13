@@ -53,7 +53,6 @@ const CATALOGUE_ICONS: Record<ReportCatalogueId, React.ReactNode> = {
   labResultsSummary:     <FlaskConical size={18} />,
   radiologyLog:          <FlaskConical size={18} />,
 }
-
 export default function ReportsPage() {
   const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -69,12 +68,12 @@ export default function ReportsPage() {
     setSearchParams((prev) => { prev.set('tab', tab); return prev }, { replace: true })
   }
 
-  const { patients }      = usePatientStore()
-  const { appointments }  = useAppointmentStore()
-  const { items }         = useInventoryStore()
-  const { financial, exportLoading, exportReport } = useReportStore()
+  const { patients }     = usePatientStore()
+  const { appointments } = useAppointmentStore()
+  const { items }        = useInventoryStore()
+  const { financial }    = useReportStore()
 
-  const typeParam  = searchParams.get('type')
+  const typeParam   = searchParams.get('type')
   const isLabFilter = typeParam === 'lab'
   const clearFilter = () => setSearchParams({}, { replace: true })
 
@@ -121,7 +120,7 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {/* ── Overview tab ─────────────────────────────────────────────────────── */}
+      {/* ── Overview ─────────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -144,10 +143,18 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <SectionCard title={t('reports.availableReports')} icon={<FileText size={15} />} subtitle={t('reports.reportsDesc')} delay={0.2}>
+          <SectionCard
+            title={t('reports.availableReports')}
+            icon={<FileText size={15} />}
+            subtitle={t('reports.reportsDesc')}
+            delay={0.2}
+          >
             {isLabFilter && (
-              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 mb-4 px-3 py-2 rounded-[var(--radius-DEFAULT)] bg-[var(--color-tertiary-container)]/20 border border-[var(--color-tertiary)]/30">
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 mb-4 px-3 py-2 rounded-[var(--radius-DEFAULT)] bg-[var(--color-tertiary-container)]/20 border border-[var(--color-tertiary)]/30"
+              >
                 <FlaskConical size={14} className="text-[var(--color-tertiary)] shrink-0" />
                 <span className="text-xs font-semibold text-[var(--color-on-tertiary-container)] flex-1">{t('reports.labFilterActive')}</span>
                 <button onClick={clearFilter} className="flex items-center gap-1 text-[11px] font-bold text-[var(--color-tertiary)] hover:underline cursor-pointer">
@@ -168,7 +175,7 @@ export default function ReportsPage() {
         </motion.div>
       )}
 
-      {/* ── Live report tabs ──────────────────────────────────────────────────── */}
+      {/* ── Live panels ────────────────────────────────────────────────────────── */}
       {activeTab === 'financial' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <FinancialReportPanel />

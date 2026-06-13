@@ -77,13 +77,13 @@
   --spacing-margin: 2rem;
 
   /* ── Shadows ── */
-  --shadow-card: 0 2px 12px 0 rgba(0, 105, 111, 0.08);
-  --shadow-card-hover: 0 8px 32px 0 rgba(0, 105, 111, 0.14);
-  --shadow-modal: 0 24px 64px 0 rgba(0, 105, 111, 0.18);
-  --shadow-sidebar: 4px 0 24px 0 rgba(0, 105, 111, 0.07);
-  --shadow-topbar: 0 2px 16px 0 rgba(23, 28, 31, 0.06);
+  --shadow-card:        0 1px 4px 0 rgba(0, 105, 111, 0.04), 0 4px 16px 0 rgba(0, 105, 111, 0.06);
+  --shadow-card-hover:  0 4px 12px 0 rgba(0, 105, 111, 0.08), 0 12px 32px 0 rgba(0, 105, 111, 0.10);
+  --shadow-modal:       0 24px 64px 0 rgba(0, 105, 111, 0.18);
+  --shadow-sidebar:     4px 0 24px 0 rgba(0, 105, 111, 0.07);
+  --shadow-topbar:      0 1px 8px 0 rgba(23, 28, 31, 0.04);
   --shadow-glow-primary: 0 0 20px 0 rgba(0, 105, 111, 0.25);
-  --shadow-glow-sm: 0 0 8px 0 rgba(0, 105, 111, 0.15);
+  --shadow-glow-sm:     0 0 8px 0 rgba(0, 105, 111, 0.15);
 }
 
 /* ── Google Fonts — imported at top of file ── */
@@ -254,11 +254,11 @@ svg *, img {
   --color-on-error-container:#ffdad6;
 
   /* ── Shadows — softer on dark ── */
-  --shadow-card:        0 2px 12px 0 rgba(0, 0, 0, 0.35);
-  --shadow-card-hover:  0 8px 32px 0 rgba(0, 0, 0, 0.50);
+  --shadow-card:        0 1px 4px 0 rgba(0, 0, 0, 0.18), 0 4px 16px 0 rgba(0, 0, 0, 0.25);
+  --shadow-card-hover:  0 4px 12px 0 rgba(0, 0, 0, 0.28), 0 12px 32px 0 rgba(0, 0, 0, 0.38);
   --shadow-modal:       0 24px 64px 0 rgba(0, 0, 0, 0.60);
   --shadow-sidebar:     4px 0 24px 0 rgba(0, 0, 0, 0.30);
-  --shadow-topbar:      0 2px 16px 0 rgba(0, 0, 0, 0.25);
+  --shadow-topbar:      0 1px 8px 0 rgba(0, 0, 0, 0.18);
   --shadow-glow-primary:0 0 20px 0 rgba(121, 213, 220, 0.20);
   --shadow-glow-sm:     0 0 8px  0 rgba(121, 213, 220, 0.12);
 }
@@ -295,17 +295,36 @@ svg *, img {
 }
 
 
-/* ── Patient profile responsive helpers ── */
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL RESPONSIVE HELPERS
+   All inline-style grids use these CSS class overrides so they
+   respond correctly on every screen size.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tables: always scrollable on small screens ── */
+.table-scroll-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Patient profile ── */
 @media (max-width: 767px) {
   .patient-stats-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .patient-finance-grid  { grid-template-columns: 1fr !important; }
   .patient-overview-grid { grid-template-columns: 1fr !important; }
   .info-grid             { grid-template-columns: 1fr !important; }
-  .patients-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .patients-card-grid    { grid-template-columns: 1fr !important; }
+  .attachments-grid      { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 1023px) {
   .patient-overview-grid { grid-template-columns: 1fr !important; }
+  .attachments-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Patients list page ── */
+@media (max-width: 767px) {
+  .patients-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .patients-card-grid    { grid-template-columns: 1fr !important; }
 }
 @media (min-width: 768px) and (max-width: 1023px) {
   .patients-card-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -314,7 +333,7 @@ svg *, img {
   .patients-card-grid    { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
 
-/* ── Treatments page responsive helpers ── */
+/* ── Treatments page ── */
 @media (max-width: 767px) {
   .treatments-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .treatments-card-grid  { grid-template-columns: 1fr !important; }
@@ -325,3 +344,68 @@ svg *, img {
 @media (min-width: 1024px) and (max-width: 1279px) {
   .treatments-card-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
+
+/* ── Calendar page ── */
+@media (max-width: 767px) {
+  .calendar-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .calendar-day-grid     { grid-template-columns: 1fr !important; }
+  /* Week grid: compress to 3-col on very small screens */
+  .calendar-week-days    { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* ── Finance page ── */
+@media (max-width: 639px) {
+  .finance-kpi-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Staff page ── */
+@media (max-width: 767px) {
+  .staff-stats-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Reports page ── */
+@media (max-width: 639px) {
+  .reports-kpi-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Settings page: sidebar nav stacks on top on mobile ── */
+@media (max-width: 1023px) {
+  .settings-layout       { grid-template-columns: 1fr !important; }
+}
+
+/* ── Odontogram page ── */
+@media (max-width: 1023px) {
+  .odontogram-layout     { grid-template-columns: 1fr !important; }
+}
+
+/* ── PatientDetail quick stats ── */
+@media (max-width: 639px) {
+  .patient-quickstats    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ── Login page ── */
+@media (max-width: 1023px) {
+  .login-left-panel      { display: none !important; }
+  .login-mobile-logo     { display: block !important; }
+  .reg-name-grid         { grid-template-columns: 1fr !important; }
+}
+
+/* ── PageHeader: title truncates nicely on mobile ── */
+@media (max-width: 639px) {
+  .page-header-title { font-size: 1.25rem !important; }
+}
+
+/* ── DataTable: scrollable wrapper ── */
+.data-table-outer {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Tab bars: horizontally scrollable on tiny screens ── */
+.tab-bar-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-bar-scroll::-webkit-scrollbar { display: none; }

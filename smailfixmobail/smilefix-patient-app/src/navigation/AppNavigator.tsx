@@ -7,7 +7,6 @@ import React, { useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  Platform,
   I18nManager,
 } from 'react-native';
 import Text from '../components/Text';
@@ -24,6 +23,7 @@ import { useAppStore } from '../store/appStore';
 import { useTheme } from '../theme/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { RootStackParamList } from './types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ── Screens ───────────────────────────────────
 import WelcomeScreen      from '../screens/WelcomeScreen';
@@ -55,6 +55,11 @@ function MainTabs() {
   const { colors, isDark } = useTheme();
   const { t, locale }      = useTranslation();
   const i18n               = useAppStore((s) => s.locale);
+  const insets             = useSafeAreaInsets();
+
+  // Tab bar height = base content height + device bottom safe area
+  const TAB_BAR_BASE   = 60;
+  const tabBarHeight   = TAB_BAR_BASE + insets.bottom;
 
   // Sync RTL with i18n language
   useEffect(() => {
@@ -72,11 +77,11 @@ function MainTabs() {
         // ── Tab bar style ──────────────────────
         tabBarStyle: {
           position:        'absolute',
-          height:          Platform.OS === 'ios' ? 88 : 68,
+          height:          tabBarHeight,
           backgroundColor: colors.tabBar,
           borderTopWidth:  1,
           borderTopColor:  colors.tabBarBorder,
-          paddingBottom:   Platform.OS === 'ios' ? 24 : 8,
+          paddingBottom:   insets.bottom,   // push icons above home indicator
           paddingTop:      8,
           paddingHorizontal: 4,
           // FLAT — no shadow, no elevation
@@ -89,13 +94,7 @@ function MainTabs() {
 
         tabBarActiveTintColor:   colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
-
-        tabBarLabelStyle: {
-          fontSize:     10,
-          fontWeight:   '600',
-          letterSpacing: 0.2,
-          marginTop:    2,
-        },
+        tabBarShowLabel:         false,
 
         // ── Icon renderer ─────────────────────
         tabBarIcon: ({ focused, color, size }) => {
@@ -119,46 +118,35 @@ function MainTabs() {
           }
 
           // Regular tabs: circle indicator when active
+          if (focused) {
+            const label = t(
+              route.name === 'Home'         ? 'tabHome'    :
+              route.name === 'Appointments' ? 'tabAppts'   :
+              route.name === 'Profile'      ? 'tabProfile' : 'tabShare'
+            );
+            return (
+              <View style={[tabS.iconWrap, { backgroundColor: colors.blue }]}>
+                <Ionicons name={icons.active} size={18} color="#ffffff" />
+                <Text style={tabS.iconWrapLabel} numberOfLines={1}>{label}</Text>
+              </View>
+            );
+          }
+
           return (
-            <View style={[
-              tabS.iconWrap,
-              focused && { backgroundColor: colors.blue },
-            ]}>
-              <Ionicons
-                name={focused ? icons.active : icons.inactive}
-                size={22}
-                color={focused ? '#ffffff' : color}
-              />
+            <View style={tabS.iconWrap}>
+              <Ionicons name={icons.inactive} size={22} color={color} />
             </View>
           );
         },
+
+        tabBarLabel: () => null,
       })}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ tabBarLabel: t('tabHome') }}
-      />
-      <Tab.Screen
-        name="Appointments"
-        component={AppointmentsScreen}
-        options={{ tabBarLabel: t('tabAppts') }}
-      />
-      <Tab.Screen
-        name="Booking"
-        component={BookingScreen}
-        options={{ tabBarLabel: t('tabBook') }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ tabBarLabel: t('tabProfile') }}
-      />
-      <Tab.Screen
-        name="QR"
-        component={QRScreen}
-        options={{ tabBarLabel: t('tabShare') }}
-      />
+      <Tab.Screen name="Home"         component={HomeScreen} />
+      <Tab.Screen name="Appointments" component={AppointmentsScreen} />
+      <Tab.Screen name="Booking"      component={BookingScreen} />
+      <Tab.Screen name="Profile"      component={ProfileScreen} />
+      <Tab.Screen name="QR"           component={QRScreen} />
     </Tab.Navigator>
   );
 }
@@ -222,11 +210,19 @@ export default function AppNavigator() {
 // ── Tab styles ────────────────────────────────
 const tabS = StyleSheet.create({
   iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,   // Perfect circle
+    width: 54,
+    height: 54,
+    borderRadius: 27,   // Perfect circle
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconWrapLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.2,
+    marginTop: 2,
+    textAlign: 'center',
   },
   fab: {
     width: 50,

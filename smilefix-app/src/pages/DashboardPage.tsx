@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import {
   StatCard, QuickActions, AppointmentSummary, UpcomingAppointments,
-  ActivityFeed, ChartCard,
+  ActivityFeed,
   type ActivityItem,
 } from '@/components/dashboard'
 import { ImageAnalyzerModal } from '@/components/dashboard/ImageAnalyzerModal'
@@ -129,11 +129,43 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-8 space-y-6">
-          <QuickActions actions={quickActions} delay={0.28} />
+      {/* Quick actions + analyzer — equal-height row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch mb-6">
+        <QuickActions stretch actions={quickActions} delay={0.28} />
 
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.38 }}
+          className="h-full min-h-0"
+        >
+          <div className="relative flex h-full min-h-0 flex-col justify-between overflow-hidden rounded-[var(--radius-xl)] bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 p-6 text-white shadow-[var(--shadow-card)]">
+            <div className="relative z-10 space-y-3">
+              <h2 className="text-base font-bold leading-snug" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                {t('dashboard.precisionImaging')}
+              </h2>
+              <p className="text-xs leading-relaxed text-white/85">
+                {t('dashboard.imagingDesc')}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative z-10 mt-4 w-fit bg-white text-indigo-700 shadow-sm hover:bg-white/90 hover:text-indigo-800"
+              onClick={() => setAnalyzerOpen(true)}
+            >
+              {t('dashboard.launchAnalyzer')}
+            </Button>
+            <div className="pointer-events-none absolute -right-4 -bottom-4 select-none text-[88px] leading-none text-white/10">
+              ⚕
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-12 gap-6 items-start">
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
           {patientsError ? (
             <Card className="flex items-center gap-3 px-6 py-5 text-sm text-[var(--color-error)]">
               <AlertCircle size={16} />
@@ -154,54 +186,9 @@ export default function DashboardPage() {
               delay={0.32}
             />
           )}
-
-          {/* Bento */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.38 }}
-            className="grid grid-cols-12 gap-4"
-          >
-            <div className="col-span-12 lg:col-span-5 bg-[var(--color-primary)] rounded-[var(--radius-xl)] p-6 sm:p-8 text-[var(--color-on-primary)] relative overflow-hidden group">
-              <div className="relative z-10 space-y-3">
-                <h2 className="text-xl font-bold" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                  {t('dashboard.precisionImaging')}
-                </h2>
-                <p className="text-sm opacity-80 max-w-xs leading-relaxed">{t('dashboard.imagingDesc')}</p>
-                <Button variant="ghost" size="sm" className="bg-white text-[var(--color-primary)] hover:bg-white/90 mt-2 shadow-sm" onClick={() => setAnalyzerOpen(true)}>
-                  {t('dashboard.launchAnalyzer')}
-                </Button>
-              </div>
-              <div className="absolute -right-6 -bottom-6 opacity-[0.08] text-[160px] leading-none select-none pointer-events-none">⚕</div>
-            </div>
-            
-            {/* تعديل الريسبونسف هنا: grid-cols-1 للأجهزة الصغيرة جداً و sm:grid-cols-2 للأكبر */}
-            <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { emoji: '💊', title: t('dashboard.pharmacy'),  desc: t('dashboard.pharmacyDesc'),  hoverBorder: 'hover:border-[var(--color-tertiary)]/50', iconBg: 'bg-[var(--color-tertiary-container)]/20 text-[var(--color-tertiary)]' },
-                { emoji: '📊', title: t('dashboard.analytics'), desc: t('dashboard.analyticsDesc'), hoverBorder: 'hover:border-[var(--color-secondary)]/50', iconBg: 'bg-[var(--color-secondary-container)]/20 text-[var(--color-secondary)]' },
-              ].map((item) => (
-                <Card key={item.title} hover className={`flex flex-col items-center text-center gap-3 px-4 py-6 transition-colors ${item.hoverBorder}`}>
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${item.iconBg}`}>{item.emoji}</div>
-                  <h4 className="font-semibold text-sm text-[var(--color-on-surface)]">{item.title}</h4>
-                  <p className="text-xs text-[var(--color-on-surface-variant)] leading-relaxed">{item.desc}</p>
-                </Card>
-              ))}
-            </div>
-          </motion.div>
-
-          <ChartCard
-            title={t('dashboard.treatmentDist')}
-            description={t('dashboard.treatmentDistDesc')}
-            placeholder
-            placeholderLabel={t('dashboard.treatmentDist')}
-            placeholderSublabel={t('dashboard.treatmentDistDesc')}
-            onGenerate={() => navigate(ROUTES.REPORTS)}
-            delay={0.42}
-          />
         </div>
 
-        <div className="col-span-12 lg:col-span-4 space-y-6">
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 self-start">
           <UpcomingAppointments
             items={scheduleLoading ? [] : (schedule ?? [])}
             title={t('dashboard.todaySchedule')}

@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { NotificationWidget, RevenueCard, ChartCard } from '@/components/dashboard'
+import { NotificationWidget } from '@/components/dashboard'
 import type { NotificationAlert } from '@/components/dashboard'
 import { RestockOrderModal } from '@/components/inventory'
 import { useInventoryStore } from '@/store/inventoryStore'
@@ -29,12 +29,6 @@ const ACTIVITY_LOG = [
   { icon: <Upload size={16} />,       actor: 'Dr. Miller', action: 'Archived Patient Record #8892',    time: '12:44 PM', color: 'secondary' as const },
   { icon: <Shield size={16} />,       actor: 'System',     action: 'Financial Integrity Verification', time: '10:15 AM', color: 'primary' as const },
   { icon: <CheckCircle2 size={16} />, actor: 'Admin',      action: 'New Staff Credential Provisioning',time: '09:02 AM', color: 'tertiary' as const },
-]
-
-const PERFORMANCE_METRICS = [
-  { label: 'Success Rate',   value: '98.4%', change: '2.1%', changeUp: true },
-  { label: 'Avg. Wait Time', value: '12m',   change: '4m',   changeUp: false },
-  { label: 'New Inquiries',  value: '142',   change: '18%',  changeUp: true },
 ]
 
 /** Map each notification id to a lucide icon element */
@@ -181,51 +175,28 @@ export default function NotificationsPage() {
         }
       />
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* ── Left column: priority alerts widget ── */}
-        <div className="col-span-12 lg:col-span-5 space-y-6">
-          <NotificationWidget
-            alerts={priorityAlerts.map((a) =>
-              a.id === 'n2'
-                ? {
-                    ...a,
-                    actionLabel: n2Ordered
-                      ? (t('notifications.ordered') ?? 'Ordered ✓')
-                      : a.actionLabel,
-                    onAction: n2Ordered ? undefined : () => setRestockOpen(true),
-                  }
-                : a,
-            )}
-            title={t('notifications.smartNotifications')}
-            badgeCount={priorityAlerts.length}
-            onDismiss={dismissAlert}
-            delay={0.1}
-          />
-        </div>
+      <div className="flex flex-col gap-6 w-full">
+        {/* Priority alerts widget */}
+        <NotificationWidget
+          alerts={priorityAlerts.map((a) =>
+            a.id === 'n2'
+              ? {
+                  ...a,
+                  actionLabel: n2Ordered
+                    ? (t('notifications.ordered') ?? 'Ordered ✓')
+                    : a.actionLabel,
+                  onAction: n2Ordered ? undefined : () => setRestockOpen(true),
+                }
+              : a,
+          )}
+          title={t('notifications.smartNotifications')}
+          badgeCount={priorityAlerts.length}
+          onDismiss={dismissAlert}
+          delay={0.1}
+        />
 
-        {/* ── Right column: chart + revenue ── */}
-        <div className="col-span-12 lg:col-span-7 space-y-6">
-          <ChartCard
-            title={t('notifications.advancedReporting')}
-            description={t('notifications.reportingDesc')}
-            placeholder
-            placeholderLabel={t('reports.treatmentDist')}
-            placeholderSublabel={t('dashboard.treatmentDistDesc')}
-            onGenerate={() => navigate(ROUTES.REPORTS)}
-            delay={0.15}
-            action={
-              <select className="bg-[var(--color-surface-container-high)] border-none rounded-[var(--radius-DEFAULT)] text-xs font-semibold text-[var(--color-on-surface-variant)] px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]">
-                <option>{t('reports.last30Days')}</option>
-                <option>{t('reports.lastQuarter')}</option>
-                <option>{t('reports.thisYear')}</option>
-              </select>
-            }
-          />
-          <RevenueCard metrics={PERFORMANCE_METRICS} delay={0.2} />
-        </div>
-
-        {/* ── Bottom row: backup card + activity log ── */}
-        <div className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Backup status + activity log */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
           {/* Backup status card */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -308,13 +279,13 @@ export default function NotificationsPage() {
           </motion.div>
         </div>
 
-        {/* ── Full notification list ── */}
-        <div className="col-span-12">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.35 }}
-          >
+        {/* Full notification list */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.35 }}
+          className="w-full"
+        >
             <Card padding="none">
               {/* List header */}
               <div className="px-6 py-4 border-b border-[var(--color-outline-variant)]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -460,8 +431,7 @@ export default function NotificationsPage() {
                 )}
               </div>
             </Card>
-          </motion.div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Restock Order Modal */}

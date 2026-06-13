@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/components/ui/Avatar'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
+import { GlobalSearch } from '@/components/layouts/GlobalSearch'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
@@ -39,8 +39,6 @@ export function Topbar({ title, sidebarWidth }: TopbarProps) {
   const navigate    = useNavigate()
   const isRTL       = language === 'ar'
   const isDesktop   = useIsDesktop()
-
-  const [search, setSearch] = useState('')
 
   const handleLogout = async () => {
     await logout()
@@ -101,12 +99,7 @@ export function Topbar({ title, sidebarWidth }: TopbarProps) {
 
       {/* End: actions + user */}
       <div className="flex items-center gap-1 sm:gap-2">
-        <ExpandableSearch
-          value={search}
-          onChange={setSearch}
-          placeholder={t('topbar.search')}
-          ariaLabel={t('topbar.search')}
-        />
+        <GlobalSearch />
 
         <button
           onClick={toggleTheme}

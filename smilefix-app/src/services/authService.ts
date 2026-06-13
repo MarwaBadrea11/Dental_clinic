@@ -2,7 +2,7 @@
 // Auth Service — SmileFix Web App
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { API_BASE } from './apiClient'
+import { API_BASE } from './apiConfig'
 
 const BASE_URL = `${API_BASE}/auth`
 

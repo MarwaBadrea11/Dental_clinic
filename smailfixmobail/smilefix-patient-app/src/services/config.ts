@@ -36,7 +36,7 @@ function resolveBaseUrl(): string {
     return `${protocol}://${MANUAL_LAN_IP}:${PORT}/api/v1`;
   }
 
-  // Emulator / simulator auto-detection
+  // Emulator / simulator / web auto-detection
   if (Platform.OS === 'android') {
     // Android emulator: 10.0.2.2 routes to the host machine
     return `http://10.0.2.2:${PORT}/api/v1`;

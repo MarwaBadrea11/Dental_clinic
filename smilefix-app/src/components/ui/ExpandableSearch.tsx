@@ -23,6 +23,12 @@ export interface ExpandableSearchProps {
   className?: string
   /** Accessible label for the search icon button */
   ariaLabel?: string
+  /** Accessible label for the clear (X) button */
+  clearAriaLabel?: string
+  /** Called when the input receives focus */
+  onFocus?: () => void
+  /** Called when the input loses focus */
+  onBlur?: () => void
 }
 
 /**
@@ -46,6 +52,9 @@ export function ExpandableSearch({
   expandedWidth = 220,
   className,
   ariaLabel = 'Search',
+  clearAriaLabel = 'Clear search',
+  onFocus,
+  onBlur,
 }: ExpandableSearchProps) {
   // ── Expandable-only state ──────────────────────────────────────────────────
   const [expanded, setExpanded] = useState(false)
@@ -90,6 +99,8 @@ export function ExpandableSearch({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           placeholder={placeholder}
           aria-label={ariaLabel}
           className={cn(
@@ -112,7 +123,7 @@ export function ExpandableSearch({
               'text-[var(--color-outline)] hover:text-[var(--color-on-surface)]',
               'transition-colors',
             )}
-            aria-label="Clear search"
+            aria-label={clearAriaLabel}
           >
             <X size={13} />
           </button>
@@ -167,6 +178,8 @@ export function ExpandableSearch({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           placeholder={placeholder}
           aria-label={ariaLabel}
           className={cn(
@@ -187,7 +200,7 @@ export function ExpandableSearch({
               'text-[var(--color-outline)] hover:text-[var(--color-on-surface)]',
               'transition-colors',
             )}
-            aria-label="Clear search"
+            aria-label={clearAriaLabel}
             tabIndex={0}
           >
             <X size={12} />

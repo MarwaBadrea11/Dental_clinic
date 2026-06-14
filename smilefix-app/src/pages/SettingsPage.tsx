@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sun, Moon, Globe, Shield, User, Bell,
-  Building2, Palette, Lock, ChevronRight, Check, Clock,
+  Building2, Palette, Lock, ChevronRight, Check, Clock, Eye, EyeOff,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -16,6 +17,15 @@ import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationPreferencesStore } from '@/store/notificationPreferencesStore'
 import { updateMyProfile } from '@/services/patientService'
+import {
+  updateMyAccount,
+  uploadMyAvatar,
+  removeMyAvatar,
+  getSavedUser,
+  authUserToProfile,
+  changePassword,
+} from '@/services/authService'
+import { ROUTES } from '@/constants/routes'
 import { cn } from '@/utils/cn'
 import {
   buildCurrencySelectOptions,
@@ -38,8 +48,11 @@ import {
 import {
   fetchWorkingHours,
   saveWorkingHours,
+  fetchClinicInfo,
+  saveClinicInfo,
   generateSlots,
   type WorkingHoursDay,
+  type ClinicInfo,
 } from '@/services/settingsService'
 
 const TAB_ICONS: Record<SettingsTabId, React.ReactNode> = {
@@ -50,6 +63,45 @@ const TAB_ICONS: Record<SettingsTabId, React.ReactNode> = {
   notifications: <Bell size={15} />,
   permissions:   <Shield size={15} />,
   security:      <Lock size={15} />,
+}
+
+function parseSettingsTab(tab: string | null): SettingsTabId {
+  if (tab && SETTINGS_TAB_IDS.includes(tab as SettingsTabId)) {
+    return tab as SettingsTabId
+  }
+  return 'profile'
+}
+
+function isStrongPassword(password: string): boolean {
+  return (
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password)
+  )
+}
+
+function PasswordVisibilityToggle({
+  visible,
+  onToggle,
+  showLabel,
+  hideLabel,
+}: {
+  visible: boolean
+  onToggle: () => void
+  showLabel: string
+  hideLabel: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="p-0.5 rounded text-[var(--color-outline)] hover:text-[var(--color-on-surface)] transition-colors"
+      aria-label={visible ? hideLabel : showLabel}
+    >
+      {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+  )
 }
 
 function Toggle({
@@ -87,10 +139,12 @@ function Toggle({
 
 export default function SettingsPage() {
   const { theme, toggleTheme, language, setLanguage } = useUIStore()
-  const { user } = useAuthStore()
+  const { user, syncFromAuthUser, forceLogout } = useAuthStore()
+  const navigate = useNavigate()
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
   const isRtl = language === 'ar'
-  const [activeTab, setActiveTab] = useState<SettingsTabId>('profile')
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(() => parseSettingsTab(searchParams.get('tab')))
   const [saved, setSaved]         = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError]   = useState<string | null>(null)
@@ -109,25 +163,64 @@ export default function SettingsPage() {
     if (activeTab === 'notifications') loadPrefs()
   }, [activeTab, loadPrefs])
 
+  useEffect(() => {
+    setActiveTab(parseSettingsTab(searchParams.get('tab')))
+  }, [searchParams])
+
   const [profileForm, setProfileForm] = useState({
     name:      user?.name      ?? '',
     email:     user?.email     ?? '',
     specialty: user?.specialty ?? '',
-    phone:     '',
-    bio:       '',
+    phone:     user?.phone     ?? '',
+    bio:       user?.bio       ?? '',
   })
 
-  const [clinicForm, setClinicForm] = useState({
-    name:     'SmileFix Dental Clinic',
-    address:  '500 Medical Center Drive',
-    city:     'Los Angeles, CA 90001',
-    phone:    '+1 (800) SMILEFIX',
-    email:    'info@smilefix.com',
-    website:  'www.smilefix.com',
-    taxId:    'TAX-88421',
-    currency: 'USD',
-    timezone: 'UTC-8',
+  useEffect(() => {
+    if (!user) return
+    setProfileForm({
+      name:      user.name      ?? '',
+      email:     user.email     ?? '',
+      specialty: user.specialty ?? '',
+      phone:     user.phone     ?? '',
+      bio:       user.bio       ?? '',
+    })
+  }, [user])
+
+  const [avatarFile, setAvatarFile]       = useState<File | null>(null)
+  const [avatarRemoved, setAvatarRemoved] = useState(false)
+  const avatarPreview = avatarFile
+    ? undefined
+    : avatarRemoved
+      ? undefined
+      : user?.avatar
+
+  const [clinicForm, setClinicForm] = useState<ClinicInfo>({
+    name:     '',
+    address:  '',
+    city:     '',
+    phone:    '',
+    email:    '',
+    website:  '',
+    taxId:    '',
   })
+
+  const [clinicLoading, setClinicLoading] = useState(false)
+  const [clinicSaving,  setClinicSaving]  = useState(false)
+  const [clinicError,   setClinicError]   = useState<string | null>(null)
+
+  const [localeForm, setLocaleForm] = useState({ timezone: 'UTC-8', currency: 'USD' })
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword:     '',
+    confirmPassword: '',
+  })
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword]         = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError]   = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
 
   // ── Working-hours state ──────────────────────────────────────────────────
   const [workingHours, setWorkingHours] = useState<WorkingHoursDay[]>([])
@@ -145,6 +238,16 @@ export default function SettingsPage() {
       .catch(() => setWhError(t('common.loadFailed') || 'Failed to load working hours'))
       .finally(() => setWhLoading(false))
   }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'clinic') return
+    setClinicLoading(true)
+    setClinicError(null)
+    fetchClinicInfo()
+      .then(setClinicForm)
+      .catch(() => setClinicError(t('common.loadFailed') || 'Failed to load clinic information'))
+      .finally(() => setClinicLoading(false))
+  }, [activeTab, t])
 
   const updateDay = (dow: number, patch: Partial<WorkingHoursDay>) => {
     setWorkingHours((prev) =>
@@ -168,6 +271,68 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveClinicInfo = async () => {
+    setClinicSaving(true)
+    setClinicError(null)
+    try {
+      const saved = await saveClinicInfo(clinicForm)
+      setClinicForm(saved)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (err) {
+      setClinicError(err instanceof Error ? err.message : t('common.saveFailed'))
+    } finally {
+      setClinicSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    setPasswordError(null)
+    setPasswordSuccess(false)
+
+    const { currentPassword, newPassword, confirmPassword } = passwordForm
+
+    if (!currentPassword.trim()) {
+      setPasswordError(t('settings.currentPasswordRequired', { defaultValue: 'Current password is required' }))
+      return
+    }
+    if (!isStrongPassword(newPassword)) {
+      setPasswordError(t('settings.passwordRequirements', {
+        defaultValue: 'Password must be at least 8 characters and include uppercase, number, and special character',
+      }))
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError(t('settings.passwordMismatch', { defaultValue: 'New passwords do not match' }))
+      return
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError(t('settings.passwordSameAsCurrent', { defaultValue: 'New password must be different from current password' }))
+      return
+    }
+
+    setPasswordSaving(true)
+    try {
+      await changePassword({ currentPassword, newPassword })
+      setPasswordSuccess(true)
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setShowCurrentPassword(false)
+      setShowNewPassword(false)
+      setShowConfirmPassword(false)
+      forceLogout()
+      setTimeout(() => {
+        navigate(ROUTES.LOGIN, {
+          replace: true,
+          state: { message: t('settings.passwordUpdated', { defaultValue: 'Password updated. Please sign in again.' }) },
+        })
+      }, 1200)
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : t('common.saveFailed'))
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
   /** Save handler — profile tab calls the backend; others just show the saved indicator */
   const handleSave = async () => {
     if (activeTab === 'notifications') {
@@ -182,18 +347,51 @@ export default function SettingsPage() {
       return
     }
 
-    if (activeTab === 'profile' && user?.role === 'PATIENT') {
-      // PATIENT role: update own patient record via PUT /patients/me
+    if (activeTab === 'clinic') {
+      await handleSaveClinicInfo()
+      return
+    }
+
+    if (activeTab === 'profile') {
       setProfileSaving(true)
       setProfileError(null)
       try {
-        const [firstName, ...rest] = profileForm.name.trim().split(' ')
-        await updateMyProfile({
-          first_name: firstName || profileForm.name,
-          last_name:  rest.join(' ') || undefined,
-          email:      profileForm.email || undefined,
-          phone:      profileForm.phone || undefined,
-        })
+        let authUser = null
+
+        if (avatarFile) {
+          authUser = await uploadMyAvatar(avatarFile)
+        } else if (avatarRemoved && user?.avatar) {
+          authUser = await removeMyAvatar()
+        }
+
+        const isPatient = getSavedUser()?.role?.toUpperCase() === 'PATIENT'
+
+        const profilePayload = {
+          username: profileForm.name.trim() || undefined,
+          email:    profileForm.email.trim() || undefined,
+          phone:    profileForm.phone.trim() || null,
+          specialty: profileForm.specialty.trim() || null,
+          bio:      profileForm.bio.trim() || null,
+        }
+
+        if (isPatient) {
+          const [firstName, ...rest] = profileForm.name.trim().split(' ')
+          await updateMyProfile({
+            first_name: firstName || profileForm.name,
+            last_name:  rest.join(' ') || undefined,
+            email:      profileForm.email || undefined,
+            phone:      profileForm.phone || undefined,
+          })
+        }
+
+        authUser = await updateMyAccount(profilePayload)
+
+        if (authUser) {
+          syncFromAuthUser(authUser)
+          setProfileForm(authUserToProfile(authUser))
+        }
+        setAvatarFile(null)
+        setAvatarRemoved(false)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
       } catch (err) {
@@ -204,7 +402,7 @@ export default function SettingsPage() {
       return
     }
 
-    // Non-patient profile / other tabs: local state only (no staff self-update endpoint yet)
+    // Other tabs: local state only
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -241,10 +439,10 @@ export default function SettingsPage() {
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={notifsSaving || profileSaving || whSaving}
+            disabled={notifsSaving || profileSaving || whSaving || clinicSaving}
             className={saved ? 'bg-[var(--color-secondary)]' : ''}
           >
-            {(notifsSaving || profileSaving || whSaving)
+            {(notifsSaving || profileSaving || whSaving || clinicSaving)
               ? t('settings.saving')
               : saved
               ? `✓ ${t('common.saved')}`
@@ -299,7 +497,22 @@ export default function SettingsPage() {
                     </div>
                   )}
                   <div className="flex flex-col sm:flex-row gap-6 mb-6">
-                    <ImageUploadArea name={profileForm.name} size="lg" label={t('settings.profilePhoto')} className="shrink-0" />
+                    <ImageUploadArea
+                      name={profileForm.name}
+                      size="lg"
+                      label={t('settings.profilePhoto')}
+                      className="shrink-0"
+                      value={avatarPreview}
+                      onChange={(file) => {
+                        if (file) {
+                          setAvatarFile(file)
+                          setAvatarRemoved(false)
+                        } else {
+                          setAvatarFile(null)
+                          setAvatarRemoved(!!user?.avatar)
+                        }
+                      }}
+                    />
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField label={t('settings.fullName')}>
                         <Input value={profileForm.name} onChange={(e) => setProfileForm((f) => ({ ...f, name: e.target.value }))} />
@@ -371,13 +584,13 @@ export default function SettingsPage() {
                         />
                       </FormField>
                       <FormField label={t('settings.timezone')}>
-                        <Select options={timezoneOptions} value={clinicForm.timezone} onChange={() => {}} />
+                        <Select options={timezoneOptions} value={localeForm.timezone} onChange={() => {}} />
                       </FormField>
                       <FormField label={t('settings.dateFormat')}>
                         <Select options={dateFormatOptions} value="mdy" onChange={() => {}} />
                       </FormField>
                       <FormField label={t('settings.currency')}>
-                        <Select options={currencyOptions} value={clinicForm.currency} onChange={() => {}} />
+                        <Select options={currencyOptions} value={localeForm.currency} onChange={() => {}} />
                       </FormField>
                     </div>
                   </SectionCard>
@@ -386,19 +599,39 @@ export default function SettingsPage() {
 
               {activeTab === 'clinic' && (
                 <SectionCard title={t('settings.clinicInformation')} icon={<Building2 size={15} />}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {CLINIC_FIELD_KEYS.map((key) => (
-                      <FormField key={key} label={t(clinicFieldKey[key])}>
-                        <Input
-                          placeholder={t(clinicPlaceholderKey[key])}
-                          value={clinicForm[key]}
-                          onChange={(e) => setClinicForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                        />
-                      </FormField>
-                    ))}
-                  </div>
+                  {clinicError && (
+                    <div className="mb-4 px-4 py-2.5 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-error)] text-sm">
+                      {clinicError}
+                    </div>
+                  )}
+                  {clinicLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {CLINIC_FIELD_KEYS.map((key) => (
+                        <div key={key} className="h-10 rounded-[var(--radius-DEFAULT)] bg-[var(--color-surface-container-high)] animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {CLINIC_FIELD_KEYS.map((key) => (
+                        <FormField key={key} label={t(clinicFieldKey[key])}>
+                          <Input
+                            placeholder={t(clinicPlaceholderKey[key])}
+                            value={clinicForm[key]}
+                            onChange={(e) => setClinicForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                          />
+                        </FormField>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex justify-end mt-4">
-                    <Button size="sm" onClick={handleSave}>{t('settings.saveClinicInfo')}</Button>
+                    <Button
+                      size="sm"
+                      loading={clinicSaving}
+                      onClick={handleSaveClinicInfo}
+                      disabled={clinicLoading || clinicSaving}
+                    >
+                      {t('settings.saveClinicInfo')}
+                    </Button>
                   </div>
                 </SectionCard>
               )}
@@ -622,19 +855,79 @@ export default function SettingsPage() {
               {activeTab === 'security' && (
                 <div className="space-y-5">
                   <SectionCard title={t('settings.changePassword')} icon={<Lock size={15} />}>
+                    {passwordError && (
+                      <div className="mb-4 px-4 py-2.5 rounded-[var(--radius-DEFAULT)] bg-[var(--color-error-container)] text-[var(--color-error)] text-sm">
+                        {passwordError}
+                      </div>
+                    )}
+                    {passwordSuccess && (
+                      <div className="mb-4 px-4 py-2.5 rounded-[var(--radius-DEFAULT)] bg-[var(--color-secondary-container)] text-[var(--color-secondary)] text-sm flex items-center gap-2">
+                        <Check size={15} />
+                        {t('settings.passwordUpdated', { defaultValue: 'Password updated. Please sign in again.' })}
+                      </div>
+                    )}
                     <div className="grid w-full grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
                       <FormField label={t('settings.currentPassword')}>
-                        <Input type="password" placeholder={t('settings.passwordPlaceholder')} />
+                        <Input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          autoComplete="current-password"
+                          placeholder={t('settings.passwordPlaceholder')}
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                          trailingAction={
+                            <PasswordVisibilityToggle
+                              visible={showCurrentPassword}
+                              onToggle={() => setShowCurrentPassword((v) => !v)}
+                              showLabel={t('auth.showPassword')}
+                              hideLabel={t('auth.hidePassword')}
+                            />
+                          }
+                        />
                       </FormField>
                       <FormField label={t('settings.newPassword')}>
-                        <Input type="password" placeholder={t('settings.passwordPlaceholder')} />
+                        <Input
+                          type={showNewPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          placeholder={t('settings.passwordPlaceholder')}
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
+                          trailingAction={
+                            <PasswordVisibilityToggle
+                              visible={showNewPassword}
+                              onToggle={() => setShowNewPassword((v) => !v)}
+                              showLabel={t('auth.showPassword')}
+                              hideLabel={t('auth.hidePassword')}
+                            />
+                          }
+                        />
                       </FormField>
                       <FormField label={t('settings.confirmPassword')} className="sm:col-span-2">
-                        <Input type="password" placeholder={t('settings.passwordPlaceholder')} />
+                        <Input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          placeholder={t('settings.passwordPlaceholder')}
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                          trailingAction={
+                            <PasswordVisibilityToggle
+                              visible={showConfirmPassword}
+                              onToggle={() => setShowConfirmPassword((v) => !v)}
+                              showLabel={t('auth.showPassword')}
+                              hideLabel={t('auth.hidePassword')}
+                            />
+                          }
+                        />
                       </FormField>
                     </div>
                     <div className="flex justify-end mt-4">
-                      <Button size="sm">{t('settings.updatePassword')}</Button>
+                      <Button
+                        size="sm"
+                        loading={passwordSaving}
+                        disabled={passwordSaving || passwordSuccess}
+                        onClick={handleChangePassword}
+                      >
+                        {t('settings.updatePassword')}
+                      </Button>
                     </div>
                   </SectionCard>
 

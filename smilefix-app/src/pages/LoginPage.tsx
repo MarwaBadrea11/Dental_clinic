@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Mail, Lock, Eye, EyeOff, User as UserIcon, ArrowLeft, CheckCircle2 } from 'lucide-react'
@@ -9,7 +9,6 @@ import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { ROUTES } from '@/constants/routes'
 import { login as apiLogin, register as apiRegister } from '@/services/authService'
-import type { User } from '@/types'
 
 const FEATURES = [
   { icon: '🦷', labelKey: 'auth.patientRecords' },
@@ -116,7 +115,7 @@ function LeftPanel({ t }: { t: (k: string) => string }) {
 export default function LoginPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { setUser } = useAuthStore()
+  const { syncFromAuthUser } = useAuthStore()
   const { language } = useUIStore()
   const isRTL = language === 'ar'
   const location = useLocation()
@@ -153,13 +152,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const result = await apiLogin({ email: email.trim(), password })
-      const displayName = result.user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-      setUser({
-        id:    result.user.id,
-        name:  displayName,
-        email: result.user.email,
-        role:  result.user.role.toLowerCase() as User['role'],
-      })
+      syncFromAuthUser(result.user)
       navigate(from, { replace: true })
     } catch (err: unknown) {
       setLoginError(err instanceof Error ? err.message : 'Invalid credentials. Please try again.')
@@ -295,21 +288,11 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Remember + Forgot */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-on-surface-variant)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                    <input type="checkbox" style={{ width: '1rem', height: '1rem', accentColor: 'var(--color-primary)', cursor: 'pointer', flexShrink: 0 }} />
-                    {t('auth.rememberMe')}
-                  </label>
-                  <Link
-                    to={ROUTES.FORGOT_PASSWORD}
-                    style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
-                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                  >
-                    {t('auth.forgotPassword')}
-                  </Link>
-                </div>
+                {/* Remember me */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-on-surface-variant)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" style={{ width: '1rem', height: '1rem', accentColor: 'var(--color-primary)', cursor: 'pointer', flexShrink: 0 }} />
+                  {t('auth.rememberMe')}
+                </label>
 
                 {loginError && (
                   <motion.p

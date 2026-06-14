@@ -74,6 +74,27 @@ export class AuthRepository {
     return user;
   }
 
+  async updateUserProfile(userId, data) {
+    const [user] = await this.db('users')
+      .where({ id: userId })
+      .update({ ...data, updated_at: new Date() })
+      .returning('*');
+    return user;
+  }
+
+  findLinkedPatient(userId) {
+    const db = this.db;
+    return db('patients as p')
+      .whereNull('p.deleted_at')
+      .join('users as u', function () {
+        this.on(db.raw('LOWER(p.email) = LOWER(u.email)'))
+          .orOn(db.raw('p.phone = u.username'));
+      })
+      .where('u.id', userId)
+      .select('p.*')
+      .first();
+  }
+
   revokeAllUserTokens(userId) {
     return this.db('refresh_tokens')
       .where({ user_id: userId, revoked_at: null })

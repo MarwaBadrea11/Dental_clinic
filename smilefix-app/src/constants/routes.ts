@@ -25,6 +25,8 @@ export const ROUTES = {
 
   // Inventory
   INVENTORY: '/inventory',
+  LAB: '/lab',
+  SUPPLIERS: '/suppliers',
 
   // Staff
   STAFF: '/staff',
@@ -38,4 +40,5 @@ export const ROUTES = {
 
   // Settings
   SETTINGS: '/settings',
+  SETTINGS_PROFILE: '/settings?tab=profile',
 } as const

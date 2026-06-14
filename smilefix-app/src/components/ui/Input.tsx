@@ -7,11 +7,12 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   hint?: string
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
+  trailingAction?: React.ReactNode
   fullWidth?: boolean
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, leftIcon, rightIcon, fullWidth = true, className, id, ...props }, ref) => {
+  ({ label, error, hint, leftIcon, rightIcon, trailingAction, fullWidth = true, className, id, ...props }, ref) => {
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
 
     return (
@@ -42,12 +43,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               'hover:border-[var(--color-outline)]',
               error && 'border-[var(--color-error)] focus:border-[var(--color-error)] focus:ring-[var(--color-error)]/20',
               leftIcon && 'pl-9',
-              rightIcon && 'pr-9',
+              (rightIcon || trailingAction) && 'pr-9',
               className
             )}
             {...props}
           />
-          {rightIcon && (
+          {trailingAction && (
+            <span className="absolute right-3 flex items-center text-[var(--color-outline)]">
+              {trailingAction}
+            </span>
+          )}
+          {rightIcon && !trailingAction && (
             <span className="absolute right-3 text-[var(--color-outline)] pointer-events-none">
               {rightIcon}
             </span>

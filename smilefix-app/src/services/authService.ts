@@ -2,7 +2,7 @@
 // Auth Service — SmileFix Web App
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { API_BASE } from './apiConfig'
+import { API_BASE, resolveMediaUrl } from './apiConfig'
 
 const BASE_URL = `${API_BASE}/auth`
 
@@ -27,6 +27,11 @@ export interface AuthUser {
   id: string
   email: string
   role: string
+  username?: string
+  avatar_url?: string | null
+  phone?: string | null
+  specialty?: string | null
+  bio?: string | null
 }
 
 export interface AuthResult {
@@ -89,11 +94,11 @@ export function clearTokens() {
 
 const USER_KEY = 'smilefix_user'
 
-export function saveUser(user: AuthUser & { name?: string }) {
+export function saveUser(user: AuthUser & { name?: string; avatar?: string }) {
   localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
-export function getSavedUser(): (AuthUser & { name?: string }) | null {
+export function getSavedUser(): (AuthUser & { name?: string; avatar?: string }) | null {
   try {
     const raw = localStorage.getItem(USER_KEY)
     return raw ? JSON.parse(raw) : null
@@ -106,13 +111,41 @@ export function clearUser() {
   localStorage.removeItem(USER_KEY)
 }
 
+function authHeaders(): Record<string, string> {
+  const token = getAccessToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+function displayNameFromUser(user: AuthUser): string {
+  if (user.username?.trim()) return user.username.trim()
+  return user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export function persistAuthUser(user: AuthUser) {
+  saveUser({
+    ...user,
+    name: displayNameFromUser(user),
+    avatar: resolveMediaUrl(user.avatar_url) ?? undefined,
+  })
+}
+
+export function authUserToProfile(user: AuthUser) {
+  const name = displayNameFromUser(user)
+  return {
+    name,
+    email: user.email,
+    phone: user.phone ?? '',
+    specialty: user.specialty ?? '',
+    bio: user.bio ?? '',
+  }
+}
+
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 export async function login(payload: LoginPayload): Promise<AuthResult> {
   const result = await post<AuthResult>('/login', payload)
   saveTokens(result.accessToken, result.refreshToken)
-  const displayName = result.user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-  saveUser({ ...result.user, name: displayName })
+  persistAuthUser(result.user)
   return result
 }
 
@@ -136,3 +169,88 @@ export async function logout(): Promise<void> {
   clearTokens()
   clearUser()
 }
+
+export interface UpdateProfilePayload {
+  username?: string
+  email?: string
+  phone?: string | null
+  specialty?: string | null
+  bio?: string | null
+}
+
+/** GET /auth/me — current user profile including avatar_url */
+export async function fetchMe(): Promise<AuthUser> {
+  const res = await fetch(`${BASE_URL}/me`, { headers: authHeaders() })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Failed to load profile')
+  return json.data as AuthUser
+}
+
+/** PATCH /auth/me — update username / email */
+export async function updateMyAccount(payload: UpdateProfilePayload): Promise<AuthUser> {
+  const res = await fetch(`${BASE_URL}/me`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Failed to update profile')
+  const user = json.data as AuthUser
+  persistAuthUser(user)
+  return user
+}
+
+/** POST /auth/me/avatar — multipart profile picture upload */
+export async function uploadMyAvatar(file: File): Promise<AuthUser> {
+  const form = new FormData()
+  form.append('file', file)
+
+  const res = await fetch(`${BASE_URL}/me/avatar`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: form,
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Avatar upload failed')
+  const user = json.data as AuthUser
+  persistAuthUser(user)
+  return user
+}
+
+/** DELETE /auth/me/avatar — remove saved profile picture */
+export async function removeMyAvatar(): Promise<AuthUser> {
+  const res = await fetch(`${BASE_URL}/me/avatar`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Failed to remove avatar')
+  const user = json.data as AuthUser
+  persistAuthUser(user)
+  return user
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string
+  newPassword: string
+}
+
+/** POST /auth/change-password — verify current password and set a new one */
+export async function changePassword(payload: ChangePasswordPayload): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${BASE_URL}/change-password`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const json = await res.json()
+  if (!res.ok) {
+    const fields: { field: string; message: string }[] = json?.meta?.fields ?? json?.data?.fields ?? []
+    const fieldMsg = fields.map((f) => f.message).join('\n')
+    throw new Error(fieldMsg || json?.error || 'Failed to change password')
+  }
+  clearTokens()
+  clearUser()
+  return json.data as { success: boolean; message: string }
+}
+
+export { resolveMediaUrl }

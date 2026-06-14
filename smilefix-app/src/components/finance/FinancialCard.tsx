@@ -19,11 +19,11 @@ interface FinancialCardProps {
 }
 
 const variantStyles: Record<FinancialCardVariant, { value: string; icon: string; glow: string; progress: string }> = {
-  revenue:     { value: 'text-[var(--color-primary)]',   icon: 'bg-[var(--color-primary-container)]/20 text-[var(--color-primary)]',   glow: 'shadow-[0_0_20px_rgba(0,105,111,0.12)]',  progress: 'bg-[var(--color-primary)]' },
-  outstanding: { value: 'text-[var(--color-tertiary)]',  icon: 'bg-[var(--color-tertiary-container)]/20 text-[var(--color-tertiary)]',  glow: 'shadow-[0_0_20px_rgba(44,100,132,0.12)]', progress: 'bg-[var(--color-tertiary)]' },
-  overdue:     { value: 'text-[var(--color-error)]',     icon: 'bg-[var(--color-error-container)] text-[var(--color-error)]',           glow: 'shadow-[0_0_20px_rgba(186,26,26,0.12)]',  progress: 'bg-[var(--color-error)]' },
-  paid:        { value: 'text-[var(--color-secondary)]', icon: 'bg-[var(--color-secondary-container)]/20 text-[var(--color-secondary)]',glow: 'shadow-[0_0_20px_rgba(53,103,93,0.12)]',  progress: 'bg-[var(--color-secondary)]' },
-  neutral:     { value: 'text-[var(--color-on-surface)]',icon: 'bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)]', glow: '', progress: 'bg-[var(--color-outline)]' },
+  revenue:     { value: 'text-emerald-600 dark:text-emerald-400',     icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400',     glow: 'shadow-[0_0_20px_rgba(16,185,129,0.12)]',  progress: 'bg-emerald-500' },
+  outstanding: { value: 'text-orange-600 dark:text-orange-400',     icon: 'bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400',       glow: 'shadow-[0_0_20px_rgba(249,115,22,0.12)]',  progress: 'bg-orange-500' },
+  overdue:     { value: 'text-rose-600 dark:text-rose-400',         icon: 'bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400',               glow: 'shadow-[0_0_20px_rgba(244,63,94,0.12)]',   progress: 'bg-rose-500' },
+  paid:        { value: 'text-teal-600 dark:text-teal-400',         icon: 'bg-teal-50 text-teal-600 dark:bg-teal-950/30 dark:text-teal-400',               glow: 'shadow-[0_0_20px_rgba(20,184,166,0.12)]',  progress: 'bg-teal-500' },
+  neutral:     { value: 'text-[var(--color-on-surface)]',           icon: 'bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)]', glow: '',                                         progress: 'bg-[var(--color-outline)]' },
 }
 
 export function FinancialCard({
@@ -55,7 +55,7 @@ export function FinancialCard({
           <p className={cn('text-2xl font-bold leading-none', s.value)}>{value}</p>
           {subtitle && <p className="text-xs text-[var(--color-on-surface-variant)] mt-1">{subtitle}</p>}
         </div>
-        <div className={cn('w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center shrink-0', s.icon)}>
+        <div className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', s.icon)}>
           {icon}
         </div>
       </div>

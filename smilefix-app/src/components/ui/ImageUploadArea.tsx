@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Upload, X, Camera } from 'lucide-react'
 import { Avatar } from './Avatar'
@@ -19,6 +19,10 @@ export function ImageUploadArea({ value, name = 'User', onChange, className, siz
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | undefined>(value)
   const [dragging, setDragging] = useState(false)
+
+  useEffect(() => {
+    setPreview(value)
+  }, [value])
 
   const handleFile = (file: File) => {
     const url = URL.createObjectURL(file)

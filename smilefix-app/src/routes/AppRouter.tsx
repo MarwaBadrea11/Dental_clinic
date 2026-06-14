@@ -16,6 +16,8 @@ const CalendarPage       = lazy(() => import('@/pages/CalendarPage'))
 const TreatmentsPage     = lazy(() => import('@/pages/TreatmentsPage'))
 const FinancePage        = lazy(() => import('@/pages/FinancePage'))
 const InventoryPage      = lazy(() => import('@/pages/InventoryPage'))
+const LabOrdersPage      = lazy(() => import('@/pages/LabOrdersPage'))
+const SuppliersPage      = lazy(() => import('@/pages/SuppliersPage'))
 const StaffPage          = lazy(() => import('@/pages/StaffPage'))
 const ReportsPage        = lazy(() => import('@/pages/ReportsPage'))
 const NotificationsPage  = lazy(() => import('@/pages/NotificationsPage'))
@@ -80,6 +82,8 @@ export function AppRouter() {
         <Route path={ROUTES.TREATMENTS}      element={<Protected><TreatmentsPage /></Protected>} />
         <Route path={ROUTES.FINANCE}         element={<Protected><FinancePage /></Protected>} />
         <Route path={ROUTES.INVENTORY}       element={<Protected><InventoryPage /></Protected>} />
+        <Route path={ROUTES.LAB}            element={<Protected><LabOrdersPage /></Protected>} />
+        <Route path={ROUTES.SUPPLIERS}     element={<Protected><SuppliersPage /></Protected>} />
         <Route path={ROUTES.STAFF}           element={<Protected><StaffPage /></Protected>} />
         <Route path={ROUTES.REPORTS}         element={<Protected><ReportsPage /></Protected>} />
         <Route path={ROUTES.NOTIFICATIONS}   element={<Protected><NotificationsPage /></Protected>} />

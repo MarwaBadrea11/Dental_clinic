@@ -562,6 +562,26 @@
     "cat_Sterilization":        "تعقيم",
     "cat_Equipment":            "معدات"
   },
+  "labOrders": {
+    "title":            "المختبر",
+    "subtitle":         "طلبات المختبر ومتابعة الإنتاج",
+    "totalOrders":      "إجمالي الطلبات",
+    "inProgress":       "قيد التصنيع",
+    "readyForDelivery": "جاهز للتسليم",
+    "delayedOrders":    "طلبات متأخرة",
+    "emptyTitle":       "لا توجد طلبات مختبر بعد",
+    "emptyDesc":        "ستظهر طلبات المختبر هنا بعد إنشائها."
+  },
+  "suppliersPage": {
+    "title":            "إدارة الموردين",
+    "subtitle":         "علاقات الموردين والطلبيات والفوترة",
+    "totalSuppliers":   "إجمالي الموردين",
+    "pendingOrders":    "طلبيات معلقة",
+    "dueInvoices":      "فواتير مستحقة",
+    "activeCompanies":  "الشركات النشطة",
+    "emptyTitle":       "لم يتم العثور على موردين",
+    "emptyDesc":        "أضف معلومات المورد إلى عناصر المخزون لتتبع البائعين."
+  },
   "staff": {
     "title":          "الموظفون",
     "subtitle":       "أعضاء الفريق والموارد البشرية وإدارة القوى العاملة",

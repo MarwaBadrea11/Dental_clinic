@@ -1,6 +1,16 @@
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
-import { registerHandler, loginHandler, refreshHandler, logoutHandler } from './auth.controller.js';
+import {
+  registerHandler,
+  loginHandler,
+  refreshHandler,
+  logoutHandler,
+  getMeHandler,
+  updateMeHandler,
+  uploadAvatarHandler,
+  removeAvatarHandler,
+  changePasswordHandler,
+} from './auth.controller.js';
 import { successResponse } from '../../utils/response.js';
 
 export async function authRoutes(fastify) {
@@ -8,6 +18,12 @@ export async function authRoutes(fastify) {
   fastify.post('/login', loginHandler);
   fastify.post('/refresh', refreshHandler);
   fastify.post('/logout', { preHandler: [authenticate] }, logoutHandler);
+
+  fastify.get('/me', { preHandler: [authenticate] }, getMeHandler);
+  fastify.patch('/me', { preHandler: [authenticate] }, updateMeHandler);
+  fastify.post('/me/avatar', { preHandler: [authenticate] }, uploadAvatarHandler);
+  fastify.delete('/me/avatar', { preHandler: [authenticate] }, removeAvatarHandler);
+  fastify.post('/change-password', { preHandler: [authenticate] }, changePasswordHandler);
 
   /**
    * GET /api/v1/auth/users?role=DENTIST

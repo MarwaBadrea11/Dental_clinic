@@ -106,29 +106,39 @@ export function mapStaffMember(b: BackendStaffMember): StaffMember {
   }
 }
 
-export function mapAttendanceLog(b: BackendAttendanceLog): AttendanceRecord {
-  // log_date can come back as a JS Date object from Knex (PostgreSQL DATE column)
-  // or as an ISO string — normalize it to plain YYYY-MM-DD either way
-  const rawDate = b.log_date as unknown
-  let dateStr: string
-  if (rawDate instanceof Date) {
-    // Use local date parts to avoid UTC-offset shifting the day
-    const y = rawDate.getFullYear()
-    const m = String(rawDate.getMonth() + 1).padStart(2, '0')
-    const d = String(rawDate.getDate()).padStart(2, '0')
-    dateStr = `${y}-${m}-${d}`
-  } else {
-    // Already a string — take only the date portion (handles "2026-06-04T00:00:00.000Z")
-    dateStr = String(rawDate).slice(0, 10)
+/** Normalize PostgreSQL DATE values to YYYY-MM-DD (timezone-less calendar date). */
+function normalizeLogDate(raw: unknown): string {
+  if (raw == null || raw === '') return ''
+  if (typeof raw === 'string') return raw.slice(0, 10)
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    // PG DATE is stored without timezone; Knex returns UTC midnight — use UTC parts
+    return raw.toISOString().slice(0, 10)
   }
+  return String(raw).slice(0, 10)
+}
+
+function extractAttendanceRows(res: unknown): BackendAttendanceLog[] {
+  if (Array.isArray(res)) return res
+  if (res && typeof res === 'object') {
+    const obj = res as Record<string, unknown>
+    if (Array.isArray(obj.attendance)) return obj.attendance as BackendAttendanceLog[]
+    if (Array.isArray(obj.data)) return obj.data as BackendAttendanceLog[]
+  }
+  return []
+}
+
+export function mapAttendanceLog(b: BackendAttendanceLog): AttendanceRecord {
+  const staffId = b.staff_id ?? (b as { employee_id?: string }).employee_id ?? ''
   return {
     id: b.id,
-    employeeId: b.staff_id,
-    date: dateStr,
-    checkIn: b.check_in ?? undefined,
-    checkOut: b.check_out ?? undefined,
+    employeeId: staffId,
+    date: normalizeLogDate(b.log_date),
+    checkIn: b.check_in ? String(b.check_in).slice(0, 5) : undefined,
+    checkOut: b.check_out ? String(b.check_out).slice(0, 5) : undefined,
     status: b.status,
     notes: b.notes ?? undefined,
+    staffName: b.full_name,
+    staffRole: b.role as EmployeeRole | undefined,
   }
 }
 
@@ -199,10 +209,8 @@ export async function fetchAttendance(params?: {
   if (params?.to_date)   qs.set('to_date',   params.to_date)
 
   const query = qs.toString() ? `?${qs}` : ''
-  // Backend wraps the list in { attendance: [...] }
-  const res = await apiClient.get<{ attendance: BackendAttendanceLog[] } | BackendAttendanceLog[]>(`/staff/attendance${query}`)
-  const rows = Array.isArray(res) ? res : (res as { attendance: BackendAttendanceLog[] }).attendance ?? []
-  return Array.isArray(rows) ? rows.map(mapAttendanceLog) : []
+  const res = await apiClient.get<unknown>(`/staff/attendance${query}`)
+  return extractAttendanceRows(res).map(mapAttendanceLog)
 }
 
 export async function logAttendance(payload: CreateAttendancePayload): Promise<AttendanceRecord> {

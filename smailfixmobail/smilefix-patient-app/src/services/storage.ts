@@ -1,11 +1,36 @@
 // ─────────────────────────────────────────────
 // Secure Storage Utility
-// Wraps expo-secure-store with typed helpers.
-// All auth data is encrypted at rest by the OS
-// keychain (iOS Keychain / Android Keystore).
+// SecureStore on native; AsyncStorage fallback on web.
 // ─────────────────────────────────────────────
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Patient } from '../store/appStore';
+
+const isWeb = Platform.OS === 'web';
+
+async function setItem(key: string, value: string): Promise<void> {
+  if (isWeb) {
+    await AsyncStorage.setItem(key, value);
+    return;
+  }
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function getItem(key: string): Promise<string | null> {
+  if (isWeb) {
+    return AsyncStorage.getItem(key);
+  }
+  return SecureStore.getItemAsync(key);
+}
+
+async function deleteItem(key: string): Promise<void> {
+  if (isWeb) {
+    await AsyncStorage.removeItem(key);
+    return;
+  }
+  await SecureStore.deleteItemAsync(key);
+}
 
 // ── Storage keys ──────────────────────────────
 const KEYS = {
@@ -30,9 +55,9 @@ export interface PersistedSession {
  */
 export async function saveSession(session: PersistedSession): Promise<void> {
   await Promise.all([
-    SecureStore.setItemAsync(KEYS.ACCESS_TOKEN,  session.accessToken),
-    SecureStore.setItemAsync(KEYS.REFRESH_TOKEN, session.refreshToken),
-    SecureStore.setItemAsync(KEYS.PATIENT,       JSON.stringify(session.patient)),
+    setItem(KEYS.ACCESS_TOKEN,  session.accessToken),
+    setItem(KEYS.REFRESH_TOKEN, session.refreshToken),
+    setItem(KEYS.PATIENT,       JSON.stringify(session.patient)),
   ]);
 }
 
@@ -40,7 +65,7 @@ export async function saveSession(session: PersistedSession): Promise<void> {
  * Overwrite only the access token (used after a silent token refresh).
  */
 export async function saveAccessToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(KEYS.ACCESS_TOKEN, token);
+  await setItem(KEYS.ACCESS_TOKEN, token);
 }
 
 // ── Read ──────────────────────────────────────
@@ -52,9 +77,9 @@ export async function saveAccessToken(token: string): Promise<void> {
 export async function loadSession(): Promise<PersistedSession | null> {
   try {
     const [accessToken, refreshToken, patientJson] = await Promise.all([
-      SecureStore.getItemAsync(KEYS.ACCESS_TOKEN),
-      SecureStore.getItemAsync(KEYS.REFRESH_TOKEN),
-      SecureStore.getItemAsync(KEYS.PATIENT),
+      getItem(KEYS.ACCESS_TOKEN),
+      getItem(KEYS.REFRESH_TOKEN),
+      getItem(KEYS.PATIENT),
     ]);
 
     if (!accessToken || !refreshToken || !patientJson) return null;
@@ -74,8 +99,8 @@ export async function loadSession(): Promise<PersistedSession | null> {
  */
 export async function clearSession(): Promise<void> {
   await Promise.all([
-    SecureStore.deleteItemAsync(KEYS.ACCESS_TOKEN),
-    SecureStore.deleteItemAsync(KEYS.REFRESH_TOKEN),
-    SecureStore.deleteItemAsync(KEYS.PATIENT),
+    deleteItem(KEYS.ACCESS_TOKEN),
+    deleteItem(KEYS.REFRESH_TOKEN),
+    deleteItem(KEYS.PATIENT),
   ]);
 }

@@ -138,6 +138,12 @@ export async function fetchPatients(params?: {
   return { patients: rows.map(mapPatient), total }
 }
 
+/** Lightweight helper for global header search — returns mapped patients only. */
+export async function searchPatients(query: string, limit = 8): Promise<Patient[]> {
+  const { patients } = await fetchPatients({ search: query.trim(), limit })
+  return patients
+}
+
 export async function fetchPatientById(id: string): Promise<Patient> {
   const p = await apiClient.get<BackendPatient>(`/patients/${id}`)
   return mapPatient(p)

@@ -1,17 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth Service — SmileFix Web App
-<<<<<<< Updated upstream
-// ─────────────────────────────────────────────────────────────────────────────
-
-import { API_BASE } from './apiClient'
-
-const BASE_URL = `${API_BASE}/auth`
-=======
 // Connects to dental-clinic-backend at VITE_API_BASE_URL/api/v1/auth
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3002'}/api/v1/auth`
->>>>>>> Stashed changes
 
 const ACCESS_TOKEN_KEY  = 'smilefix_access_token'
 const REFRESH_TOKEN_KEY = 'smilefix_refresh_token'

@@ -4,9 +4,6 @@
 
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, clearUser } from './authService'
 
-<<<<<<< Updated upstream
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1'
-=======
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3002'
 
 /**
@@ -48,7 +45,6 @@ function isPublicPath(path: string): boolean {
     return normalised.startsWith(normP)
   })
 }
->>>>>>> Stashed changes
 
 export class ApiError extends Error {
   status: number

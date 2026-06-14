@@ -45,7 +45,7 @@ export function mapAttachment(a: BackendAttachment): Attachment {
     id:         a.id,
     name:       a.file_name,
     type:       mapType(a.type, a.mime_type, a.file_name),
-    url:        `${API_BASE}/patients/${a.patient_id}/attachments/${a.id}/download`,
+    url:        `${API_BASE}/api/v1/patients/${a.patient_id}/attachments/${a.id}/download`,
     size:       formatBytes(a.file_size_bytes),
     uploadedAt: a.created_at.split('T')[0],
     uploadedBy: a.uploaded_by ?? 'Unknown',
@@ -66,7 +66,7 @@ function authHeaders(): Record<string, string> {
  * Returns all non-deleted attachments for a patient.
  */
 export async function fetchAttachments(patientId: string): Promise<Attachment[]> {
-  const res = await fetch(`${API_BASE}/patients/${patientId}/attachments`, {
+  const res = await fetch(`${API_BASE}/api/v1/patients/${patientId}/attachments`, {
     headers: authHeaders(),
   })
   if (!res.ok) throw new Error('Failed to load attachments')
@@ -96,7 +96,7 @@ export async function uploadAttachment(
   if (meta?.toothNumber)     form.append('tooth_number',     String(meta.toothNumber))
   if (meta?.notes)           form.append('notes',            meta.notes)
 
-  const res = await fetch(`${API_BASE}/patients/${patientId}/attachments`, {
+  const res = await fetch(`${API_BASE}/api/v1/patients/${patientId}/attachments`, {
     method: 'POST',
     headers: authHeaders(),   // no Content-Type — browser sets multipart boundary automatically
     body: form,
@@ -117,7 +117,7 @@ export async function uploadAttachment(
  */
 export async function deleteAttachment(patientId: string, attachmentId: string): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/patients/${patientId}/attachments/${attachmentId}`,
+    `${API_BASE}/api/v1/patients/${patientId}/attachments/${attachmentId}`,
     { method: 'DELETE', headers: authHeaders() },
   )
   if (!res.ok && res.status !== 204) throw new Error('Delete failed')
@@ -133,7 +133,7 @@ export async function downloadAttachmentFile(
   fileName: string,
 ): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/patients/${patientId}/attachments/${attachmentId}/download`,
+    `${API_BASE}/api/v1/patients/${patientId}/attachments/${attachmentId}/download`,
     { headers: authHeaders() },
   )
   if (!res.ok) throw new Error('Download failed')

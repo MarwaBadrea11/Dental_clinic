@@ -1,0 +1,6 @@
+@echo off
+echo Regenerating JWT keys...
+node regenerate-keys.js
+echo Keys regenerated. Press any key to start the server...
+pause
+npm run dev

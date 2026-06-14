@@ -124,8 +124,9 @@ export async function fetchPatients(params?: {
 
   // Use raw fetch to access both data (array) and meta (total/limit/offset)
   const { getAccessToken } = await import('./authService')
+  const { API_BASE } = await import('./apiClient')
   const token = getAccessToken()
-  const res = await fetch(`${(await import('./apiClient')).API_BASE}/patients${query}`, {
+  const res = await fetch(`${API_BASE}/api/v1/patients${query}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -170,7 +171,7 @@ export async function downloadAttachment(patientId: string, attachmentId: string
   const token = getAccessToken()
 
   const res = await fetch(
-    `${API_BASE}/patients/${patientId}/attachments/${attachmentId}/download`,
+    `${API_BASE}/api/v1/patients/${patientId}/attachments/${attachmentId}/download`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} },
   )
 

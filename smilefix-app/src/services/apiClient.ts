@@ -4,7 +4,51 @@
 
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, clearUser } from './authService'
 
+<<<<<<< Updated upstream
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1'
+=======
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3002'
+
+/**
+ * Every backend route is registered under /api/v1.
+ * Service files pass short paths like '/dashboard/stats' — this prefix is
+ * prepended automatically in `request()` so callers never need to repeat it.
+ * Paths that already start with /api/ are passed through unchanged (e.g. the
+ * license service calls which were already fully-qualified).
+ */
+const API_PREFIX = '/api/v1'
+
+function buildUrl(path: string): string {
+  // Already fully-qualified — don't double-prefix
+  if (path.startsWith('/api/')) return `${API_BASE}${path}`
+  return `${API_BASE}${API_PREFIX}${path}`
+}
+
+// Routes that must never require an auth token (public endpoints).
+// Expressed as short paths (without /api/v1) OR fully-qualified.
+// Requests to these paths skip token validation and session-expired logic entirely.
+const PUBLIC_PATHS = [
+  '/api/v1/license/status',
+  '/api/v1/license/activate',
+  '/api/v1/license/device-id',
+  '/api/v1/license/health',
+  '/api/v1/auth/login',
+  '/api/v1/auth/register',
+  '/api/v1/health',
+  '/auth/login',
+  '/auth/register',
+  '/health',
+]
+
+function isPublicPath(path: string): boolean {
+  // Normalise to the short form for comparison
+  const normalised = path.startsWith('/api/v1') ? path.slice(7) : path
+  return PUBLIC_PATHS.some((p) => {
+    const normP = p.startsWith('/api/v1') ? p.slice(7) : p
+    return normalised.startsWith(normP)
+  })
+}
+>>>>>>> Stashed changes
 
 export class ApiError extends Error {
   status: number
@@ -56,7 +100,7 @@ async function tryRefreshToken(): Promise<string | null> {
     if (!refreshToken) return null
 
     try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
+      const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
@@ -94,31 +138,44 @@ async function request<T>(
   body?: unknown,
   retry = true
 ): Promise<T> {
-  // Proactively refresh if token is stale — avoids a round-trip 401
+  const headers: Record<string, string> = {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+
+  // ── Public routes: no token required, no session-expired side effects ─────
+  if (isPublicPath(path)) {
+    const res = await fetch(buildUrl(path), {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+
+    const json = await res.json()
+    if (!res.ok) {
+      const msg = json?.error ?? 'Request failed'
+      throw new ApiError(res.status, msg)
+    }
+    return json.data as T
+  }
+
+  // ── Protected routes: attach token, refresh proactively ───────────────────
   const token = await getValidToken()
 
   if (!token && retry) {
-    // No valid token and no refresh token — clear storage and signal logout
     clearTokens()
     clearUser()
     window.dispatchEvent(new CustomEvent('auth:session-expired'))
     throw new ApiError(401, 'Session expired. Please log in again.')
   }
 
-  // Only set Content-Type when we actually have a body to send.
-  // Fastify v5 rejects DELETE/GET requests that advertise application/json
-  // but send an empty body (FST_ERR_CTP_EMPTY_JSON_BODY).
-  const headers: Record<string, string> = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(buildUrl(path), {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
 
-  // Fallback: if server still returns 401 (e.g. token was revoked), retry once
+  // Fallback: if server still returns 401, retry once after a fresh token
   if (res.status === 401 && retry) {
     const newToken = await tryRefreshToken()
     if (newToken) return request<T>(method, path, body, false)

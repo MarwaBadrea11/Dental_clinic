@@ -160,7 +160,7 @@ export function AppointmentFormModal({
     setDataLoading(true)
 
     const token = localStorage.getItem('smilefix_access_token') ?? ''
-    const base = 'http://localhost:3000/api/v1'
+    const base = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3002'}/api/v1`
     const headers = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

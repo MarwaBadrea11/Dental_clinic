@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useState, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -38,11 +39,21 @@ export function RevenueStats({ data, title, delay = 0, className }: RevenueStats
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('finance.monthlyRevenue')
 
+  // Defer chart rendering until after the browser has completed a full paint
+  // cycle. useEffect alone still fires before layout in some React versions;
+  // setTimeout(0) yields to the event loop so ResizeObserver gets real dimensions.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setMounted(true), 0)
+    return () => clearTimeout(id)
+  }, [])
+
   return (
     <SectionCard title={resolvedTitle} icon={<BarChart3 size={15} />} delay={delay} className={className}>
       {/* height={300} matches the Dashboard Treatment Distribution chart */}
-      <div className="w-full" style={{ height: 300 }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="w-full" style={{ height: 300, minHeight: 300 }}>
+        {mounted && (
+          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
           <BarChart
             data={data}
             margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
@@ -109,6 +120,7 @@ export function RevenueStats({ data, title, delay = 0, className }: RevenueStats
             />
           </BarChart>
         </ResponsiveContainer>
+        )}
       </div>
     </SectionCard>
   )

@@ -2,8 +2,10 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 
-import en from './locales/en/translation.json'
-import ar from './locales/ar/translation.json'
+import enTranslation from './locales/en/translation.json'
+import arTranslation from './locales/ar/translation.json'
+import enLicense from './locales/en/license.json'
+import arLicense from './locales/ar/license.json'
 
 const LANG_KEY = 'smilefix-language'
 
@@ -12,8 +14,14 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { translation: en },
-      ar: { translation: ar },
+      en: { 
+        translation: enTranslation,
+        license: enLicense
+      },
+      ar: { 
+        translation: arTranslation,
+        license: arLicense
+      },
     },
     // Read from localStorage first, fall back to 'en'
     lng: (() => {

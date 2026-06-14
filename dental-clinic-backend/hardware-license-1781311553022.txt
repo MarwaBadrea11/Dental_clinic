@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-13T00:45:53.022Z",
+  "licenseKey": "HARDWARE-6c50924af3b22214647626340ab51b78-19EBE713DFD",
+  "hardwareFingerprint": "d033f0a68b210d8a8e03e82ff0772f42628fae65b89eeccdd9944d5ea5579184",
+  "hardwareInfo": {
+    "machineId": "338010fa-92d0-4e67-9ca3-8115abc201af",
+    "hostname": "DESKTOP-AVTHIC9",
+    "platform": "win32",
+    "arch": "x64",
+    "cpus": 8,
+    "cpuModel": "Intel(R) Core(TM) i5-8400H CPU @ 2.50GHz",
+    "totalMemory": "16 GB",
+    "freeMemory": "7 GB",
+    "uptime": "686 hours",
+    "networkInterfaces": 3
+  },
+  "secretSalt": "SMILEFIX-HARDWARE-SALT-2024",
+  "notes": "This license key is bound to the specific hardware and cannot be transferred."
+}

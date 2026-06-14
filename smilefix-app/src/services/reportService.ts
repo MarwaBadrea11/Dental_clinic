@@ -36,7 +36,7 @@ async function getFreshToken(): Promise<string | null> {
   if (!refreshToken) return token  // return whatever we have
 
   try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -204,7 +204,7 @@ export async function fetchAuditLogs(
 ): Promise<{ data: AuditLog[]; total: number; page: number; limit: number }> {
   const token = await getFreshToken()
   const raw = await fetch(
-    `${API_BASE}/reports/audit-logs${buildQs(params as Record<string, string | number | undefined>)}`,
+    `${API_BASE}/api/v1/reports/audit-logs${buildQs(params as Record<string, string | number | undefined>)}`,
     { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
   )
   const json = await raw.json()
@@ -226,7 +226,7 @@ export async function downloadReport(
   params: Record<string, string | undefined> = {},
 ): Promise<void> {
   const qs  = buildQs({ ...params, format })
-  const url = `${API_BASE}/reports/${type}/export${qs}`
+  const url = `${API_BASE}/api/v1/reports/${type}/export${qs}`
 
   // Get a fresh (non-expired) token — this is the key fix.
   // If we send an expired token the server returns a 401 JSON response

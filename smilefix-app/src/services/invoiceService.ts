@@ -263,7 +263,7 @@ export async function fetchInvoices(params: ListInvoicesParams = {}): Promise<{
   // Use raw fetch to access both data array and meta (pagination)
   const { getAccessToken } = await import('./authService')
   const token = getAccessToken()
-  const rawRes = await fetch(`${API_BASE}/invoices${query}`, {
+  const rawRes = await fetch(`${API_BASE}/api/v1/invoices${query}`, {
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   })
   const json = await rawRes.json()
@@ -327,7 +327,7 @@ export async function fetchPatientInvoices(
 
   const { getAccessToken } = await import('./authService')
   const token = getAccessToken()
-  const rawRes = await fetch(`${API_BASE}/patients/${patientId}/invoices${query}`, {
+  const rawRes = await fetch(`${API_BASE}/api/v1/patients/${patientId}/invoices${query}`, {
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   })
   const json = await rawRes.json()

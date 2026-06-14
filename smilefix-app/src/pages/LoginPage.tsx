@@ -127,8 +127,8 @@ export default function LoginPage() {
   // ── Login state ──────────────────────────────────────────────────────────────
   const [loading, setLoading]           = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail]               = useState('dr.smith@smilefix.com')
-  const [password, setPassword]         = useState('password')
+  const [email, setEmail]               = useState('admin@smilefix.com')
+  const [password, setPassword]         = useState('Admin@1234')
   const [loginError, setLoginError]     = useState('')
 
   // ── Register state ───────────────────────────────────────────────────────────

@@ -28,7 +28,12 @@ import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { staffRoutes } from './modules/staff/staff.routes.js';
 import { notesRoutes } from './modules/notes/notes.routes.js';
 import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
+<<<<<<< Updated upstream
 import { settingsRoutes } from './modules/settings/settings.routes.js';
+=======
+import { licenseRoutes } from './modules/license/license.routes.js';
+import licenseGuard from './middleware/licenseGuard.js';
+>>>>>>> Stashed changes
 import { AppError, ValidationError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
 
@@ -99,8 +104,13 @@ export async function buildApp(opts = {}) {
   // ─── Audit Hook ──────────────────────────────────────────────────────────────
   await fastify.register(auditHookPlugin);
 
+<<<<<<< Updated upstream
   // ─── Appointment Reminder Scheduler ──────────────────────────────────────────
   await fastify.register(appointmentReminderPlugin);
+=======
+  // ─── License Guard Middleware ────────────────────────────────────────────────
+  await fastify.register(licenseGuard);
+>>>>>>> Stashed changes
 
   // ─── Global Error Handler ────────────────────────────────────────────────────
   fastify.setErrorHandler((error, _request, reply) => {
@@ -125,6 +135,7 @@ export async function buildApp(opts = {}) {
   // ─── Routes ─────────────────────────────────────────────────────────────────
   await fastify.register(healthRoutes, { prefix: '/api/v1' });
   await fastify.register(authRoutes, { prefix: '/api/v1/auth' });
+  await fastify.register(licenseRoutes, { prefix: '/api/v1/license' });
   await fastify.register(rolesRoutes, { prefix: '/api/v1' });
   await fastify.register(patientsRoutes, { prefix: '/api/v1/patients' });
   await fastify.register(attachmentsRoutes, { prefix: '/api/v1/patients' });

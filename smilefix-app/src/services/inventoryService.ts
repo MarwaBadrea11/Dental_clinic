@@ -92,7 +92,7 @@ export async function fetchInventory(params?: {
   const { getAccessToken } = await import('./authService')
   const { API_BASE } = await import('./apiClient')
   const token = getAccessToken()
-  const res = await fetch(`${API_BASE}/inventory${query}`, {
+  const res = await fetch(`${API_BASE}/api/v1/inventory${query}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

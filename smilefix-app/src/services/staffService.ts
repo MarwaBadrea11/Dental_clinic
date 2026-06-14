@@ -153,7 +153,7 @@ export async function fetchStaff(params?: {
   // Use raw fetch to access both json.data (array) and json.meta (total),
   // since apiClient already unwraps json.data and discards json.meta.
   const token = getAccessToken()
-  const res = await fetch(`${API_BASE}/staff${query}`, {
+  const res = await fetch(`${API_BASE}/api/v1/staff${query}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

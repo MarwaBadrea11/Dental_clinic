@@ -9,7 +9,8 @@
     "test": "vitest --run",
     "db:migrate": "node scripts/migrate.mjs",
     "db:rollback": "node scripts/migrate.mjs rollback",
-    "db:make": "knex --knexfile src/db/knexfile.js migrate:make"
+    "db:make": "knex --knexfile src/db/knexfile.js migrate:make",
+    "license:generate-hardware-key": "node scripts/generate-hardware-key.mjs"
   },
   "keywords": [],
   "author": "",
@@ -30,7 +31,11 @@
     "fastify-plugin": "^5.1.0",
     "fastify-type-provider-zod": "^6.1.0",
     "knex": "^3.2.10",
+<<<<<<< Updated upstream
     "node-cron": "3.0.3",
+=======
+    "node-machine-id": "^1.1.12",
+>>>>>>> Stashed changes
     "pdfkit": "0.15.1",
     "pg": "^8.21.0",
     "zod": "^4.4.3"

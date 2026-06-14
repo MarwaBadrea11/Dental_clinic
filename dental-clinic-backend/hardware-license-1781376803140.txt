@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-06-13T18:53:23.140Z",
+  "licenseKey": "HARDWARE-420e79fd712abdb100eb4e13585f33fb-19EC254E144",
+  "hardwareFingerprint": "887a476869e12b0c79f55950d0923d739faadbc7c6386a8f8184ddc9b5c2e54f",
+  "hardwareInfo": {
+    "machineId": "ERROR-19ec2543289",
+    "hostname": "Specified-Machine",
+    "platform": "custom",
+    "arch": "custom",
+    "cpus": 0,
+    "cpuModel": "Custom Machine",
+    "totalMemory": "N/A",
+    "isCustom": true
+  },
+  "secretSalt": "SMILEFIX-HARDWARE-SALT-2024",
+  "notes": "This license key is bound to the specific hardware and cannot be transferred."
+}

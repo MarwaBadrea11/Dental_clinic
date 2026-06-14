@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, FlaskConical, ScanLine, CheckCircle2, AlertTriangle, RotateCcw, ZoomIn } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Upload, X, FlaskConical, ScanLine, CheckCircle2, AlertTriangle, RotateCcw, ZoomIn, Download } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/utils/cn'
+import { exportElementToPdf, sanitizePdfFilename } from '@/utils/exportXrayReportPdf'
+import { formatDate, localDateStr } from '@/utils/format'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,15 +61,30 @@ const severityConfig = {
   },
 }
 
+const pdfSeverityStyles = {
+  critical: { border: '#b3261e', bg: '#fce8e6', color: '#b3261e', label: 'Critical' },
+  warning:  { border: '#2c6484', bg: '#e8f1f6', color: '#2c6484', label: 'Warning' },
+  normal:   { border: '#35675d', bg: '#e8f3f0', color: '#35675d', label: 'Normal' },
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface ImageAnalyzerModalProps {
   open: boolean
   onClose: () => void
+  patientName?: string
+  patientCode?: string
 }
 
-export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
+export function ImageAnalyzerModal({
+  open,
+  onClose,
+  patientName,
+  patientCode,
+}: ImageAnalyzerModalProps) {
+  const { t, i18n } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
+  const reportExportRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -75,6 +92,11 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
   const [scanStep, setScanStep] = useState(0)
   const [findings, setFindings] = useState<Finding[]>([])
   const [zoomIn, setZoomIn] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const resolvedPatientName = patientName?.trim() || t('xrayAnalyzer.generalPatient', { defaultValue: 'General Patient' })
+  const reportDate = localDateStr()
+  const generatedAt = new Date().toLocaleString(i18n.language)
 
   // ── File handling ──────────────────────────────────────────────────────────
 
@@ -105,7 +127,6 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
     setFindings([])
     setScanStep(0)
 
-    // Uploading → scanning after 800ms
     setTimeout(() => {
       setPhase('scanning')
       let step = 0
@@ -130,12 +151,32 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
     setScanStep(0)
     setFindings([])
     setZoomIn(false)
+    setIsExporting(false)
     if (inputRef.current) inputRef.current.value = ''
   }
 
   const handleClose = () => {
     reset()
     onClose()
+  }
+
+  const handleSaveReport = async () => {
+    if (phase !== 'done' || !reportExportRef.current) return
+    setIsExporting(true)
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
+      const safeName = sanitizePdfFilename(resolvedPatientName)
+      await exportElementToPdf(
+        reportExportRef.current,
+        `XRay_Analysis_Report_${safeName}.pdf`,
+      )
+    } catch (err) {
+      console.error('PDF export failed:', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const criticalCount = findings.filter((f) => f.severity === 'critical').length
@@ -145,8 +186,8 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
     <Modal
       open={open}
       onClose={handleClose}
-      title="Precision X-Ray Analyzer"
-      description="Upload a dental X-ray scan for AI-assisted diagnostic analysis."
+      title={t('xrayAnalyzer.title', { defaultValue: 'Precision X-Ray Analyzer' })}
+      description={t('xrayAnalyzer.description', { defaultValue: 'Upload a dental X-ray scan for AI-assisted diagnostic analysis.' })}
       size="xl"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -178,7 +219,6 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
           }}
         >
           {!preview ? (
-            /* Empty state */
             <div style={{ textAlign: 'center', padding: '2rem' }}>
               <div style={{
                 width: '3.5rem', height: '3.5rem', borderRadius: '50%',
@@ -190,14 +230,13 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                 <Upload size={24} />
               </div>
               <p style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-on-surface)', marginBottom: '0.25rem' }}>
-                Drop X-ray scan here
+                {t('xrayAnalyzer.dropHere', { defaultValue: 'Drop X-ray scan here' })}
               </p>
               <p style={{ fontSize: '0.8125rem', color: 'var(--color-on-surface-variant)' }}>
-                or click to browse — PNG, JPG, DICOM supported
+                {t('xrayAnalyzer.browseHint', { defaultValue: 'or click to browse — PNG, JPG, DICOM supported' })}
               </p>
             </div>
           ) : (
-            /* Image preview */
             <div style={{ width: '100%', position: 'relative' }}>
               <motion.img
                 src={preview}
@@ -214,7 +253,6 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                 }}
               />
 
-              {/* Scanning overlay */}
               <AnimatePresence>
                 {phase === 'scanning' && (
                   <motion.div
@@ -228,7 +266,6 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                       alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
                     }}
                   >
-                    {/* Scan line */}
                     <motion.div
                       animate={{ top: ['10%', '90%', '10%'] }}
                       transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
@@ -253,7 +290,6 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                 )}
               </AnimatePresence>
 
-              {/* Done overlay — AI badge */}
               <AnimatePresence>
                 {phase === 'done' && (
                   <motion.div
@@ -268,12 +304,13 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                     }}
                   >
                     <FlaskConical size={13} />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em' }}>AI ANALYSIS COMPLETE</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+                      {t('xrayAnalyzer.aiComplete', { defaultValue: 'AI ANALYSIS COMPLETE' })}
+                    </span>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Zoom + Reset controls */}
               {phase === 'done' && (
                 <div style={{
                   position: 'absolute', top: '0.75rem', right: '0.75rem',
@@ -317,7 +354,6 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
           onChange={handleInputChange}
         />
 
-        {/* ── Uploading progress bar ── */}
         <AnimatePresence>
           {phase === 'uploading' && (
             <motion.div
@@ -336,14 +372,13 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                   />
                 </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-on-surface-variant)', whiteSpace: 'nowrap' }}>
-                  Uploading…
+                  {t('xrayAnalyzer.uploading', { defaultValue: 'Uploading…' })}
                 </span>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Findings ── */}
         <AnimatePresence>
           {phase === 'done' && findings.length > 0 && (
             <motion.div
@@ -351,13 +386,12 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Summary bar */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem',
                 marginBottom: '0.875rem', flexWrap: 'wrap',
               }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-on-surface)', flex: 1 }}>
-                  Diagnostic Findings
+                  {t('xrayAnalyzer.findingsTitle', { defaultValue: 'Diagnostic Findings' })}
                   {fileName && (
                     <span style={{ fontWeight: 400, color: 'var(--color-on-surface-variant)', marginLeft: '0.5rem' }}>
                       — {fileName}
@@ -370,7 +404,7 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                     borderRadius: 9999, background: 'var(--color-error-container)',
                     color: 'var(--color-error)',
                   }}>
-                    {criticalCount} Critical
+                    {criticalCount} {t('xrayAnalyzer.critical', { defaultValue: 'Critical' })}
                   </span>
                 )}
                 {warningCount > 0 && (
@@ -379,12 +413,11 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                     borderRadius: 9999, background: 'rgba(44,100,132,0.12)',
                     color: 'var(--color-tertiary)',
                   }}>
-                    {warningCount} Warning
+                    {warningCount} {t('xrayAnalyzer.warning', { defaultValue: 'Warning' })}
                   </span>
                 )}
               </div>
 
-              {/* Finding cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {findings.map((f, i) => {
                   const cfg = severityConfig[f.severity]
@@ -426,16 +459,163 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
                 })}
               </div>
 
-              {/* Disclaimer */}
               <p style={{
                 fontSize: '0.6875rem', color: 'var(--color-outline)',
                 marginTop: '0.875rem', lineHeight: 1.5,
               }}>
-                ⚠ AI-generated findings are for clinical decision support only. Always confirm with a qualified radiologist before treatment planning.
+                {t('xrayAnalyzer.disclaimer', {
+                  defaultValue: '⚠ AI-generated findings are for clinical decision support only. Always confirm with a qualified radiologist before treatment planning.',
+                })}
               </p>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Off-screen PDF export layout (canvas capture — preserves RTL Arabic) ── */}
+        {phase === 'done' && (
+          <div
+            id="xray-report-export"
+            ref={reportExportRef}
+            dir={i18n.dir()}
+            lang={i18n.language}
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              left: '-10000px',
+              top: 0,
+              width: '794px',
+              background: '#ffffff',
+              color: '#1a1c1e',
+              padding: '40px',
+              fontFamily: 'system-ui, "Segoe UI", Tahoma, Arial, sans-serif',
+              lineHeight: 1.5,
+            }}
+          >
+            {/* Header */}
+            <div style={{ borderBottom: '3px solid #00696f', paddingBottom: '16px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                <div>
+                  <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#00696f' }}>
+                    {t('xrayAnalyzer.reportTitle', { defaultValue: 'X-Ray AI Analysis Report' })}
+                  </h1>
+                  <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#5c6267' }}>
+                    SmileFix Dental Clinic
+                  </p>
+                </div>
+                <div style={{ textAlign: i18n.dir() === 'rtl' ? 'left' : 'right', fontSize: '12px', color: '#5c6267' }}>
+                  <div>{t('common.date', { defaultValue: 'Date' })}: {formatDate(reportDate)}</div>
+                  <div>{t('xrayAnalyzer.generatedAt', { defaultValue: 'Generated' })}: {generatedAt}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Patient metadata */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px',
+              background: '#f4f7f7',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '24px',
+              fontSize: '13px',
+            }}>
+              <div>
+                <strong>{t('common.patient', { defaultValue: 'Patient' })}:</strong>{' '}
+                {resolvedPatientName}
+              </div>
+              {patientCode && (
+                <div>
+                  <strong>{t('patients.patientCode', { defaultValue: 'Patient Code' })}:</strong>{' '}
+                  {patientCode}
+                </div>
+              )}
+              <div>
+                <strong>{t('xrayAnalyzer.scanFile', { defaultValue: 'Scan File' })}:</strong>{' '}
+                {fileName ?? '—'}
+              </div>
+              <div>
+                <strong>{t('xrayAnalyzer.analysisEngine', { defaultValue: 'Analysis Engine' })}:</strong>{' '}
+                SmileFix AI v1.0
+              </div>
+            </div>
+
+            {/* X-ray image */}
+            {preview && (
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', color: '#1a1c1e' }}>
+                  {t('xrayAnalyzer.imagingStudy', { defaultValue: 'Radiographic Study' })}
+                </h2>
+                <div style={{ border: '1px solid #bdc9c9', borderRadius: '8px', overflow: 'hidden', background: '#0a0e10' }}>
+                  <img
+                    src={preview}
+                    alt="X-ray"
+                    crossOrigin="anonymous"
+                    style={{ width: '100%', maxHeight: '360px', objectFit: 'contain', display: 'block' }}
+                  />
+                </div>
+                <p style={{ fontSize: '11px', color: '#5c6267', marginTop: '8px' }}>
+                  {t('xrayAnalyzer.bboxNote', {
+                    defaultValue: 'AI region markers correspond to anatomical findings listed below.',
+                  })}
+                </p>
+              </div>
+            )}
+
+            {/* Findings summary */}
+            <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700 }}>
+                {t('xrayAnalyzer.findingsTitle', { defaultValue: 'Diagnostic Findings' })}:
+              </span>
+              {criticalCount > 0 && (
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: '#fce8e6', color: '#b3261e' }}>
+                  {criticalCount} {t('xrayAnalyzer.critical', { defaultValue: 'Critical' })}
+                </span>
+              )}
+              {warningCount > 0 && (
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: '#e8f1f6', color: '#2c6484' }}>
+                  {warningCount} {t('xrayAnalyzer.warning', { defaultValue: 'Warning' })}
+                </span>
+              )}
+            </div>
+
+            {/* Finding cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              {findings.map((f, i) => {
+                const cfg = pdfSeverityStyles[f.severity]
+                const cardBorder = i18n.dir() === 'rtl'
+                  ? { borderRight: `3px solid ${cfg.border}` }
+                  : { borderLeft: `3px solid ${cfg.border}` }
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '6px',
+                      background: cfg.bg,
+                      ...cardBorder,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#1a1c1e' }}>{f.region}</span>
+                      <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: cfg.color }}>
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#44474a' }}>{f.detail}</p>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Footer disclaimer */}
+            <div style={{ borderTop: '1px solid #bdc9c9', paddingTop: '14px', fontSize: '10px', color: '#747878', lineHeight: 1.6 }}>
+              {t('xrayAnalyzer.disclaimer', {
+                defaultValue: '⚠ AI-generated findings are for clinical decision support only. Always confirm with a qualified radiologist before treatment planning.',
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Footer actions ── */}
         <div style={{
@@ -444,22 +624,31 @@ export function ImageAnalyzerModal({ open, onClose }: ImageAnalyzerModalProps) {
           borderTop: '1px solid rgba(189,201,201,0.2)',
         }}>
           {phase === 'done' && (
-            <Button variant="outline" size="sm" leftIcon={<RotateCcw size={13} />} onClick={reset}>
-              New Scan
+            <Button variant="outline" size="sm" leftIcon={<RotateCcw size={13} />} onClick={reset} disabled={isExporting}>
+              {t('xrayAnalyzer.newScan', { defaultValue: 'New Scan' })}
             </Button>
           )}
           {phase === 'idle' && (
             <Button variant="outline" size="sm" leftIcon={<Upload size={13} />} onClick={() => inputRef.current?.click()}>
-              Browse Files
+              {t('xrayAnalyzer.browseFiles', { defaultValue: 'Browse Files' })}
             </Button>
           )}
-          <Button
-            size="sm"
-            variant={phase === 'done' ? 'primary' : 'ghost'}
-            onClick={handleClose}
-          >
-            {phase === 'done' ? 'Save Report' : 'Close'}
+          <Button size="sm" variant="ghost" onClick={handleClose} disabled={isExporting}>
+            {t('common.close', { defaultValue: 'Close' })}
           </Button>
+          {phase === 'done' && (
+            <Button
+              size="sm"
+              variant="primary"
+              leftIcon={<Download size={13} />}
+              loading={isExporting}
+              onClick={() => void handleSaveReport()}
+            >
+              {isExporting
+                ? t('xrayAnalyzer.generatingPdf', { defaultValue: 'Generating PDF…' })
+                : t('xrayAnalyzer.saveReport', { defaultValue: 'Save Report' })}
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

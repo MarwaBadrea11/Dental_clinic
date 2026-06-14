@@ -3,8 +3,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, clearUser } from './authService'
+import { API_BASE } from './apiConfig'
 
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1'
+export { API_BASE } from './apiConfig'
 
 export class ApiError extends Error {
   status: number

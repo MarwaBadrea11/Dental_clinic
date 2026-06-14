@@ -13,12 +13,16 @@
     "collapse":      "Collapse"
   },
   "topbar": {
-    "search":        "Search patients, records...",
-    "toggleTheme":   "Toggle theme",
-    "notifications": "Notifications",
-    "help":          "Help",
-    "myProfile":     "My Profile",
-    "signOut":       "Sign Out"
+    "search":         "Search patients, records...",
+    "searchResults":  "Search results",
+    "searching":      "Searching...",
+    "noResults":      "No results found",
+    "clearSearch":    "Clear search",
+    "toggleTheme":    "Toggle theme",
+    "notifications":  "Notifications",
+    "help":           "Help",
+    "myProfile":      "My Profile",
+    "signOut":        "Sign Out"
   },
   "common": {
     "save":          "Save Changes",

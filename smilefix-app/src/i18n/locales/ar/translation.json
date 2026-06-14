@@ -13,12 +13,16 @@
     "collapse":      "طي القائمة"
   },
   "topbar": {
-    "search":        "ابحث عن مرضى أو سجلات...",
-    "toggleTheme":   "تبديل المظهر",
-    "notifications": "الإشعارات",
-    "help":          "المساعدة",
-    "myProfile":     "ملفي الشخصي",
-    "signOut":       "تسجيل الخروج"
+    "search":         "ابحث عن مرضى أو سجلات...",
+    "searchResults":  "نتائج البحث",
+    "searching":      "جاري البحث...",
+    "noResults":      "لم يتم العثور على نتائج",
+    "clearSearch":    "مسح البحث",
+    "toggleTheme":    "تبديل المظهر",
+    "notifications":  "الإشعارات",
+    "help":           "المساعدة",
+    "myProfile":      "ملفي الشخصي",
+    "signOut":        "تسجيل الخروج"
   },
   "common": {
     "save":          "حفظ التغييرات",

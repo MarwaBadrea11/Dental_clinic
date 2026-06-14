@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { NotificationWidget, RevenueCard, ChartCard } from '@/components/dashboard'
+import { NotificationWidget } from '@/components/dashboard'
 import type { NotificationAlert } from '@/components/dashboard'
 import { RestockOrderModal } from '@/components/inventory'
 import { useInventoryStore } from '@/store/inventoryStore'
@@ -206,29 +206,8 @@ export default function NotificationsPage() {
           />
         </div>
 
-        {/* ── Right column: chart + revenue ── */}
-        <div className="col-span-12 lg:col-span-7 space-y-6">
-          <ChartCard
-            title={t('notifications.advancedReporting')}
-            description={t('notifications.reportingDesc')}
-            placeholder
-            placeholderLabel={t('reports.treatmentDist')}
-            placeholderSublabel={t('dashboard.treatmentDistDesc')}
-            onGenerate={() => navigate(ROUTES.REPORTS)}
-            delay={0.15}
-            action={
-              <select className="bg-[var(--color-surface-container-high)] border-none rounded-[var(--radius-DEFAULT)] text-xs font-semibold text-[var(--color-on-surface-variant)] px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]">
-                <option>{t('reports.last30Days')}</option>
-                <option>{t('reports.lastQuarter')}</option>
-                <option>{t('reports.thisYear')}</option>
-              </select>
-            }
-          />
-          <RevenueCard metrics={PERFORMANCE_METRICS} delay={0.2} />
-        </div>
-
-        {/* ── Bottom row: backup card + activity log ── */}
-        <div className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Backup status + activity log */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
           {/* Backup status card */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -311,13 +290,13 @@ export default function NotificationsPage() {
           </motion.div>
         </div>
 
-        {/* ── Full notification list ── */}
-        <div className="col-span-12">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.35 }}
-          >
+        {/* Full notification list */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.35 }}
+          className="w-full"
+        >
             <Card padding="none">
               {/* List header */}
               <div className="px-6 py-4 border-b border-[var(--color-outline-variant)]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -465,8 +444,7 @@ export default function NotificationsPage() {
                 )}
               </div>
             </Card>
-          </motion.div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Restock Order Modal */}

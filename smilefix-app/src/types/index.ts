@@ -327,6 +327,9 @@ export interface AttendanceRecord {
   checkOut?: string
   status: 'present' | 'absent' | 'late' | 'half-day' | 'leave'
   notes?: string
+  /** Populated from backend join when staff list is filtered or not yet loaded */
+  staffName?: string
+  staffRole?: EmployeeRole
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────

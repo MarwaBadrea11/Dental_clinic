@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { Users } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -7,8 +8,8 @@ import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/utils/cn'
 
 export interface PatientRow {
-  id: string        // UUID — used for navigation
-  code?: string     // national_id display code (optional for backwards compat)
+  id: string
+  code?: string
   name: string
   lastVisit: string
   treatment: string
@@ -24,6 +25,8 @@ interface AppointmentSummaryProps {
   delay?: number
   className?: string
 }
+
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
 const statusVariant = {
   completed: 'success',
@@ -41,25 +44,53 @@ export function AppointmentSummary({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay }}
+      transition={{ duration: 0.65, delay, ease: EASE_OUT_EXPO }}
       className={className}
     >
-      <Card padding="none">
+      <Card
+        padding="none"
+        style={{
+          borderTop: '2px solid rgba(121,213,220,0.28)',
+          boxShadow: '0 0 28px 0 rgba(0,105,111,0.08), var(--shadow-card)',
+        }}
+      >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[var(--color-outline-variant)]/20 flex items-center justify-between">
-          <h3 className="font-semibold text-[var(--color-on-surface)]">{resolvedTitle}</h3>
+        <div className="px-6 py-4 border-b border-[var(--color-outline-variant)]/15 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[var(--color-primary-container)]/20 flex items-center justify-center text-[var(--color-primary)]">
+              <Users size={15} />
+            </div>
+            <h3
+              className="text-sm font-bold text-[var(--color-on-surface)]"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >
+              {resolvedTitle}
+            </h3>
+            <span
+              className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: 'rgba(121,213,220,0.12)',
+                color: 'var(--color-primary)',
+                border: '1px solid rgba(121,213,220,0.3)',
+              }}
+            >
+              {patients.length}
+            </span>
+          </div>
           {onViewAll && (
-            <Button variant="ghost" size="sm" onClick={onViewAll}>{t('common.viewAll')}</Button>
+            <Button variant="ghost" size="sm" onClick={onViewAll}>
+              {t('common.viewAll')}
+            </Button>
           )}
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-[var(--color-surface-container-low)]">
-              <tr>
+            <thead>
+              <tr className="bg-[var(--color-surface-container-low)]">
                 {[
                   t('common.patient'),
                   t('patients.lastVisit'),
@@ -67,27 +98,43 @@ export function AppointmentSummary({
                   t('common.status'),
                   '',
                 ].map((h, i) => (
-                  <th key={i} className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]">
+                  <th
+                    key={i}
+                    className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-on-surface-variant)]"
+                  >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--color-outline-variant)]/10">
-              {patients.map((p, i) => (
+            <motion.tbody
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.07, delayChildren: delay + 0.2 } },
+              }}
+              className="divide-y divide-[var(--color-outline-variant)]/10"
+            >
+              {patients.map((p) => (
                 <motion.tr
                   key={p.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2, delay: delay + i * 0.05 }}
-                  className="hover:bg-[var(--color-surface-container-high)] transition-colors"
+                  variants={{
+                    hidden: { opacity: 0, x: -8 },
+                    show:   { opacity: 1, x: 0, transition: { duration: 0.45, ease: EASE_OUT_EXPO } },
+                  }}
+                  whileHover={{ backgroundColor: 'var(--color-surface-container-high)' }}
+                  transition={{ duration: 0.15 }}
+                  className="cursor-default"
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <Avatar name={p.name} src={p.avatar} size="sm" />
+                      <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.2 }}>
+                        <Avatar name={p.name} src={p.avatar} size="sm" />
+                      </motion.div>
                       <div>
-                        <p className="font-semibold text-sm text-[var(--color-on-surface)]">{p.name}</p>
-                        <p className="text-xs text-[var(--color-on-surface-variant)]">
+                        <p className="font-semibold text-sm text-[var(--color-on-surface)] leading-tight">{p.name}</p>
+                        <p className="text-[10px] text-[var(--color-on-surface-variant)] mt-0.5">
                           ID: {p.code ?? p.id}
                         </p>
                       </div>
@@ -107,13 +154,14 @@ export function AppointmentSummary({
                       variant="ghost"
                       size="xs"
                       onClick={() => onView?.(p.id)}
+                      className="hover:text-[var(--color-primary)] transition-colors duration-150"
                     >
                       {t('common.view')}
                     </Button>
                   </td>
                 </motion.tr>
               ))}
-            </tbody>
+            </motion.tbody>
           </table>
         </div>
       </Card>

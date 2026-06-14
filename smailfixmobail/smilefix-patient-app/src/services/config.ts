@@ -24,7 +24,7 @@ import { Platform } from 'react-native';
 //    → Example: 'api.smilefix.com' (no http://, handled below)
 
 // ── ✏️  EDIT THIS when testing on a physical device ──────────────────────────
-const MANUAL_LAN_IP = '192.168.126.249';  // Your machine's Wi-Fi IP (confirmed)
+const MANUAL_LAN_IP = '192.168.1.77';  // Your machine's Wi-Fi IP (confirmed)
 const PORT = 3000;
 const USE_HTTPS = false;    // set to true in production
 // ─────────────────────────────────────────────────────────────────────────────

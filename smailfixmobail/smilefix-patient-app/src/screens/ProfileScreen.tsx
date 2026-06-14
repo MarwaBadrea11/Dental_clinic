@@ -646,7 +646,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
             {[
               { icon: '🔑', ar: { title: 'تسجيل الدخول', desc: 'أدخل بريدك الإلكتروني وكلمة المرور للدخول.' }, en: { title: 'Login', desc: 'Enter your email and password to access your account.' } },
               { icon: '🏠', ar: { title: 'الشاشة الرئيسية', desc: 'اطّلع على موعدك القادم وتقدّم علاجك.' }, en: { title: 'Home Screen', desc: 'View your next appointment, treatment progress, and quick actions.' } },
@@ -701,7 +701,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
             {/* Logo */}
             <View style={styles.aboutLogoRow}>
               <View style={[styles.aboutLogoCircle, { shadowColor: colors.teal }]}>
@@ -868,8 +868,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22, paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 36 : 26,
     borderTopWidth: 1,
-    maxHeight: '92%',          // cap so it never fills the full screen
-    overflow: 'hidden',        // clip rounded corners cleanly
+    // Flex column so ScrollView children can use flex: 1 within maxHeight
+    flexDirection: 'column',
   },
   sheetHandle: {
     width: 40, height: 4, borderRadius: 2,

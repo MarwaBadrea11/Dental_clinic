@@ -16,7 +16,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   secondary:'bg-[var(--color-secondary-container)]/30 text-[var(--color-on-secondary-container)]',
   tertiary: 'bg-[var(--color-tertiary-container)]/25 text-[var(--color-on-tertiary-container)]',
   success:  'bg-[var(--color-secondary-container)]/30 text-[var(--color-secondary)]',
-  warning:  'bg-amber-100 text-amber-700',
+  warning:  'bg-[var(--color-tertiary-container)]/25 text-[var(--color-tertiary)]',
   error:    'bg-[var(--color-error-container)] text-[var(--color-on-error-container)]',
   neutral:  'bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)]',
 }

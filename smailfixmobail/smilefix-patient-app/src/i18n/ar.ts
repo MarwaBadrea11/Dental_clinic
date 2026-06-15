@@ -261,4 +261,10 @@ export default {
   pwdNeedsSpecial:     'يجب أن تحتوي كلمة المرور على رمز خاص واحد على الأقل',
   registerFailed:      'فشل إنشاء الحساب. حاول مرة أخرى.',
   emailAlreadyExists:  'البريد الإلكتروني مستخدم بالفعل. يرجى تسجيل الدخول.',
+
+  // Register — step subtitles & hints
+  registerStep1Sub:    'أدخل بياناتك الشخصية للمتابعة',
+  registerStep2Sub:    'أنشئ كلمة مرور آمنة لحسابك',
+  phoneCountryCodeHint:'أدخل رقم الهاتف الدولي مع رمز الدولة (مثال: +966 للرياض، +1 لأمريكا)',
+  pwdStrengthHint:     'كلمة المرور: 8 أحرف على الأقل، حرف كبير، رقم، ورمز خاص',
 } as const;

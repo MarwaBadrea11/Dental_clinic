@@ -238,4 +238,10 @@ export default {
   pwdNeedsSpecial:     'Password must contain at least one special character',
   registerFailed:      'Registration failed. Please try again.',
   emailAlreadyExists:  'Email is already in use. Please log in instead.',
+
+  // Register — step subtitles & hints
+  registerStep1Sub:    'Enter your personal details to continue',
+  registerStep2Sub:    'Create a secure password for your account',
+  phoneCountryCodeHint:'Enter international phone with country code (e.g., +966 for Riyadh, +1 for USA)',
+  pwdStrengthHint:     'Min 8 chars, one uppercase, one number, one special character',
 } as const;

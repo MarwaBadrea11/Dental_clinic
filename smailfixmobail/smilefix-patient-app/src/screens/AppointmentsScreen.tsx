@@ -139,7 +139,7 @@ function DetailsModal({
   item, visible, onClose, colors, isDark, isRTL, t,
 }: {
   item: Appointment | null; visible: boolean; onClose: () => void;
-  colors: AppColors; isDark: boolean; isRTL: boolean; t: (k: string) => string;
+  colors: AppColors; isDark: boolean; isRTL: boolean; t: (k: any) => string;
 }) {
   if (!item && !visible) return null;
 

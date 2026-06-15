@@ -149,13 +149,13 @@ function DetailsModal({
   const meta = item ? (statusCfg[item.status] ?? statusCfg.waiting) : statusCfg.waiting;
 
   const rows: { label: string; value: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = item ? [
-    { label: isRTL ? 'الطبيب'        : 'Doctor',         icon: 'person-outline',        value: (isRTL ? item.doctor?.nameAr    : item.doctor?.name)    ?? '—' },
-    { label: isRTL ? 'التخصص'        : 'Specialty',      icon: 'medical-outline',       value: (isRTL ? item.doctor?.specialtyAr : item.doctor?.specialty) ?? '—' },
-    { label: isRTL ? 'العلاج'        : 'Treatment',      icon: 'bandage-outline',       value: (isRTL ? item.service?.nameAr   : item.service?.name)   ?? '—' },
-    { label: isRTL ? 'التاريخ'       : 'Date',           icon: 'calendar-outline',      value: item.date },
-    { label: isRTL ? 'الوقت'         : 'Time',           icon: 'time-outline',          value: item.timeSlot },
-    { label: isRTL ? 'المدة (دقيقة)' : 'Duration (min)', icon: 'hourglass-outline',     value: item.service?.duration ? `${item.service.duration}` : '—' },
-    { label: isRTL ? 'ملاحظات'       : 'Notes',          icon: 'document-text-outline', value: item.notes ?? (isRTL ? 'لا توجد ملاحظات' : 'No notes') },
+    { label: t('doctorLabel'),    icon: 'person-outline',        value: (isRTL ? item.doctor?.nameAr     : item.doctor?.name)      ?? '—' },
+    { label: t('specialtyLabel'), icon: 'medical-outline',       value: (isRTL ? item.doctor?.specialtyAr : item.doctor?.specialty) ?? '—' },
+    { label: t('treatmentLabel'), icon: 'bandage-outline',       value: (isRTL ? item.service?.nameAr    : item.service?.name)     ?? '—' },
+    { label: t('dateLabel'),      icon: 'calendar-outline',      value: item.date },
+    { label: t('timeLabel'),      icon: 'time-outline',          value: item.timeSlot },
+    { label: t('durationLabel'),  icon: 'hourglass-outline',     value: item.service?.duration ? `${item.service.duration}` : '—' },
+    { label: t('notesLabel'),     icon: 'document-text-outline', value: item.notes ?? t('noNotesAvailable') },
   ] : [];
 
   return (
@@ -187,7 +187,7 @@ function DetailsModal({
               fontSize: 19, fontWeight: '700', fontFamily: 'Manrope_700Bold',
               color: isDark ? '#e6edf3' : '#1e5979',
             }}>
-              {isRTL ? 'تفاصيل الموعد' : 'Appointment Details'}
+              {t('appointmentDetails')}
             </Text>
           </View>
           {item && (
@@ -255,7 +255,7 @@ function DetailsModal({
             style={{ height: 54, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700', fontFamily: 'Manrope_700Bold', letterSpacing: 0.3 }}>
-              {isRTL ? 'إغلاق' : 'Close'}
+              {t('close')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -331,12 +331,12 @@ export default function AppointmentsScreen({ navigation }: any) {
 
   const handleCancel = (id: string) => {
     Alert.alert(
-      isRTL ? 'إلغاء الموعد' : 'Cancel Appointment',
-      isRTL ? 'هل أنت متأكد من إلغاء وحذف هذا الموعد نهائياً؟' : 'Permanently cancel and delete this appointment?',
+      t('cancelAppointmentTitle'),
+      t('confirmCancelAppt'),
       [
-        { text: isRTL ? 'لا' : 'No', style: 'cancel' },
+        { text: t('no'), style: 'cancel' },
         {
-          text: isRTL ? 'نعم، احذف' : 'Yes, Delete',
+          text: t('yesDelete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -344,7 +344,7 @@ export default function AppointmentsScreen({ navigation }: any) {
               removeAppointment(id);
               fetchAppointments(true);
             } catch {
-              Alert.alert(isRTL ? 'خطأ' : 'Error', isRTL ? 'فشل الحذف' : 'Failed to delete');
+              Alert.alert(t('error'), t('failedToDelete'));
             }
           },
         },
@@ -484,10 +484,10 @@ export default function AppointmentsScreen({ navigation }: any) {
         <Ionicons name="calendar-outline" size={40} color={colors.teal} />
       </View>
       <Text style={[emptyStyles.title, { color: isDark ? '#e6edf3' : '#1e5979' }]}>
-        {isRTL ? 'لا توجد مواعيد' : 'No appointments'}
+        {t('noAppointments')}
       </Text>
       <Text style={[emptyStyles.sub, { color: colors.textSub }]}>
-        {isRTL ? 'احجز موعدك الأول الآن' : 'Book your first appointment now'}
+        {t('bookFirstAppointment')}
       </Text>
       <TouchableOpacity
         onPress={() => navigation.navigate('Booking')}

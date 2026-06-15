@@ -1,15 +1,13 @@
 // ─────────────────────────────────────────────
 // API Configuration — Environment-aware
+// Physical device: reads the Expo dev-server host
+// so the IP never needs to be hardcoded in .env
 // ─────────────────────────────────────────────
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-/** Backend default port (matches dental-clinic-backend PORT env, default 3000). */
 const DEFAULT_PORT = 3000;
 
-/**
- * Ensures the base URL always ends with /api/v1.
- * Accepts either `http://host:port` or `http://host:port/api/v1`.
- */
 function normalizeApiBaseUrl(raw: string): string {
   const trimmed = raw.trim().replace(/\/$/, '');
   if (trimmed.endsWith('/api/v1')) return trimmed;
@@ -17,30 +15,42 @@ function normalizeApiBaseUrl(raw: string): string {
 }
 
 function resolveBaseUrl(): string {
+  // 1. Explicit override from .env — highest priority
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
   if (fromEnv) {
     return normalizeApiBaseUrl(fromEnv);
   }
 
-  // Fallback when .env is missing (emulator / local dev)
+  // 2. On physical devices running through Expo Go / dev client,
+  //    Constants.expoConfig.hostUri contains "192.168.x.x:8081".
+  //    Strip the port and use our backend port instead.
+  try {
+    const hostUri: string | undefined =
+      Constants.expoConfig?.hostUri ??
+      (Constants as any).manifest?.debuggerHost ??
+      (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+
+    if (hostUri) {
+      const host = hostUri.split(':')[0]; // e.g. "192.168.1.105"
+      if (host && host !== 'localhost') {
+        return `http://${host}:${DEFAULT_PORT}/api/v1`;
+      }
+    }
+  } catch {
+    // ignore — fall through to platform defaults
+  }
+
+  // 3. Android emulator: 10.0.2.2 routes to the host machine loopback
   if (Platform.OS === 'android') {
-    // Android emulator: 10.0.2.2 routes to the host machine
     return `http://10.0.2.2:${DEFAULT_PORT}/api/v1`;
   }
 
-  // iOS simulator / Expo web on the same machine
+  // 4. iOS simulator / web on the same machine
   return `http://localhost:${DEFAULT_PORT}/api/v1`;
 }
 
-/**
- * Base URL for all API requests.
- * Set EXPO_PUBLIC_API_URL in .env (see .env.example).
- */
 export const API_BASE_URL: string = resolveBaseUrl();
 
-/**
- * Default request timeout in milliseconds.
- */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
 if (__DEV__) {

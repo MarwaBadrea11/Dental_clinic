@@ -400,7 +400,7 @@ export default function RegisterScreen({ navigation }: any) {
 
   const step1Fields: Omit<FieldConfig, 'rightIcon'>[] = [
     { label: t('fullName'),   placeholder: t('fullNamePh'),  value: fullName, onChange: v => { setFullName(v); setErrors(e => ({ ...e, fullName: '' })); }, error: errors.fullName },
-    { label: isRTL ? 'رقم الهاتف' : 'Phone', placeholder: isRTL ? 'مثال: +966 5X XXX XXXX' : 'e.g. +966 5X XXX XXXX', value: phone, onChange: v => { setPhone(v); setErrors(e => ({ ...e, phone: '' })); }, keyboardType: 'phone-pad', error: errors.phone },
+    { label: t('phoneNumber'),   placeholder: t('phoneExample'),  value: phone, onChange: v => { setPhone(v); setErrors(e => ({ ...e, phone: '' })); }, keyboardType: 'phone-pad', error: errors.phone },
     { label: t('email'),      placeholder: t('emailPh'),     value: email,    onChange: v => { setEmail(v);    setErrors(e => ({ ...e, email:    '' })); }, keyboardType: 'email-address', error: errors.email },
     { label: t('nationalId'), placeholder: t('nationalIdPh'), value: natId,   onChange: v => { setNatId(v);   setErrors(e => ({ ...e, natId:    '' })); }, keyboardType: 'numeric', maxLength: 12, error: errors.natId },
   ];

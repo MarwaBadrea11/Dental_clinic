@@ -199,4 +199,66 @@ export default {
   networkError:  'خطأ في الاتصال، يرجى المحاولة مرة أخرى',
   biometricNA:   'المصادقة البيومترية غير مفعّلة على هذا الجهاز',
   biometricFail: 'لم يتم التعرف على البصمة. حاول مرة أخرى.',
+
+  // Shared UI
+  saveChanges:         'حفظ التغييرات',
+  close:               'إغلاق',
+  enabled:             'مفعّل',
+  disabled:            'معطّل',
+
+  // Notifications modal
+  notificationsTitle:  'الإشعارات',
+  noNotificationsYet:  'لا توجد إشعارات حالياً',
+
+  // Help modal
+  howToUseApp:         'كيفية استخدام التطبيق',
+
+  // About modal
+  aboutApp:            'حول التطبيق',
+  appVersion:          'الإصدار 1.0.0',
+  appDescAbout:        'سمايل فيكس تطبيق متكامل لإدارة رعاية الأسنان — احجز، تابع، وتواصل مع طبيبك في أي وقت.',
+  copyright:           '© 2025 سمايل فيكس لرعاية الأسنان\nجميع الحقوق محفوظة',
+
+  // Appointment details modal
+  appointmentDetails:  'تفاصيل الموعد',
+  noAppointments:      'لا توجد مواعيد',
+  bookFirstAppointment:'احجز موعدك الأول الآن',
+  cancelAppointmentTitle: 'إلغاء الموعد',
+  confirmCancelAppt:   'هل أنت متأكد من إلغاء وحذف هذا الموعد نهائياً؟',
+  yesDelete:           'نعم، احذف',
+  failedToDelete:      'فشل الحذف',
+  noNotesAvailable:    'لا توجد ملاحظات',
+
+  // Appointment detail row labels
+  doctorLabel:         'الطبيب',
+  specialtyLabel:      'التخصص',
+  treatmentLabel:      'العلاج',
+  dateLabel:           'التاريخ',
+  timeLabel:           'الوقت',
+  durationLabel:       'المدة (دقيقة)',
+  notesLabel:          'ملاحظات',
+
+  // QR / Share screen
+  shareTitle:          'مشاركة التطبيق',
+  shareSubtitle:       'امسح رمز QR هذا لتحميل تطبيق سمايل فيكس مباشرةً على جهازك.',
+  pointCameraToScan:   'وجّه كاميرتك للمسح',
+  openCamera:          'افتح الكاميرا',
+  scanQr:              'امسح رمز QR',
+  downloadApk:         'حمّل التطبيق',
+
+  // Date picker
+  selectDateOfBirth:   'اختر تاريخ الميلاد',
+
+  // About features
+  aboutFeature1:       'حجز المواعيد بسهولة في أي وقت',
+  aboutFeature2:       'متابعة تقدم العلاج خطوة بخطوة',
+  aboutFeature3:       'تذكيرات تلقائية قبل موعدك',
+  aboutFeature4:       'بياناتك الطبية محمية وآمنة',
+
+  // Register — password rules & errors
+  pwdNeedsUppercase:   'يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل',
+  pwdNeedsNumber:      'يجب أن تحتوي كلمة المرور على رقم واحد على الأقل',
+  pwdNeedsSpecial:     'يجب أن تحتوي كلمة المرور على رمز خاص واحد على الأقل',
+  registerFailed:      'فشل إنشاء الحساب. حاول مرة أخرى.',
+  emailAlreadyExists:  'البريد الإلكتروني مستخدم بالفعل. يرجى تسجيل الدخول.',
 } as const;

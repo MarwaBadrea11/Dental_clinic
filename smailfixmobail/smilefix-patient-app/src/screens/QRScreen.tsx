@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../hooks/useTheme';
+import { useTranslation } from '../hooks/useTranslation';
 
 // ── Direct APK download URL ────────────────────────────────────────────────
 // TODO: Replace with your own server URL once you upload the APK to your backend
@@ -55,6 +56,7 @@ function FadeInView({
 // ── Main screen ────────────────────────────────────────────────────────────
 export default function QRScreen() {
   const { colors, isDark } = useTheme();
+  const { t, isRTL } = useTranslation();
 
   // Pulsing orbs
   const orb1 = useRef(new Animated.Value(1)).current;
@@ -136,10 +138,10 @@ export default function QRScreen() {
             </View>
 
             <Text style={[styles.titleText, { color: isDark ? '#e6edf3' : '#1e5979' }]}>
-              Share the App
+              {t('shareTitle')}
             </Text>
             <Text style={[styles.subtitleText, { color: colors.textSub }]}>
-              Scan this QR code to download the SmileFix Patient app directly onto your device.
+              {t('shareSubtitle')}
             </Text>
           </FadeInView>
 
@@ -195,7 +197,7 @@ export default function QRScreen() {
 
               {/* Caption */}
               <Text style={[styles.qrCaption, { color: isDark ? colors.teal : colors.primary }]}>
-                Point your camera to scan
+                {t('pointCameraToScan')}
               </Text>
               <Text style={[styles.qrUrl, { color: colors.textSub }]} numberOfLines={1}>
                 {APK_URL}
@@ -205,13 +207,13 @@ export default function QRScreen() {
 
           {/* ── Bottom instruction chips ── */}
           <FadeInView delay={280} style={styles.chipsRow}>
-            {[
-              { icon: 'camera-outline' as const,    label: 'Open Camera' },
-              { icon: 'scan-outline' as const,       label: 'Scan QR' },
-              { icon: 'download-outline' as const,   label: 'Download APK' },
-            ].map((step, i) => (
+            {([
+              { icon: 'camera-outline'  as const, labelKey: 'openCamera'  as const },
+              { icon: 'scan-outline'    as const, labelKey: 'scanQr'      as const },
+              { icon: 'download-outline' as const, labelKey: 'downloadApk' as const },
+            ] as const).map((step, i) => (
               <View
-                key={step.label}
+                key={step.labelKey}
                 style={[styles.chip, {
                   backgroundColor: isDark ? 'rgba(14,22,32,0.85)' : 'rgba(255,255,255,0.90)',
                   borderColor:     isDark ? 'rgba(97,190,197,0.16)' : 'rgba(0,105,111,0.12)',
@@ -224,11 +226,11 @@ export default function QRScreen() {
                   <Ionicons name={step.icon} size={16} color={colors.teal} />
                 </View>
                 <Text style={[styles.chipLabel, { color: isDark ? '#e6edf3' : '#1e5979' }]}>
-                  {step.label}
+                  {t(step.labelKey)}
                 </Text>
                 {i < 2 && (
                   <Ionicons
-                    name="chevron-forward"
+                    name={isRTL ? 'chevron-back' : 'chevron-forward'}
                     size={12}
                     color={colors.textSub}
                     style={styles.chipArrow}

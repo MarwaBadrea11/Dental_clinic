@@ -37,6 +37,7 @@ const KEYS = {
   ACCESS_TOKEN:  'smilefix_access_token',
   REFRESH_TOKEN: 'smilefix_refresh_token',
   PATIENT:       'smilefix_patient',
+  LOCALE:        'smilefix_locale',
 } as const;
 
 // ── Persisted auth session shape ──────────────
@@ -103,4 +104,20 @@ export async function clearSession(): Promise<void> {
     deleteItem(KEYS.REFRESH_TOKEN),
     deleteItem(KEYS.PATIENT),
   ]);
+}
+
+// ── Locale persistence ────────────────────────
+
+/**
+ * Persist the user's chosen locale ('ar' | 'en').
+ */
+export async function saveLocale(locale: string): Promise<void> {
+  await setItem(KEYS.LOCALE, locale);
+}
+
+/**
+ * Load the persisted locale. Returns null if none stored.
+ */
+export async function loadLocale(): Promise<string | null> {
+  return getItem(KEYS.LOCALE);
 }

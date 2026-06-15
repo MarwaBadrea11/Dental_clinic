@@ -16,9 +16,6 @@
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
-      },
-      "ios": {
-        "simulator": false
       }
     },
     "production": {

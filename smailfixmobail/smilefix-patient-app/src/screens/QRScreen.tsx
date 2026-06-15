@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────
 // QR Share Screen — App Download
-// Displays a QR code for downloading the
-// SmileFix Patient app APK directly.
+// Displays a QR code that lets anyone scan
+// and download the SmileFix Patient APK
+// directly from the clinic server.
 // ─────────────────────────────────────────────
 import React, { useRef, useEffect } from 'react';
 import {
@@ -20,8 +21,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 
 // ── Direct APK download URL ────────────────────────────────────────────────
-// TODO: Replace with your own server URL once you upload the APK to your backend
-const APK_URL = 'https://expo.dev/accounts/marwamarwa11/projects/smilefix-patient-app/builds/0c5501ed-4043-423b-9b2f-524dd0a8d833';
+const APK_URL = 'https://api.smilefix-clinic.com/uploads/smilefix-patient.apk';
 
 // ── Cinematic easing ───────────────────────────────────────────────────────
 const EASE_OUT_EXPO = Easing.bezier(0.16, 1, 0.3, 1);

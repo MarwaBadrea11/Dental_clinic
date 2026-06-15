@@ -46,6 +46,16 @@ const TYPE_TO_CATEGORY: Record<BackendNotifType, Exclude<NotifCategory, 'all'>> 
 
 // ── Mapper ────────────────────────────────────────────────────────────────────
 
+/** Normalize backend actionRoute values to valid SPA routes */
+function normalizeActionRoute(route: string | null): string | undefined {
+  if (!route) return undefined
+  // Backend may send '/appointments' but the SPA calendar route is '/calendar'
+  if (route === '/appointments' || route.startsWith('/appointments')) return '/calendar'
+  // Backend may send '/inventory' but lab orders live at '/lab'
+  if (route === '/inventory' || route.startsWith('/inventory')) return '/lab'
+  return route
+}
+
 function mapNotification(b: BackendNotification): NotifItem {
   return {
     id:              b.id,
@@ -56,7 +66,7 @@ function mapNotification(b: BackendNotification): NotifItem {
     time:            formatRelativeTime(b.createdAt),
     read:            b.isRead,
     actionLabel:     b.actionLabel  ?? undefined,
-    actionRoute:     b.actionRoute  ?? undefined,
+    actionRoute:     normalizeActionRoute(b.actionRoute),
     // actionHandlerId is a frontend-only concept — not stored on backend
     actionHandlerId: undefined,
   }

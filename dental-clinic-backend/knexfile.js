@@ -12,7 +12,7 @@ const config = {
       database: process.env.DB_NAME || 'dental_clinic',
     },
     migrations: {
-      directory: './migrations',
+      directory: './src/db/migrations',
       extension: 'js',
       loadExtensions: ['.js'],
       stub: './migration.stub',

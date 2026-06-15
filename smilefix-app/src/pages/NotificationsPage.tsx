@@ -103,7 +103,7 @@ export default function NotificationsPage() {
 
     // ── 1. Explicit frontend handler ids (seed / local-only items) ────────
     if (n.actionHandlerId === 'openRestock') {
-      return n2Ordered ? undefined : () => { setRestockOpen(true); markRead(n.id) }
+      return n2Ordered ? undefined : () => { navigate(ROUTES.LAB); markRead(n.id) }
     }
     if (n.actionHandlerId === 'sendReminders') {
       return () => { navigate(ROUTES.CALENDAR); markRead(n.id) }
@@ -125,7 +125,7 @@ export default function NotificationsPage() {
       label.includes('طلب') ||
       n.category === 'inventory'
     ) {
-      return n2Ordered ? undefined : () => { setRestockOpen(true); markRead(n.id) }
+      return () => { navigate(ROUTES.LAB); markRead(n.id) }
     }
 
     // Appointment / calendar labels
@@ -175,7 +175,7 @@ export default function NotificationsPage() {
         return () => { navigate(ROUTES.REPORTS); markRead(n.id) }
       }
       if (key.includes('order') || key.includes('restock') || key.includes('inventory')) {
-        return n2Ordered ? undefined : () => { setRestockOpen(true); markRead(n.id) }
+        return () => { navigate(ROUTES.LAB); markRead(n.id) }
       }
     }
 
@@ -261,7 +261,7 @@ export default function NotificationsPage() {
                     actionLabel: n2Ordered
                       ? (t('notifications.ordered') ?? 'Ordered ✓')
                       : a.actionLabel,
-                    onAction: n2Ordered ? undefined : () => setRestockOpen(true),
+                    onAction: n2Ordered ? undefined : () => { navigate(ROUTES.LAB); markRead(restockNotif.id) },
                   }
                 : a,
             )}

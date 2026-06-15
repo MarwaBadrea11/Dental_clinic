@@ -35,10 +35,26 @@ function CustomTooltip({ active, payload, label, formatValue, revenueLabel }: {
   )
 }
 
-function BarTooltipContent({ formatValue }: { formatValue: (v: number) => string }) {
+function BarTooltipContent({
+  active,
+  payload,
+  label,
+  formatValue,
+}: {
+  active?: boolean
+  payload?: { value: number }[]
+  label?: string
+  formatValue: (v: number) => string
+}) {
   const { t } = useTranslation()
-  return (props: { active?: boolean; payload?: { value: number }[]; label?: string }) => (
-    <CustomTooltip {...props} formatValue={formatValue} revenueLabel={t('reports.revenue')} />
+  return (
+    <CustomTooltip
+      active={active}
+      payload={payload}
+      label={label}
+      formatValue={formatValue}
+      revenueLabel={t('reports.revenue')}
+    />
   )
 }
 
@@ -47,7 +63,7 @@ export function BarChart({ data, height = 300, formatValue = String }: BarChartP
   const chartData = data.map((d) => ({ month: d.label, revenue: d.value }))
 
   return (
-    <div className="w-full" style={{ height }}>
+    <div className="w-full" style={{ height, minWidth: 0 }}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsBarChart
           data={chartData}

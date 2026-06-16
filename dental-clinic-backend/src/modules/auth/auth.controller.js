@@ -67,15 +67,13 @@ export async function updateMeHandler(request, reply) {
 }
 
 export async function uploadAvatarHandler(request, reply) {
-  const parts = request.parts();
-  let filePart = null;
-
-  for await (const part of parts) {
-    if (part.type === 'file') {
-      filePart = part;
-      break;
-    }
+  // @fastify/multipart: use request.file() for single-file uploads —
+  // more reliable than request.parts() iterator across plugin versions.
+  if (!request.isMultipart()) {
+    return reply.status(400).send(errorResponse('Request must be multipart/form-data'));
   }
+
+  const filePart = await request.file();
 
   if (!filePart) {
     return reply.status(400).send(errorResponse('No file provided'));

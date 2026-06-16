@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  Tooltip, Legend,
 } from 'recharts'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { BarChart3 } from 'lucide-react'
+import { useChartDimensions } from '@/hooks/useChartDimensions'
 
 interface MonthData {
   month: string
@@ -20,7 +20,7 @@ interface RevenueStatsProps {
   className?: string
 }
 
-// ── Custom tooltip — mirrors ChartCard's CustomTooltip ───────────────────────
+// ── Custom tooltip ────────────────────────────────────────────────────────────
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
@@ -38,36 +38,28 @@ function CustomTooltip({ active, payload, label }: any) {
 export function RevenueStats({ data, title, delay = 0, className }: RevenueStatsProps) {
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('finance.monthlyRevenue')
-
-  // Defer chart rendering until after the browser has completed a full paint
-  // cycle. useEffect alone still fires before layout in some React versions;
-  // setTimeout(0) yields to the event loop so ResizeObserver gets real dimensions.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    const id = setTimeout(() => setMounted(true), 0)
-    return () => clearTimeout(id)
-  }, [])
+  const { containerRef, dimensions } = useChartDimensions()
+  const { width, height } = dimensions
 
   return (
     <SectionCard title={resolvedTitle} icon={<BarChart3 size={15} />} delay={delay} className={className}>
-      {/* height={300} matches the Dashboard Treatment Distribution chart */}
-      <div className="w-full" style={{ height: 300, minHeight: 300 }}>
-        {mounted && (
-          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+      {/* Container gives the chart its dimensions — minWidth:0 prevents flex shrink issues */}
+      <div ref={containerRef} className="w-full" style={{ height: 300, minWidth: 0 }}>
+        {width > 0 && height > 0 && (
           <BarChart
+            width={width}
+            height={height}
             data={data}
             margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
             barCategoryGap="30%"
             barGap={4}
           >
-            {/* Faint horizontal grid lines — same as ChartCard */}
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
               stroke="var(--color-outline-variant)"
               strokeOpacity={0.25}
             />
-
             <XAxis
               dataKey="month"
               tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
@@ -75,51 +67,26 @@ export function RevenueStats({ data, title, delay = 0, className }: RevenueStats
               tickLine={false}
               dy={6}
             />
-
             <YAxis
               tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
               axisLine={false}
               tickLine={false}
               width={32}
             />
-
             <Tooltip
               content={<CustomTooltip />}
               cursor={{ fill: 'var(--color-outline-variant)', fillOpacity: 0.08 }}
             />
-
-            {/* Legend at the bottom, clear of the bars — same as ChartCard */}
             <Legend
               verticalAlign="bottom"
               align="center"
               iconType="circle"
               iconSize={8}
-              wrapperStyle={{
-                paddingTop: 16,
-                fontSize: 11,
-                color: 'var(--color-on-surface-variant)',
-              }}
+              wrapperStyle={{ paddingTop: 16, fontSize: 11, color: 'var(--color-on-surface-variant)' }}
             />
-
-            {/* Brand teal — Revenue (matches Crown Placements color in ChartCard) */}
-            <Bar
-              dataKey="revenue"
-              name={t('reports.revenue')}
-              fill="#0D9488"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={36}
-            />
-
-            {/* Soft gray — Target benchmark */}
-            <Bar
-              dataKey="target"
-              name={t('finance.target')}
-              fill="#CBD5E1"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={36}
-            />
+            <Bar dataKey="revenue" name={t('reports.revenue')} fill="#0D9488" radius={[4, 4, 0, 0]} maxBarSize={36} />
+            <Bar dataKey="target"  name={t('finance.target')}  fill="#CBD5E1" radius={[4, 4, 0, 0]} maxBarSize={36} />
           </BarChart>
-        </ResponsiveContainer>
         )}
       </div>
     </SectionCard>

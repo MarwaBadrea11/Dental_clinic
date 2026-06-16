@@ -20,6 +20,7 @@ export const ROLE_PERMISSIONS = {
     'treatments:*',
     'invoices:*',
     'payments:*',
+    'finance:read',
     'inventory:read',
     'odontogram:read',
     'odontogram:create',

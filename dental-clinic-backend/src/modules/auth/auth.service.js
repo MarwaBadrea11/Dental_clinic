@@ -307,7 +307,7 @@ export class AuthService {
       return this.getProfile(userId);
     } catch (dbErr) {
       await unlink(filePath).catch(() => {});
-      throw new Error('Failed to save avatar');
+      throw new AppError(500, `Failed to save avatar: ${dbErr.message}`);
     }
   }
 

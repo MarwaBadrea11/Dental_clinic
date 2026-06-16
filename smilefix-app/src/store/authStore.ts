@@ -151,6 +151,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       return
     }
 
+    try {
       const authUser = await fetchMe()
       persistAuthUser(authUser)
       const user = authUserToStoreUser(authUser)

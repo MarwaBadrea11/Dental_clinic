@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   BarChart as RechartsBarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer,
+  CartesianGrid, Tooltip,
 } from 'recharts'
 import { SectionCard } from '@/components/ui/SectionCard'
+import { useChartDimensions } from '@/hooks/useChartDimensions'
 
 // ── Bar Chart (Recharts) ──────────────────────────────────────────────────────
 
@@ -62,62 +62,51 @@ function BarTooltipContent({
 export function BarChart({ data, height = 300, formatValue = String }: BarChartProps) {
   const { t } = useTranslation()
   const chartData = data.map((d) => ({ month: d.label, revenue: d.value }))
-
-  // Defer chart rendering until after the browser has completed a full paint
-  // cycle. useEffect alone still fires before layout in some React versions;
-  // setTimeout(0) yields to the event loop so ResizeObserver gets real dimensions.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    const id = setTimeout(() => setMounted(true), 0)
-    return () => clearTimeout(id)
-  }, [])
+  const { containerRef, dimensions } = useChartDimensions()
+  const { width, height: measuredHeight } = dimensions
 
   return (
-    <div className="w-full" style={{ height, minHeight: height }}>
-      {mounted && (
-        <ResponsiveContainer width="100%" height="100%" minHeight={height}>
-          <RechartsBarChart
-            data={chartData}
-            margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-            barCategoryGap="30%"
-          >
-            {/* Faint horizontal grid lines — matches ChartCard & RevenueStats */}
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="var(--color-outline-variant)"
-              strokeOpacity={0.25}
-            />
-
-            <XAxis
-              dataKey="month"
-              tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
-              axisLine={false}
-              tickLine={false}
-              dy={6}
-            />
-
-            <YAxis
-              tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
-              axisLine={false}
-              tickLine={false}
-              width={32}
-            />
-
-            <Tooltip
-              content={<BarTooltipContent formatValue={formatValue} />}
-              cursor={{ fill: 'var(--color-outline-variant)', fillOpacity: 0.08 }}
-            />
-
-            <Bar
-              dataKey="revenue"
-              name={t('reports.revenue')}
-              fill="#0D9488"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={36}
-            />
-          </RechartsBarChart>
-        </ResponsiveContainer>
+    <div ref={containerRef} className="w-full" style={{ height, minWidth: 0 }}>
+      {width > 0 && measuredHeight > 0 && (
+        <RechartsBarChart
+          width={width}
+          height={measuredHeight}
+          data={chartData}
+          margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+          barCategoryGap="30%"
+        >
+          {/* Faint horizontal grid lines — matches ChartCard & RevenueStats */}
+          <CartesianGrid
+            strokeDasharray="3 3"
+            vertical={false}
+            stroke="var(--color-outline-variant)"
+            strokeOpacity={0.25}
+          />
+          <XAxis
+            dataKey="month"
+            tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
+            axisLine={false}
+            tickLine={false}
+            dy={6}
+          />
+          <YAxis
+            tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
+            axisLine={false}
+            tickLine={false}
+            width={32}
+          />
+          <Tooltip
+            content={(props) => <BarTooltipContent {...props} formatValue={formatValue} />}
+            cursor={{ fill: 'var(--color-outline-variant)', fillOpacity: 0.08 }}
+          />
+          <Bar
+            dataKey="revenue"
+            name={t('reports.revenue')}
+            fill="#0D9488"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={36}
+          />
+        </RechartsBarChart>
       )}
     </div>
   )

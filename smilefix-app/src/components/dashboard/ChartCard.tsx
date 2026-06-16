@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  Tooltip, Legend,
 } from 'recharts'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { useChartDimensions } from '@/hooks/useChartDimensions'
 
 // ── Static chart data ────────────────────────────────────────────────────────
 const TREATMENT_DATA = [
@@ -53,14 +53,8 @@ export function ChartCard({
   placeholder = false, onGenerate,
   delay = 0, className,
 }: ChartCardProps) {
-  // Defer chart rendering until after the browser has completed a full paint
-  // cycle. useEffect alone still fires before layout in some React versions;
-  // setTimeout(0) yields to the event loop so ResizeObserver gets real dimensions.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    const id = setTimeout(() => setMounted(true), 0)
-    return () => clearTimeout(id)
-  }, [])
+  const { containerRef, dimensions } = useChartDimensions()
+  const { width, height } = dimensions
 
   return (
     <motion.div
@@ -78,8 +72,6 @@ export function ChartCard({
               <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5">{description}</p>
             )}
           </div>
-
-          {/* Action slot OR Generate button — always in the header, never inside the chart */}
           <div className="flex items-center gap-2">
             {action && <div>{action}</div>}
             {onGenerate && (
@@ -90,74 +82,51 @@ export function ChartCard({
           </div>
         </div>
 
-        {/* ── Recharts bar chart (placeholder mode) — only after mount ── */}
+        {/* ── Recharts bar chart (placeholder mode) ── */}
         {placeholder && (
-          <div className="w-full" style={{ height: 300, minHeight: 300 }}>
-            {mounted && (
-              <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-                <BarChart
-                  data={TREATMENT_DATA}
-                  margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-                  barCategoryGap="30%"
-                  barGap={4}
-                >
-                  {/* Faint horizontal grid lines */}
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="var(--color-outline-variant)"
-                    strokeOpacity={0.25}
-                  />
-
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
-                    axisLine={false}
-                    tickLine={false}
-                    dy={6}
-                  />
-
-                  <YAxis
-                    tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={32}
-                  />
-
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-outline-variant)', fillOpacity: 0.08 }} />
-
-                  {/* Legend sits below the chart, well clear of the bars */}
-                  <Legend
-                    verticalAlign="bottom"
-                    align="center"
-                    iconType="circle"
-                    iconSize={8}
-                    wrapperStyle={{
-                      paddingTop: 16,
-                      fontSize: 11,
-                      color: 'var(--color-on-surface-variant)',
-                    }}
-                  />
-
-                  {/* Teal brand bar — Crown Placements */}
-                  <Bar
-                    dataKey="crowns"
-                    name="Crown Placements"
-                    fill="#0D9488"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={36}
-                  />
-
-                  {/* Soft slate-blue bar — Root Canals */}
-                  <Bar
-                    dataKey="rootCanals"
-                    name="Root Canals"
-                    fill="#6366F1"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={36}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+          <div ref={containerRef} className="w-full" style={{ height: 300, minWidth: 0 }}>
+            {width > 0 && height > 0 && (
+              <BarChart
+                width={width}
+                height={height}
+                data={TREATMENT_DATA}
+                margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                barCategoryGap="30%"
+                barGap={4}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="var(--color-outline-variant)"
+                  strokeOpacity={0.25}
+                />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  dy={6}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={32}
+                />
+                <Tooltip
+                  content={<CustomTooltip />}
+                  cursor={{ fill: 'var(--color-outline-variant)', fillOpacity: 0.08 }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  align="center"
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ paddingTop: 16, fontSize: 11, color: 'var(--color-on-surface-variant)' }}
+                />
+                <Bar dataKey="crowns"    name="Crown Placements" fill="#0D9488" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                <Bar dataKey="rootCanals" name="Root Canals"     fill="#6366F1" radius={[4, 4, 0, 0]} maxBarSize={36} />
+              </BarChart>
             )}
           </div>
         )}

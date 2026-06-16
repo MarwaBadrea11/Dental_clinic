@@ -45,7 +45,7 @@ export async function invoicesRoutes(fastify) {
 export async function financeRoutes(fastify) {
   // جلب الملخص المالي الإحصائي (الكروت الأربعة، الرسم البياني، آخر الفواتير، والديون المستحقة)
   // GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD
-  fastify.get('/summary', { preHandler: [authenticate, authorize('finance:*')] }, getFinanceSummaryHandler);
+  fastify.get('/summary', { preHandler: [authenticate, authorize('finance:read')] }, getFinanceSummaryHandler);
 }
 
 /**

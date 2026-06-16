@@ -4,7 +4,12 @@
 
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, clearUser } from './authService'
 
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3002'
+// Strip any /api/v1 suffix so API_BASE is always just the server origin.
+// VITE_API_BASE_URL may be set to either "http://localhost:3002" or
+// "http://localhost:3002/api/v1" — we normalise to the bare origin here so
+// buildUrl can always append /api/v1 exactly once.
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3002')
+  .replace(/\/api\/v1\/?$/, '')
 
 /**
  * Every backend route is registered under /api/v1.

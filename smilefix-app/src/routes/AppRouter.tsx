@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layouts/DashboardLayout'
 import { Loader } from '@/components/ui/Loader'
 import { useAuthStore } from '@/store/authStore'
@@ -186,7 +186,7 @@ function Protected({ children }: { children: React.ReactNode }) {
 // ── Router ────────────────────────────────────────────────────────────────────
 export function AppRouter() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Auth */}
         <Route path={ROUTES.LOGIN}           element={<PublicOnlyRoute><PageWrapper><LoginPage /></PageWrapper></PublicOnlyRoute>} />
@@ -218,6 +218,6 @@ export function AppRouter() {
         {/* 404 */}
         <Route path="*" element={<PageWrapper><NotFoundPage /></PageWrapper>} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }

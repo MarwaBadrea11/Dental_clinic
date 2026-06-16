@@ -1,7 +1,15 @@
 // ─────────────────────────────────────────────
 // API Configuration — Environment-aware
-// Physical device: reads the Expo dev-server host
-// so the IP never needs to be hardcoded in .env
+//
+// Priority order:
+//   1. EXPO_PUBLIC_API_URL in .env         ← use this for standalone APK builds
+//   2. Expo dev-server hostUri (Expo Go)   ← auto-detected on physical devices
+//   3. 10.0.2.2  (Android emulator)
+//   4. localhost (iOS simulator / web)
+//
+// For a compiled standalone APK on a physical device:
+//   Set EXPO_PUBLIC_API_URL=http://<your-machine-LAN-IP>:3000 in .env
+//   then rebuild the APK.  The device and your PC must be on the same Wi-Fi.
 // ─────────────────────────────────────────────
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
@@ -16,6 +24,7 @@ function normalizeApiBaseUrl(raw: string): string {
 
 function resolveBaseUrl(): string {
   // 1. Explicit override from .env — highest priority
+  //    Required for standalone APK builds where no Expo dev server is running.
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
   if (fromEnv) {
     return normalizeApiBaseUrl(fromEnv);

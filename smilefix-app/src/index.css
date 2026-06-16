@@ -1,6 +1,24 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap");
 @import "tailwindcss";
 
+/* System font fallbacks — used automatically when Google Fonts is unreachable
+   (offline, strict firewall, or Electron CSP). Declaring @font-face with
+   local() sources means the UI stays crisp even without internet access. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  src: local('Inter'), local('Segoe UI'), local('Helvetica Neue'), local('Arial');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 600 800;
+  src: local('Manrope'), local('Segoe UI Semibold'), local('Helvetica Neue'), local('Arial');
+  font-display: swap;
+}
+
 @theme {
   /* ── Brand Colors (Clinical Serenity) ── */
   --color-primary: #00696f;

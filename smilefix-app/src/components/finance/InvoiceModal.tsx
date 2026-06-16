@@ -339,16 +339,19 @@ export function InvoiceViewModal({ invoice: inv, open, onClose, onStatusChange, 
       {/* Totals */}
       <div className="flex justify-end mb-5">
         <div className="w-full sm:w-64 space-y-2">
-          {[
-            { label: t('finance.subtotal'), value: formatCurrency(inv.total + (inv.discount ?? 0)) },
-            ...(inv.discount ? [{ label: t('finance.discount'), value: `-${formatCurrency(inv.discount)}` }] : []),
-            ...(inv.tax      ? [{ label: t('finance.tax'),      value: formatCurrency(inv.tax) }]          : []),
-          ].map((row) => (
-            <div key={row.label} className="flex items-center justify-between text-sm">
-              <span className="text-[var(--color-on-surface-variant)]">{row.label}</span>
-              <span className="text-[var(--color-on-surface)]">{row.value}</span>
-            </div>
-          ))}
+          {(() => {
+            const rows: { label: string; value: string }[] = [
+              { label: t('finance.subtotal'), value: formatCurrency(inv.total + (inv.discount ?? 0)) },
+            ]
+            if (inv.discount) rows.push({ label: t('finance.discount'), value: `-${formatCurrency(inv.discount)}` })
+            if (inv.tax)      rows.push({ label: t('finance.tax'),      value: formatCurrency(inv.tax) })
+            return rows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between text-sm">
+                <span className="text-[var(--color-on-surface-variant)]">{row.label}</span>
+                <span className="text-[var(--color-on-surface)]">{row.value}</span>
+              </div>
+            ))
+          })()}
           <div className="flex items-center justify-between pt-2 border-t border-[var(--color-outline-variant)]/20">
             <span className="font-bold text-[var(--color-on-surface)]">{t('common.total')}</span>
             <span className="font-bold text-lg text-[var(--color-primary)]">{formatCurrency(inv.total)}</span>

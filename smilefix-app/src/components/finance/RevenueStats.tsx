@@ -39,21 +39,25 @@ export function RevenueStats({ data, title, delay = 0, className }: RevenueStats
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('finance.monthlyRevenue')
   const { containerRef, dimensions } = useChartDimensions()
-  const { width, height } = dimensions
+
+  // In Electron packaged builds, ResizeObserver may fire late (display:none
+  // parent, asar timing). Fall back to fixed dimensions so the chart always
+  // renders rather than staying invisible forever.
+  const width  = dimensions.width  > 0 ? dimensions.width  : 560
+  const height = dimensions.height > 0 ? dimensions.height : 300
 
   return (
     <SectionCard title={resolvedTitle} icon={<BarChart3 size={15} />} delay={delay} className={className}>
       {/* Container gives the chart its dimensions — minWidth:0 prevents flex shrink issues */}
       <div ref={containerRef} className="w-full" style={{ height: 300, minWidth: 0 }}>
-        {width > 0 && height > 0 && (
-          <BarChart
-            width={width}
-            height={height}
-            data={data}
-            margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-            barCategoryGap="30%"
-            barGap={4}
-          >
+        <BarChart
+          width={width}
+          height={height}
+          data={data}
+          margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+          barCategoryGap="30%"
+          barGap={4}
+        >
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
@@ -87,7 +91,6 @@ export function RevenueStats({ data, title, delay = 0, className }: RevenueStats
             <Bar dataKey="revenue" name={t('reports.revenue')} fill="#0D9488" radius={[4, 4, 0, 0]} maxBarSize={36} />
             <Bar dataKey="target"  name={t('finance.target')}  fill="#CBD5E1" radius={[4, 4, 0, 0]} maxBarSize={36} />
           </BarChart>
-        )}
       </div>
     </SectionCard>
   )

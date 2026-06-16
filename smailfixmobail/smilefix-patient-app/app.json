@@ -23,7 +23,8 @@
         "backgroundColor": "#61bec5"
       },
       "package": "com.smilefix.patient",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",

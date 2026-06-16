@@ -2,13 +2,34 @@
   "name": "smilefix-app",
   "private": true,
   "version": "0.0.0",
+  "description": "SmileFix — Professional Dental Clinic Management System",
+  "author": "SmileFix",
+  "main": "electron.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "i18n:scan": "node scripts/i18n-scan.mjs"
+    "i18n:scan": "node scripts/i18n-scan.mjs",
+    "electron:dev": "vite build && electron .",
+    "electron:build": "vite build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.smilefix.admin",
+    "productName": "SmileFix Admin",
+    "files": [
+      "dist/**/*",
+      "electron.cjs",
+      "preload.cjs"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",

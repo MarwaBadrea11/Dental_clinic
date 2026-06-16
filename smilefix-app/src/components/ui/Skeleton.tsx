@@ -4,11 +4,13 @@ interface SkeletonProps {
   className?: string
   rounded?: boolean
   circle?: boolean
+  style?: React.CSSProperties
 }
 
-export function Skeleton({ className, rounded = false, circle = false }: SkeletonProps) {
+export function Skeleton({ className, rounded = false, circle = false, style }: SkeletonProps) {
   return (
     <div
+      style={style}
       className={cn(
         'animate-pulse bg-[var(--color-surface-container-high)]',
         circle ? 'rounded-full' : rounded ? 'rounded-[var(--radius-DEFAULT)]' : 'rounded',

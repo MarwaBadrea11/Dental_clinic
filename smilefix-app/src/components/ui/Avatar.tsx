@@ -7,6 +7,7 @@ interface AvatarProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
   ring?: boolean
+  style?: React.CSSProperties
 }
 
 const sizeStyles = {
@@ -17,9 +18,10 @@ const sizeStyles = {
   xl: 'w-16 h-16 text-lg',
 }
 
-export function Avatar({ name, src, size = 'md', className, ring = false }: AvatarProps) {
+export function Avatar({ name, src, size = 'md', className, ring = false, style }: AvatarProps) {
   return (
     <div
+      style={style}
       className={cn(
         'rounded-full overflow-hidden flex items-center justify-center shrink-0',
         'bg-[var(--color-primary-container)] text-[var(--color-on-primary-container)] font-semibold',

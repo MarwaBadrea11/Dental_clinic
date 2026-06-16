@@ -47,6 +47,10 @@ export function PaymentSummary({ payments, delay = 0, className }: PaymentSummar
       <div className="space-y-3">
         {Object.entries(byMethod).map(([method, data], i) => {
           const cfg = methodStyles[method as PaymentMethod]
+          // Guard: if a payment method comes back from the server that isn't in our
+          // styles map (e.g. a future method or a casing mismatch), skip it gracefully
+          // instead of crashing with "Cannot read properties of undefined" (minified: "a is not a function")
+          if (!cfg) return null
           const label = methodLabels[method as PaymentMethod] ?? method
           const pct = grandTotal > 0 ? (data.total / grandTotal) * 100 : 0
           return (
@@ -70,8 +74,7 @@ export function PaymentSummary({ payments, delay = 0, className }: PaymentSummar
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
                     transition={{ duration: 0.7, delay: delay + i * 0.06 + 0.2 }}
-                    className={cn('h-full rounded-full', cfg.bg.replace('bg-', 'bg-').replace('/20', ''))}
-                    style={{ background: cfg.color.replace('text-', '') }}
+                    className={cn('h-full rounded-full', cfg.color.replace('text-', 'bg-'))}
                   />
                 </div>
               </div>

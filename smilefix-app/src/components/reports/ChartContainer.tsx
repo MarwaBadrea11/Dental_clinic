@@ -96,7 +96,7 @@ export function BarChart({ data, height = 300, formatValue = String }: BarChartP
             width={32}
           />
           <Tooltip
-            content={(props) => <BarTooltipContent {...props} formatValue={formatValue} />}
+            content={(props) => <BarTooltipContent {...(props as unknown as { active?: boolean; payload?: { value: number }[]; label?: string })} formatValue={formatValue} />}
             cursor={{ fill: 'var(--color-outline-variant)', fillOpacity: 0.08 }}
           />
           <Bar

@@ -35,6 +35,7 @@ import BookingScreen      from '../screens/BookingScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import ProfileScreen      from '../screens/ProfileScreen';
 import QRScreen           from '../screens/QRScreen';
+import ServerConfigScreen from '../screens/ServerConfigScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab   = createBottomTabNavigator();
@@ -156,6 +157,8 @@ function MainTabs() {
 // ── Root navigator ────────────────────────────
 export default function AppNavigator() {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+  const backendIp       = useAppStore((s) => s.backendIp);
+  const isCheckingIp    = useAppStore((s) => s.isCheckingIp);
   const { colors, isDark } = useTheme();
 
   // React Navigation theme driven by our color system
@@ -172,16 +175,23 @@ export default function AppNavigator() {
     },
   };
 
+  // Still reading AsyncStorage — let the outer SplashScreen handle this
+  if (isCheckingIp) return null;
+
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator
         screenOptions={{ headerShown: false, animation: 'fade' }}
       >
-        {!isAuthenticated ? (
+        {/* ── No backend IP saved yet ─────────────── */}
+        {!backendIp ? (
+          <Stack.Screen
+            name="ServerConfig"
+            component={ServerConfigScreen}
+            options={{ animation: 'fade' }}
+          />
+        ) : !isAuthenticated ? (
           // ── Auth flow ──────────────────────────
-          // setAuthenticated() → isAuthenticated = true
-          // → navigator re-renders → shows Main automatically
-          // NEVER call navigation.replace('Main') from here
           <>
             <Stack.Screen name="Welcome"  component={WelcomeScreen} />
             <Stack.Screen

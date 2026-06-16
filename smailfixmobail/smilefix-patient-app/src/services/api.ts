@@ -6,7 +6,7 @@
 //   • Request timeout
 //   • Typed response envelope
 // ─────────────────────────────────────────────
-import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config';
+import { getApiBaseUrl, REQUEST_TIMEOUT_MS } from './config';
 import { useAppStore } from '../store/appStore';
 
 // ── Response envelope from the backend ───────
@@ -82,7 +82,7 @@ export async function apiRequest<T>(
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...rest,
       headers,
       signal: controller.signal,

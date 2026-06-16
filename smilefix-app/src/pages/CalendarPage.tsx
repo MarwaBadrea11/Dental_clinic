@@ -56,7 +56,7 @@ export default function CalendarPage() {
 
   // Week grid helpers
   const getWeekStart = (dateStr: string) => {
-    const d = new Date(dateStr + 'T00:00:00')
+    const d = new Date(dateStr + 'T00:00:00') // force local midnight, not UTC
     const day = d.getDay()
     d.setDate(d.getDate() - day)
     return d
@@ -69,14 +69,18 @@ export default function CalendarPage() {
   })
   const prevWeek = () => {
     const d = new Date(weekStart); d.setDate(d.getDate() - 7)
-    setSelectedDate(d.toISOString().split('T')[0])
+    const pad = (n: number) => String(n).padStart(2, '0')
+    setSelectedDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
   }
   const nextWeek = () => {
     const d = new Date(weekStart); d.setDate(d.getDate() + 7)
-    setSelectedDate(d.toISOString().split('T')[0])
+    const pad = (n: number) => String(n).padStart(2, '0')
+    setSelectedDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
   }
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayLocal = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const todayStr = `${todayLocal.getFullYear()}-${pad(todayLocal.getMonth() + 1)}-${pad(todayLocal.getDate())}`
   const todayAppts = getByDate(selectedDate)
   const weekAppts = getByWeek(weekStart.toISOString().split('T')[0])
 
@@ -90,8 +94,20 @@ export default function CalendarPage() {
     setBookingError(null)
     setBookingLoading(true)
     try {
-      // Build ISO datetime from date + startTime
-      const scheduledAt = `${data.date}T${data.startTime}:00+00:00`
+      // Build ISO datetime from date + startTime with the browser's actual
+      // timezone offset so the backend stores the correct UTC moment.
+      const [year, month, day]   = data.date.split('-').map(Number)
+      const [hours, minutes]     = data.startTime.split(':').map(Number)
+      const local                = new Date(year, month - 1, day, hours, minutes, 0, 0)
+      const offsetMin            = -local.getTimezoneOffset()          // minutes east of UTC
+      const sign                 = offsetMin >= 0 ? '+' : '-'
+      const absMin               = Math.abs(offsetMin)
+      const tzHH                 = String(Math.floor(absMin / 60)).padStart(2, '0')
+      const tzMM                 = String(absMin % 60).padStart(2, '0')
+      const tzOffset             = `${sign}${tzHH}:${tzMM}`
+      const pad = (n: number)    => String(n).padStart(2, '0')
+      const scheduledAt = `${pad(year)}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00${tzOffset}`
+
       // Derive duration from start/end times
       const [sh, sm] = data.startTime.split(':').map(Number)
       const [eh, em] = data.endTime.split(':').map(Number)
@@ -251,7 +267,8 @@ export default function CalendarPage() {
               {/* Day headers */}
               <div className="grid grid-cols-7 border-b border-[var(--color-outline-variant)]/20 min-w-[480px]">
                 {weekDays.map((d, i) => {
-                  const ds = d.toISOString().split('T')[0]
+                  const pad2 = (n: number) => String(n).padStart(2, '0')
+                  const ds = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
                   const isToday = ds === todayStr
                   const isSelected = ds === selectedDate
                   return (
@@ -285,7 +302,8 @@ export default function CalendarPage() {
               {/* Calendar cells */}
               <div className="grid grid-cols-7 gap-px bg-[var(--color-outline-variant)]/10 p-2 min-w-[480px]">
                 {weekDays.map((d, i) => {
-                  const ds = d.toISOString().split('T')[0]
+                  const pad2 = (n: number) => String(n).padStart(2, '0')
+                  const ds = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
                   return (
                     <CalendarCell
                       key={i}
@@ -304,14 +322,17 @@ export default function CalendarPage() {
             {/* Day schedule below */}
             <div className="mt-6">
               <SectionCard noPadding>
-                <ScheduleWidget
-                  date={selectedDate}
-                  appointments={todayAppts}
-                  onDateChange={setSelectedDate}
-                  onAppointmentClick={setViewAppt}
-                  onSlotAddClick={handleSlotAdd}
-                  onAddClick={() => { setEditAppt(undefined); setShowForm(true) }}
-                />
+                <div className="h-[600px] flex flex-col overflow-hidden">
+                  <ScheduleWidget
+                    date={selectedDate}
+                    appointments={todayAppts}
+                    onDateChange={setSelectedDate}
+                    onAppointmentClick={setViewAppt}
+                    onSlotAddClick={handleSlotAdd}
+                    onAddClick={() => { setEditAppt(undefined); setShowForm(true) }}
+                    className="h-full"
+                  />
+                </div>
               </SectionCard>
             </div>
           </motion.div>
@@ -323,14 +344,17 @@ export default function CalendarPage() {
             <div className="calendar-day-grid grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-start">
               <div>
                 <SectionCard noPadding>
-                  <ScheduleWidget
-                    date={selectedDate}
-                    appointments={todayAppts}
-                    onDateChange={setSelectedDate}
-                    onAppointmentClick={setViewAppt}
-                    onSlotAddClick={handleSlotAdd}
-                    onAddClick={() => { setEditAppt(undefined); setShowForm(true) }}
-                  />
+                  <div className="h-[600px] flex flex-col overflow-hidden">
+                    <ScheduleWidget
+                      date={selectedDate}
+                      appointments={todayAppts}
+                      onDateChange={setSelectedDate}
+                      onAppointmentClick={setViewAppt}
+                      onSlotAddClick={handleSlotAdd}
+                      onAddClick={() => { setEditAppt(undefined); setShowForm(true) }}
+                      className="h-full"
+                    />
+                  </div>
                 </SectionCard>
               </div>
               <div>

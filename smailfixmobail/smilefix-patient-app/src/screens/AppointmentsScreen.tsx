@@ -41,9 +41,13 @@ type TabKey = 'upcoming' | 'past';
 
 // ── Adapt backend → store shape ────────────────────────────────────────────
 function adaptAppointment(a: BackendAppointment): Appointment {
-  const dt       = new Date(a.scheduled_at);
-  const date     = dt.toISOString().split('T')[0];
-  const timeSlot = dt.toTimeString().slice(0, 5);
+  // Parse the ISO string (which includes timezone offset from the backend).
+  // Use local time methods — NOT toISOString() — so the displayed time
+  // matches what the patient booked, not the UTC-converted equivalent.
+  const dt = new Date(a.scheduled_at);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date     = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+  const timeSlot = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
   const statusMap: Record<string, Appointment['status']> = {
     SCHEDULED: 'waiting', CONFIRMED: 'confirmed', IN_PROGRESS: 'confirmed',
     COMPLETED: 'completed', CANCELLED: 'cancelled', NO_SHOW: 'cancelled',

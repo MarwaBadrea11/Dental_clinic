@@ -63,12 +63,20 @@ export interface UpdateAppointmentPayload {
 // ── Mapper: backend → frontend Appointment ───────────────────────────────────
 
 export function mapAppointment(a: BackendAppointment): Appointment {
+  // Parse the ISO string that the backend returns. PostgreSQL TIMESTAMPTZ
+  // comes back as an ISO string with the original offset preserved (e.g.
+  // "2026-06-20T09:00:00+03:00"). new Date() converts it to a local Date,
+  // so getHours()/getMinutes() give the time in the BROWSER's local timezone.
+  // We want to display whatever timezone the browser is in — which is correct
+  // as long as the browser and the clinic staff are in the same timezone.
   const dt = new Date(a.scheduled_at)
-  // Use UTC consistently — backend stores and filters by UTC date
-  const date = dt.toISOString().split('T')[0]
-  const startTime = dt.toISOString().slice(11, 16)   // HH:MM in UTC
+  const pad = (n: number) => String(n).padStart(2, '0')
+  // Local date string: YYYY-MM-DD in the browser timezone
+  const date = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+  // Local time: HH:MM in the browser timezone
+  const startTime = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`
   const endDt = new Date(dt.getTime() + (a.duration_minutes ?? 30) * 60 * 1000)
-  const endTime = endDt.toISOString().slice(11, 16)  // HH:MM in UTC
+  const endTime = `${pad(endDt.getHours())}:${pad(endDt.getMinutes())}`
 
   const statusMap: Record<string, Appointment['status']> = {
     SCHEDULED:   'scheduled',

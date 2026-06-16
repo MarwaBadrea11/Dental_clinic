@@ -137,6 +137,14 @@ p, h1, h2, h3, h4, h5, h6 {
   max-width: 100%;
 }
 
+/* ── Calendar schedule widget — prevent header text from breaking layout ── */
+.schedule-header-date {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;

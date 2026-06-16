@@ -38,6 +38,7 @@ const KEYS = {
   REFRESH_TOKEN: 'smilefix_refresh_token',
   PATIENT:       'smilefix_patient',
   LOCALE:        'smilefix_locale',
+  BACKEND_IP:    'smilefix_backend_ip',
 } as const;
 
 // ── Persisted auth session shape ──────────────
@@ -120,4 +121,29 @@ export async function saveLocale(locale: string): Promise<void> {
  */
 export async function loadLocale(): Promise<string | null> {
   return getItem(KEYS.LOCALE);
+}
+
+// ── Backend IP persistence ────────────────────
+// Stored in plain AsyncStorage (not sensitive — it's just a LAN IP).
+
+/**
+ * Persist the user-entered backend IP/host.
+ * e.g.  "192.168.1.100"  or  "http://192.168.1.100:3000"
+ */
+export async function saveBackendIp(ip: string): Promise<void> {
+  await AsyncStorage.setItem(KEYS.BACKEND_IP, ip);
+}
+
+/**
+ * Load the persisted backend IP. Returns null if never set.
+ */
+export async function loadBackendIp(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.BACKEND_IP);
+}
+
+/**
+ * Remove the saved backend IP so the Server Config screen is shown again.
+ */
+export async function clearBackendIp(): Promise<void> {
+  await AsyncStorage.removeItem(KEYS.BACKEND_IP);
 }

@@ -139,16 +139,34 @@ export async function deleteAppointment(id: string): Promise<void> {
 
 /**
  * Convenience helper: combine a date string and time slot into the
- * ISO 8601 format the backend expects.
+ * ISO 8601 format the backend expects, with the **device's actual
+ * timezone offset** embedded so the backend stores the correct moment.
+ *
+ * Example output: "2026-06-20T09:00:00+03:00"
  *
  * @param date      'YYYY-MM-DD'
  * @param timeSlot  'HH:mm'
- * @param tzOffset  timezone offset string, default '+03:00' (Saudi Arabia)
  */
-export function toScheduledAt(
-  date: string,
-  timeSlot: string,
-  tzOffset = '+03:00',
-): string {
-  return `${date}T${timeSlot}:00${tzOffset}`;
+export function toScheduledAt(date: string, timeSlot: string): string {
+  // Build a local Date object for the chosen date + time
+  const [year, month, day] = date.split('-').map(Number);
+  const [hours, minutes]   = timeSlot.split(':').map(Number);
+  const local = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+  // getTimezoneOffset() returns minutes WEST of UTC (negative for east).
+  // Flip sign to get the conventional +HH:MM offset.
+  const offsetMin  = -local.getTimezoneOffset();
+  const sign       = offsetMin >= 0 ? '+' : '-';
+  const absMin     = Math.abs(offsetMin);
+  const hh         = String(Math.floor(absMin / 60)).padStart(2, '0');
+  const mm         = String(absMin % 60).padStart(2, '0');
+  const tzOffset   = `${sign}${hh}:${mm}`;
+
+  const Y  = String(year).padStart(4, '0');
+  const M  = String(month).padStart(2, '0');
+  const D  = String(day).padStart(2, '0');
+  const H  = String(hours).padStart(2, '0');
+  const Mi = String(minutes).padStart(2, '0');
+
+  return `${Y}-${M}-${D}T${H}:${Mi}:00${tzOffset}`;
 }

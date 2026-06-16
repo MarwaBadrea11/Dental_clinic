@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { CreditCard, DollarSign, TrendingUp, AlertCircle, Plus, List, LayoutGrid, FileText, RefreshCw } from 'lucide-react'
+import { Coins, CreditCard, FileCheck, TrendingDown, Plus, List, LayoutGrid, FileText, RefreshCw, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Button } from '@/components/ui/Button'
@@ -177,10 +177,10 @@ export default function FinancePage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <FinancialCard label={t('finance.totalRevenue')} value={formatCurrency(totalRevenue)} icon={<DollarSign size={18} />} variant="revenue" trend={`+8.2% ${t('finance.vsLastMonth')}`} trendUp delay={0} />
+        <FinancialCard label={t('finance.totalRevenue')} value={formatCurrency(totalRevenue)} icon={<Coins size={18} />} variant="revenue" trend={`+8.2% ${t('finance.vsLastMonth')}`} trendUp delay={0} />
         <FinancialCard label={t('finance.outstanding')} value={formatCurrency(totalOutstanding)} icon={<CreditCard size={18} />} variant="outstanding" subtitle={`${invoices.filter((i) => i.status !== 'paid').length} ${t('finance.openInvoices')}`} delay={0.07} />
-        <FinancialCard label={t('finance.overdue')} value={formatCurrency(overdueAmount)} icon={<AlertCircle size={18} />} variant="overdue" subtitle={`${invoices.filter((i) => i.status === 'overdue').length} ${t('finance.invoicesOverdue')}`} delay={0.14} />
-        <FinancialCard label={t('finance.collectionRate')} value={`${collectionRate}%`} icon={<TrendingUp size={18} />} variant="paid" progress={collectionRate} trend={t('finance.targetRate')} trendUp={collectionRate >= 90} delay={0.21} />
+        <FinancialCard label={t('finance.overdue')} value={formatCurrency(overdueAmount)} icon={<TrendingDown size={18} />} variant="overdue" subtitle={`${invoices.filter((i) => i.status === 'overdue').length} ${t('finance.invoicesOverdue')}`} delay={0.14} />
+        <FinancialCard label={t('finance.collectionRate')} value={`${collectionRate}%`} icon={<FileCheck size={18} />} variant="paid" progress={collectionRate} trend={t('finance.targetRate')} trendUp={collectionRate >= 90} delay={0.21} />
       </div>
 
       <div className="flex items-center gap-1 bg-[var(--color-surface-container-low)] rounded-[var(--radius-lg)] p-1 mb-6 overflow-x-auto tab-bar-scroll max-w-full">

@@ -33,3 +33,16 @@ export const RefreshSchema = z.object({
 export const LogoutSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: passwordSchema,
+});
+
+export const UpdateProfileSchema = z.object({
+  username: z.string().min(2).max(100).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().max(30).optional().nullable(),
+  specialty: z.string().max(100).optional().nullable(),
+  bio: z.string().max(2000).optional().nullable(),
+});

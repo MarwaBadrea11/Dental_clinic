@@ -52,7 +52,7 @@ const SEED_NOTIFICATIONS: NotifItem[] = [
     time: '18 mins ago',
     read: false,
     actionLabel: 'notifications.orderNow',
-    actionHandlerId: 'openRestock',
+    actionRoute: '/lab',
   },
   {
     id: 'seed-n3',

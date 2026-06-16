@@ -61,10 +61,12 @@ function MainTabs() {
   const TAB_BAR_BASE   = 60;
   const tabBarHeight   = TAB_BAR_BASE + insets.bottom;
 
-  // Sync RTL with i18n language
+  // Sync RTL with i18n language — i18n/index.ts already handles the initial
+  // forceRTL call, so we only need to re-sync when the user toggles language.
   useEffect(() => {
     const shouldRTL = locale === 'ar';
     if (I18nManager.isRTL !== shouldRTL) {
+      I18nManager.allowRTL(true);
       I18nManager.forceRTL(shouldRTL);
     }
   }, [locale]);

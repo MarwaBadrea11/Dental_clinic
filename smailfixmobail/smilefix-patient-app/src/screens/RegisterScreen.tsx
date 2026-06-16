@@ -400,7 +400,7 @@ export default function RegisterScreen({ navigation }: any) {
 
   const step1Fields: Omit<FieldConfig, 'rightIcon'>[] = [
     { label: t('fullName'),   placeholder: t('fullNamePh'),  value: fullName, onChange: v => { setFullName(v); setErrors(e => ({ ...e, fullName: '' })); }, error: errors.fullName },
-    { label: isRTL ? 'رقم الهاتف' : 'Phone', placeholder: isRTL ? 'مثال: +966 5X XXX XXXX' : 'e.g. +966 5X XXX XXXX', value: phone, onChange: v => { setPhone(v); setErrors(e => ({ ...e, phone: '' })); }, keyboardType: 'phone-pad', error: errors.phone },
+    { label: t('phoneNumber'),   placeholder: t('phoneExample'),  value: phone, onChange: v => { setPhone(v); setErrors(e => ({ ...e, phone: '' })); }, keyboardType: 'phone-pad', error: errors.phone },
     { label: t('email'),      placeholder: t('emailPh'),     value: email,    onChange: v => { setEmail(v);    setErrors(e => ({ ...e, email:    '' })); }, keyboardType: 'email-address', error: errors.email },
     { label: t('nationalId'), placeholder: t('nationalIdPh'), value: natId,   onChange: v => { setNatId(v);   setErrors(e => ({ ...e, natId:    '' })); }, keyboardType: 'numeric', maxLength: 12, error: errors.natId },
   ];
@@ -475,9 +475,7 @@ export default function RegisterScreen({ navigation }: any) {
                 {step === 1 ? t('personalInfo') : t('accountSetup')}
               </Text>
               <Text style={[styles.stepSub, { color: colors.textSub, textAlign: align }]}>
-                {step === 1
-                  ? (isRTL ? 'أدخل بياناتك الشخصية للمتابعة' : 'Enter your personal details to continue')
-                  : (isRTL ? 'أنشئ كلمة مرور آمنة لحسابك' : 'Create a secure password for your account')}
+                {step === 1 ? t('registerStep1Sub') : t('registerStep2Sub')}
               </Text>
             </Animated.View>
 
@@ -580,9 +578,7 @@ export default function RegisterScreen({ navigation }: any) {
                     }]}>
                       <Ionicons name="information-circle-outline" size={14} color={colors.teal} />
                       <Text style={[styles.infoNoteText, { color: isDark ? colors.teal : colors.primary, textAlign: align }]}>
-                        {isRTL
-                          ? 'أدخل رقم الهاتف الدولي مع رمز الدولة (مثال: +966 للرياض، +1 لأمريكا)'
-                          : 'Enter international phone with country code (e.g., +966 for Riyadh, +1 for USA)'}
+                        {t('phoneCountryCodeHint')}
                       </Text>
                     </View>
                   </StaggerItem>
@@ -664,9 +660,7 @@ export default function RegisterScreen({ navigation }: any) {
                     }]}>
                       <Ionicons name="shield-checkmark-outline" size={14} color={colors.success} />
                       <Text style={[styles.infoNoteText, { color: colors.success, textAlign: align }]}>
-                        {isRTL
-                          ? 'كلمة المرور: 8 أحرف على الأقل، حرف كبير، رقم، ورمز خاص'
-                          : 'Min 8 chars, one uppercase, one number, one special character'}
+                        {t('pwdStrengthHint')}
                       </Text>
                     </View>
                   </StaggerItem>
@@ -712,7 +706,7 @@ export default function RegisterScreen({ navigation }: any) {
                   </Text>
                   <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.7}>
                     <Text style={[styles.loginLink, { color: isDark ? colors.teal : colors.primary }]}>
-                      {t('loginBtn') ?? (isRTL ? 'تسجيل الدخول' : 'Sign in')}
+                      {t('login')}
                     </Text>
                   </TouchableOpacity>
                 </View>

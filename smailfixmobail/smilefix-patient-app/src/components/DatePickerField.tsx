@@ -19,6 +19,7 @@ import Text from './Text';
 import { AnimatedModal } from './AnimatedModal';
 import type { AppColors } from '../theme/colors';
 import { Radius } from '../constants/theme';
+import { useTranslation } from '../hooks/useTranslation';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const MONTH_NAMES_EN = [
@@ -74,6 +75,7 @@ export function DatePickerField({
   label, value, onChange, error, isRTL, colors, isDark,
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   // Parse existing value or default to 20 years ago
   const parsed = value && /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -157,7 +159,7 @@ export function DatePickerField({
     ? formatDisplay(selYear, selMonth, selDay, isRTL)
     : '';
 
-  const placeholderText = isRTL ? 'اختر تاريخ الميلاد' : 'Select date of birth';
+  const placeholderText = t('selectDateOfBirth');
   const align = isRTL ? 'right' : 'left';
   const rowDir = isRTL ? 'row-reverse' : 'row';
 
@@ -426,7 +428,7 @@ export function DatePickerField({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={{ fontSize: 14, color: colors.textSub, fontWeight: '600' }}>
-              {isRTL ? 'إغلاق' : 'Close'}
+              {t('close')}
             </Text>
           </TouchableOpacity>
         </View>

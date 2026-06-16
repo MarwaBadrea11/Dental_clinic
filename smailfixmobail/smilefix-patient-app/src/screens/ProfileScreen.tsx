@@ -213,8 +213,26 @@ export default function ProfileScreen() {
   const handleToggleLang = () => {
     const next = locale === 'ar' ? 'en' : 'ar';
     setLangLoading(true);
+    const shouldBeRTL = next === 'ar';
+    // Update i18next language and Zustand locale immediately
+    // so all screen text and isRTL-based layouts flip right away.
     i18n.changeLanguage(next).then(() => {
-      setLocale(next); I18nManager.forceRTL(next === 'ar'); setLangLoading(false);
+      setLocale(next);
+      setLangLoading(false);
+      // Force RTL at the native level. This change requires an app
+      // restart to fully apply to native layout (scroll direction,
+      // native text fields, etc.). JS-driven layouts already flipped.
+      if (I18nManager.isRTL !== shouldBeRTL) {
+        I18nManager.allowRTL(shouldBeRTL);
+        I18nManager.forceRTL(shouldBeRTL);
+        Alert.alert(
+          shouldBeRTL ? 'إعادة التشغيل مطلوبة' : 'Restart Required',
+          shouldBeRTL
+            ? 'يرجى إعادة تشغيل التطبيق لتطبيق اتجاه اللغة العربية بالكامل.'
+            : 'Please restart the app to fully apply the English text direction.',
+          [{ text: shouldBeRTL ? 'حسناً' : 'OK' }]
+        );
+      }
     });
   };
 
@@ -410,7 +428,7 @@ export default function ProfileScreen() {
               iconColor={isDark ? '#79d5dc' : '#1e5979'}
               iconBg={isDark ? 'rgba(121,213,220,0.14)' : 'rgba(30,89,121,0.10)'}
               label={t('darkMode')}
-              description={isDark ? (locale === 'ar' ? 'مفعّل' : 'Enabled') : (locale === 'ar' ? 'معطّل' : 'Disabled')}
+              description={isDark ? t('enabled') : t('disabled')}
               isRTL={isRTL} colors={colors} isDark={isDark}
               right={
                 <Switch
@@ -545,7 +563,7 @@ export default function ProfileScreen() {
               <LinearGradient colors={['#00818a', '#00696f', '#004f54']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.saveBtnGrad}>
                 {saving
                   ? <ActivityIndicator color="#ffffff" />
-                  : <Text style={styles.saveBtnText}>{locale === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}</Text>
+                  : <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
                 }
               </LinearGradient>
             </TouchableOpacity>
@@ -559,7 +577,7 @@ export default function ProfileScreen() {
           <View style={[styles.sheetHandle, { backgroundColor: isDark ? 'rgba(97,190,197,0.28)' : 'rgba(0,105,111,0.18)' }]} />
           <View style={[styles.modalHeader, { flexDirection: rowDir }]}>
             <Text style={[styles.modalTitle, { color: isDark ? '#e6edf3' : '#1e5979' }]}>
-              {locale === 'ar' ? 'الإشعارات' : 'Notifications'}
+              {t('notificationsTitle')}
             </Text>
             <TouchableOpacity onPress={() => setNotifsVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <View style={[styles.closeChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
@@ -580,7 +598,7 @@ export default function ProfileScreen() {
             <View style={styles.modalCenter}>
               <Text style={{ fontSize: 36 }}>🔔</Text>
               <Text style={{ color: colors.textSub, marginTop: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' }}>
-                {locale === 'ar' ? 'لا توجد إشعارات حالياً' : 'No notifications yet'}
+                {t('noNotificationsYet')}
               </Text>
             </View>
           ) : (
@@ -625,7 +643,7 @@ export default function ProfileScreen() {
           <TouchableOpacity onPress={() => setNotifsVisible(false)} activeOpacity={0.85}
             style={{ borderRadius: 16, overflow: 'hidden', marginTop: 16 }}>
             <LinearGradient colors={['#00818a', '#00696f']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.saveBtnGrad}>
-              <Text style={styles.saveBtnText}>{locale === 'ar' ? 'إغلاق' : 'Close'}</Text>
+              <Text style={styles.saveBtnText}>{t('close')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -637,7 +655,7 @@ export default function ProfileScreen() {
           <View style={[styles.sheetHandle, { backgroundColor: isDark ? 'rgba(97,190,197,0.28)' : 'rgba(0,105,111,0.18)' }]} />
           <View style={[styles.modalHeader, { flexDirection: rowDir }]}>
             <Text style={[styles.modalTitle, { color: isDark ? '#e6edf3' : '#1e5979' }]}>
-              {locale === 'ar' ? 'كيفية استخدام التطبيق' : 'How to Use the App'}
+              {t('howToUseApp')}
             </Text>
             <TouchableOpacity onPress={() => setHelpVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <View style={[styles.closeChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
@@ -646,7 +664,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
             {[
               { icon: '🔑', ar: { title: 'تسجيل الدخول', desc: 'أدخل بريدك الإلكتروني وكلمة المرور للدخول.' }, en: { title: 'Login', desc: 'Enter your email and password to access your account.' } },
               { icon: '🏠', ar: { title: 'الشاشة الرئيسية', desc: 'اطّلع على موعدك القادم وتقدّم علاجك.' }, en: { title: 'Home Screen', desc: 'View your next appointment, treatment progress, and quick actions.' } },
@@ -680,7 +698,7 @@ export default function ProfileScreen() {
           <TouchableOpacity onPress={() => setHelpVisible(false)} activeOpacity={0.85}
             style={{ borderRadius: 16, overflow: 'hidden', marginTop: 16 }}>
             <LinearGradient colors={['#00818a', '#00696f']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.saveBtnGrad}>
-              <Text style={styles.saveBtnText}>{locale === 'ar' ? 'إغلاق' : 'Close'}</Text>
+              <Text style={styles.saveBtnText}>{t('close')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -692,7 +710,7 @@ export default function ProfileScreen() {
           <View style={[styles.sheetHandle, { backgroundColor: isDark ? 'rgba(97,190,197,0.28)' : 'rgba(0,105,111,0.18)' }]} />
           <View style={[styles.modalHeader, { flexDirection: rowDir }]}>
             <Text style={[styles.modalTitle, { color: isDark ? '#e6edf3' : '#1e5979' }]}>
-              {locale === 'ar' ? 'حول التطبيق' : 'About the App'}
+              {t('aboutApp')}
             </Text>
             <TouchableOpacity onPress={() => setAboutVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <View style={[styles.closeChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
@@ -701,7 +719,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
             {/* Logo */}
             <View style={styles.aboutLogoRow}>
               <View style={[styles.aboutLogoCircle, { shadowColor: colors.teal }]}>
@@ -711,24 +729,22 @@ export default function ProfileScreen() {
               </View>
               <Text style={[styles.aboutAppName, { color: isDark ? '#e6edf3' : '#1e5979' }]}>SmileFix</Text>
               <Text style={[styles.aboutVersion, { color: colors.textSub }]}>
-                {locale === 'ar' ? 'الإصدار 1.0.0' : 'Version 1.0.0'}
+                {t('appVersion')}
               </Text>
               <Text style={[styles.aboutTagline, { color: colors.teal }]}>
-                {locale === 'ar' ? '✦ ابتسامتك، أولويتنا ✦' : '✦ Your Smile, Our Priority ✦'}
+                {`✦ ${t('tagline')} ✦`}
               </Text>
             </View>
 
-            <Text style={[styles.aboutDesc, { color: colors.textSub, textAlign: isRTL ? 'right' : 'left' }]}>
-              {locale === 'ar'
-                ? 'سمايل فيكس تطبيق متكامل لإدارة رعاية الأسنان — احجز، تابع، وتواصل مع طبيبك في أي وقت.'
-                : 'SmileFix is a comprehensive dental care app — book appointments, track treatment, and connect with your dentist anytime.'}
+            <Text style={[styles.aboutDesc, { color: colors.textSub, textAlign: align }]}>
+              {t('appDescAbout')}
             </Text>
 
             {[
-              { icon: '📅', ar: 'حجز المواعيد بسهولة في أي وقت', en: 'Easy appointment booking anytime' },
-              { icon: '📊', ar: 'متابعة تقدم العلاج خطوة بخطوة', en: 'Step-by-step treatment progress tracking' },
-              { icon: '🔔', ar: 'تذكيرات تلقائية قبل موعدك', en: 'Automatic reminders before your visit' },
-              { icon: '🔒', ar: 'بياناتك الطبية محمية وآمنة', en: 'Your medical data is secure and private' },
+              { icon: '📅', key: 'aboutFeature1' as const },
+              { icon: '📊', key: 'aboutFeature2' as const },
+              { icon: '🔔', key: 'aboutFeature3' as const },
+              { icon: '🔒', key: 'aboutFeature4' as const },
             ].map((f, i) => (
               <View key={i} style={[styles.aboutFeatureRow, {
                 backgroundColor: isDark ? 'rgba(97,190,197,0.06)' : 'rgba(97,190,197,0.08)',
@@ -741,21 +757,21 @@ export default function ProfileScreen() {
                   textAlign: align,
                   paddingLeft: isRTL ? 0 : 10, paddingRight: isRTL ? 10 : 0,
                 }]}>
-                  {locale === 'ar' ? f.ar : f.en}
+                  {t(f.key)}
                 </Text>
               </View>
             ))}
 
             <View style={[styles.aboutDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)' }]} />
             <Text style={[styles.aboutMeta, { color: colors.textSub }]}>
-              {locale === 'ar' ? '© 2025 سمايل فيكس لرعاية الأسنان\nجميع الحقوق محفوظة' : '© 2025 SmileFix Dental Care\nAll rights reserved'}
+              {t('copyright')}
             </Text>
           </ScrollView>
 
           <TouchableOpacity onPress={() => setAboutVisible(false)} activeOpacity={0.85}
             style={{ borderRadius: 16, overflow: 'hidden', marginTop: 16 }}>
             <LinearGradient colors={['#1e5979', '#1e5979']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.saveBtnGrad}>
-              <Text style={styles.saveBtnText}>{locale === 'ar' ? 'إغلاق' : 'Close'}</Text>
+              <Text style={styles.saveBtnText}>{t('close')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -868,8 +884,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22, paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 36 : 26,
     borderTopWidth: 1,
-    maxHeight: '92%',          // cap so it never fills the full screen
-    overflow: 'hidden',        // clip rounded corners cleanly
+    // Flex column so ScrollView children can use flex: 1 within maxHeight
+    flexDirection: 'column',
   },
   sheetHandle: {
     width: 40, height: 4, borderRadius: 2,

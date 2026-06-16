@@ -565,6 +565,26 @@
     "cat_Sterilization":        "Sterilization",
     "cat_Equipment":            "Equipment"
   },
+  "labOrders": {
+    "title":            "Laboratory",
+    "subtitle":         "Lab orders and production tracking",
+    "totalOrders":      "Total Orders",
+    "inProgress":       "In Progress",
+    "readyForDelivery": "Ready for Delivery",
+    "delayedOrders":    "Delayed Orders",
+    "emptyTitle":       "No lab orders yet",
+    "emptyDesc":        "Lab orders will appear here once created."
+  },
+  "suppliersPage": {
+    "title":            "Suppliers Management",
+    "subtitle":         "Vendor relationships, orders and billing",
+    "totalSuppliers":   "Total Suppliers",
+    "pendingOrders":    "Pending Orders",
+    "dueInvoices":      "Due Invoices",
+    "activeCompanies":  "Active Companies",
+    "emptyTitle":       "No suppliers found",
+    "emptyDesc":        "Add supplier info to inventory items to track vendors."
+  },
   "staff": {
     "title":          "Staff",
     "subtitle":       "Team members, HR and workforce management",

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Stethoscope, Plus, LayoutGrid, List } from 'lucide-react'
+import { Stethoscope, Plus, LayoutGrid, List, Clock, DollarSign, Layers } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageStatsGrid } from '@/components/shared/PageStatsGrid'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Button } from '@/components/ui/Button'
 import { SearchBar } from '@/components/ui/SearchBar'
@@ -150,24 +151,39 @@ export default function TreatmentsPage() {
         }
       />
 
-      {/* Stats row */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="treatments-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"
-      >
-        {[
-          { label: t('nav.treatments'),        value: treatments.length,                          color: 'text-[var(--color-primary)]' },
-          { label: t('treatments.avgDuration'), value: `${avgDuration}${t('treatments.minutes')}`, color: 'text-[var(--color-secondary)]' },
-          { label: t('treatments.avgPrice'),    value: formatCurrency(avgPrice),                   color: 'text-[var(--color-tertiary)]' },
-          { label: t('treatments.categories'),  value: categoryCount,                              color: 'text-amber-600' },
-        ].map((s) => (
-          <div key={s.label} className="bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-lg)] border border-[var(--color-outline-variant)]/20 shadow-[var(--shadow-card)] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </motion.div>
+      <PageStatsGrid
+        className="treatments-stats-grid mb-6"
+        stats={[
+          {
+            label: t('nav.treatments'),
+            value: treatments.length,
+            icon: <Stethoscope size={18} />,
+            color: 'text-[var(--color-primary)]',
+            bg:    'bg-[var(--color-primary-container)]/20',
+          },
+          {
+            label: t('treatments.avgDuration'),
+            value: `${avgDuration}${t('treatments.minutes')}`,
+            icon: <Clock size={18} />,
+            color: 'text-[var(--color-secondary)]',
+            bg:    'bg-[var(--color-secondary-container)]/20',
+          },
+          {
+            label: t('treatments.avgPrice'),
+            value: formatCurrency(avgPrice),
+            icon: <DollarSign size={18} />,
+            color: 'text-[var(--color-tertiary)]',
+            bg:    'bg-[var(--color-tertiary-container)]/20',
+          },
+          {
+            label: t('treatments.categories'),
+            value: categoryCount,
+            icon: <Layers size={18} />,
+            color: 'text-[var(--color-on-surface-variant)]',
+            bg:    'bg-[var(--color-surface-container-high)]',
+          },
+        ]}
+      />
 
       {/* Main card */}
       <SectionCard noPadding>

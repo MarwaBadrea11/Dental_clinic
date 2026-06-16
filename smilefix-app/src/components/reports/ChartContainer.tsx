@@ -36,10 +36,26 @@ function CustomTooltip({ active, payload, label, formatValue, revenueLabel }: {
   )
 }
 
-function BarTooltipContent({ formatValue }: { formatValue: (v: number) => string }) {
+function BarTooltipContent({
+  active,
+  payload,
+  label,
+  formatValue,
+}: {
+  active?: boolean
+  payload?: { value: number }[]
+  label?: string
+  formatValue: (v: number) => string
+}) {
   const { t } = useTranslation()
-  return (props: { active?: boolean; payload?: { value: number }[]; label?: string }) => (
-    <CustomTooltip {...props} formatValue={formatValue} revenueLabel={t('reports.revenue')} />
+  return (
+    <CustomTooltip
+      active={active}
+      payload={payload}
+      label={label}
+      formatValue={formatValue}
+      revenueLabel={t('reports.revenue')}
+    />
   )
 }
 

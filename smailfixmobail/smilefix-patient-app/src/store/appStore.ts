@@ -3,7 +3,7 @@
 // SmileFix Patient App
 // ─────────────────────────────────────────────
 import { create } from 'zustand';
-import { saveSession, clearSession, saveAccessToken } from '../services/storage';
+import { saveSession, clearSession, saveAccessToken, saveLocale } from '../services/storage';
 
 // ── Types ─────────────────────────────────────
 export type Locale    = 'ar' | 'en';
@@ -115,7 +115,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   patient: null,
   authToken: null,
   refreshToken: null,
-  isHydrating: true,   // starts true — App.tsx waits until hydration is done
+  isHydrating: true,
   locale: 'ar',
   theme: 'light',
   appointments: [],
@@ -127,7 +127,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedDate: null,
   selectedTimeSlot: null,
 
-  setLocale: (locale) => set({ locale }),
+  setLocale: (locale) => {
+    set({ locale });
+    saveLocale(locale).catch(() => {/* non-critical */});
+  },
   setTheme:  (theme)  => set({ theme }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
 
@@ -158,15 +161,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   hydrateFromStorage: async () => {
     try {
-      const { loadSession } = await import('../services/storage');
-      const session = await loadSession();
+      const { loadSession, loadLocale } = await import('../services/storage');
+      const [session, storedLocale] = await Promise.all([loadSession(), loadLocale()]);
+      const updates: Partial<AppState> = {};
       if (session) {
-        set({
-          isAuthenticated: true,
-          patient:      session.patient,
-          authToken:    session.accessToken,
-          refreshToken: session.refreshToken,
-        });
+        updates.isAuthenticated = true;
+        updates.patient      = session.patient;
+        updates.authToken    = session.accessToken;
+        updates.refreshToken = session.refreshToken;
+      }
+      if (storedLocale === 'ar' || storedLocale === 'en') {
+        updates.locale = storedLocale;
+      }
+      if (Object.keys(updates).length > 0) {
+        set(updates);
       }
     } catch {
       // If anything fails, just stay logged out — not a crash

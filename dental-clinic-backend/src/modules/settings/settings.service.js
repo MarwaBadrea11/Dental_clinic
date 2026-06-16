@@ -67,7 +67,48 @@ export class SettingsService {
     return saved.map(this.#format);
   }
 
-  // ── Private formatter ──────────────────────────────────────────────────────
+  /** Return clinic info as camelCase for the frontend. */
+  async getClinicInfo() {
+    const row = await this.repo.getClinicInfo();
+    return this.#formatClinicInfo(row);
+  }
+
+  /**
+   * Validate and persist clinic information.
+   * @param {Record<string, unknown>} dto
+   */
+  async saveClinicInfo(dto) {
+    const updates = {};
+    if (dto.name !== undefined) updates.name = dto.name;
+    if (dto.phone !== undefined) updates.phone = dto.phone || null;
+    if (dto.email !== undefined) updates.email = dto.email || null;
+    if (dto.website !== undefined) updates.website = dto.website || null;
+    if (dto.address !== undefined) updates.address = dto.address || null;
+    if (dto.city !== undefined) updates.city = dto.city || null;
+    if (dto.taxId !== undefined) updates.tax_id = dto.taxId || null;
+
+    if (Object.keys(updates).length === 0) {
+      return this.getClinicInfo();
+    }
+
+    const saved = await this.repo.updateClinicInfo(updates);
+    return this.#formatClinicInfo(saved);
+  }
+
+  // ── Private formatters ─────────────────────────────────────────────────────
+
+  #formatClinicInfo(row) {
+    return {
+      name: row.name ?? '',
+      phone: row.phone ?? '',
+      email: row.email ?? '',
+      website: row.website ?? '',
+      address: row.address ?? '',
+      city: row.city ?? '',
+      taxId: row.tax_id ?? '',
+      updatedAt: row.updated_at,
+    };
+  }
 
   #format(row) {
     return {

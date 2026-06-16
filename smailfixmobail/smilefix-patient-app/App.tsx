@@ -6,8 +6,8 @@ import 'react-native-gesture-handler';
 // Initialize i18next before anything else
 import './src/i18n';
 
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useLayoutEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet, I18nManager } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -29,6 +29,7 @@ import { ThemeProvider } from './src/theme/ThemeContext';
 import { useTheme } from './src/theme/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppStore } from './src/store/appStore';
+import i18n from './src/i18n';
 
 // ── Splash screen shown while fonts load or storage hydrates ─
 function SplashScreen() {
@@ -54,6 +55,27 @@ function InnerApp() {
   const { colors } = useTheme();
   const hydrateFromStorage = useAppStore((s) => s.hydrateFromStorage);
   const isHydrating        = useAppStore((s) => s.isHydrating);
+  const locale             = useAppStore((s) => s.locale);
+
+  // ── Sync RTL direction with stored locale ──
+  // useLayoutEffect runs synchronously after mount before paint,
+  // which is the earliest safe point to call I18nManager on RN.
+  useLayoutEffect(() => {
+    const shouldBeRTL = locale === 'ar';
+    if (I18nManager.isRTL !== shouldBeRTL) {
+      I18nManager.allowRTL(true);
+      I18nManager.forceRTL(shouldBeRTL);
+    }
+  }, [locale]);
+
+  // ── Sync i18next language with persisted locale ──
+  // After hydration restores a locale different from i18n's current
+  // language (e.g. user had switched to English), align i18next.
+  useEffect(() => {
+    if (!isHydrating && i18n.language !== locale) {
+      i18n.changeLanguage(locale);
+    }
+  }, [isHydrating, locale]);
 
   const [fontsLoaded, fontError] = useFonts({
     Manrope_400Regular,

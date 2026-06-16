@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Mail, Lock, Eye, EyeOff, User as UserIcon, ArrowLeft, CheckCircle2 } from 'lucide-react'
@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { ROUTES } from '@/constants/routes'
 import { login as apiLogin, register as apiRegister } from '@/services/authService'
-import type { User } from '@/types'
+import heroBg from '@/assets/1.jpg'
 
 const FEATURES = [
   { icon: '🦷', labelKey: 'auth.patientRecords' },
@@ -74,10 +74,24 @@ function LeftPanel({ t }: { t: (k: string) => string }) {
       className="login-left-panel"
       style={{ width: '52%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
     >
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)' }} />
-      <div style={{ position: 'absolute', top: -80, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', filter: 'blur(48px)' }} />
-      <div style={{ position: 'absolute', bottom: -60, left: -60, width: 256, height: 256, borderRadius: '50%', background: 'rgba(149,241,248,0.12)', filter: 'blur(40px)' }} />
-      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 384, height: 384, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', filter: 'blur(60px)' }} />
+      {/* Background dental clinic image */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `url(${heroBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }} />
+      {/* Dark semi-transparent overlay */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(135deg, rgba(0,60,65,0.82) 0%, rgba(0,90,80,0.75) 60%, rgba(0,40,50,0.88) 100%)',
+      }} />
+      {/* Subtle ambient glow layers on top of overlay */}
+      <div style={{ position: 'absolute', top: -80, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(97,190,197,0.12)', filter: 'blur(56px)' }} />
+      <div style={{ position: 'absolute', bottom: -60, left: -60, width: 256, height: 256, borderRadius: '50%', background: 'rgba(149,241,248,0.10)', filter: 'blur(40px)' }} />
+
+      {/* Content */}
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%', padding: '3rem' }}>
         <SmilefixLogo size="md" light />
         <motion.div
@@ -86,10 +100,17 @@ function LeftPanel({ t }: { t: (k: string) => string }) {
           transition={{ duration: 0.6, delay: 0.1 }}
           style={{ marginTop: 'auto', marginBottom: 'auto' }}
         >
-          <h2 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '2.25rem', fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: '1rem', maxWidth: '28rem' }}>
+          <h2 style={{
+            fontFamily: 'Manrope, sans-serif', fontSize: '2.25rem', fontWeight: 800,
+            color: '#ffffff', lineHeight: 1.2, marginBottom: '1rem', maxWidth: '28rem',
+            textShadow: '0 2px 12px rgba(0,0,0,0.45)',
+          }}>
             {t('auth.clinicalPrecision')}
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '1.0625rem', lineHeight: 1.7, maxWidth: '26rem' }}>
+          <p style={{
+            color: 'rgba(255,255,255,0.88)', fontSize: '1.0625rem', lineHeight: 1.7, maxWidth: '26rem',
+            textShadow: '0 1px 6px rgba(0,0,0,0.35)',
+          }}>
             {t('auth.clinicalDesc')}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '2rem' }}>
@@ -99,14 +120,21 @@ function LeftPanel({ t }: { t: (k: string) => string }) {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', padding: '0.5rem 1rem', borderRadius: 9999, color: 'white', fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap' }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  padding: '0.5rem 1rem', borderRadius: 9999,
+                  color: 'white', fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                }}
               >
                 <span>{f.icon}</span>{t(f.labelKey)}
               </motion.div>
             ))}
           </div>
         </motion.div>
-        <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.75rem' }}>© 2024 SmileFix. {t('auth.trustedBy')}</p>
+
       </div>
     </div>
   )
@@ -116,7 +144,7 @@ function LeftPanel({ t }: { t: (k: string) => string }) {
 export default function LoginPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { setUser } = useAuthStore()
+  const { syncFromAuthUser } = useAuthStore()
   const { language } = useUIStore()
   const isRTL = language === 'ar'
   const location = useLocation()
@@ -153,13 +181,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const result = await apiLogin({ email: email.trim(), password })
-      const displayName = result.user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-      setUser({
-        id:    result.user.id,
-        name:  displayName,
-        email: result.user.email,
-        role:  result.user.role.toLowerCase() as User['role'],
-      })
+      syncFromAuthUser(result.user)
       navigate(from, { replace: true })
     } catch (err: unknown) {
       setLoginError(err instanceof Error ? err.message : 'Invalid credentials. Please try again.')
@@ -295,21 +317,11 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Remember + Forgot */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-on-surface-variant)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                    <input type="checkbox" style={{ width: '1rem', height: '1rem', accentColor: 'var(--color-primary)', cursor: 'pointer', flexShrink: 0 }} />
-                    {t('auth.rememberMe')}
-                  </label>
-                  <Link
-                    to={ROUTES.FORGOT_PASSWORD}
-                    style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
-                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                  >
-                    {t('auth.forgotPassword')}
-                  </Link>
-                </div>
+                {/* Remember me */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-on-surface-variant)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" style={{ width: '1rem', height: '1rem', accentColor: 'var(--color-primary)', cursor: 'pointer', flexShrink: 0 }} />
+                  {t('auth.rememberMe')}
+                </label>
 
                 {loginError && (
                   <motion.p

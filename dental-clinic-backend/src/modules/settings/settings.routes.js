@@ -3,6 +3,8 @@ import { authorize } from '../../middleware/authorize.js';
 import {
   getWorkingHoursHandler,
   saveWorkingHoursHandler,
+  getClinicInfoHandler,
+  saveClinicInfoHandler,
 } from './settings.controller.js';
 
 /**
@@ -11,6 +13,8 @@ import {
  *
  * GET  /working-hours  — public (patients need it for booking)
  * PUT  /working-hours  — ADMIN only
+ * GET  /clinic         — authenticated staff can read clinic info
+ * PUT  /clinic         — ADMIN only
  */
 export async function settingsRoutes(fastify) {
   // GET: no auth required so the mobile booking screen can fetch without
@@ -22,5 +26,13 @@ export async function settingsRoutes(fastify) {
     '/working-hours',
     { preHandler: [authenticate, authorize('settings:*')] },
     saveWorkingHoursHandler,
+  );
+
+  fastify.get('/clinic', { preHandler: [authenticate] }, getClinicInfoHandler);
+
+  fastify.put(
+    '/clinic',
+    { preHandler: [authenticate, authorize('settings:*')] },
+    saveClinicInfoHandler,
   );
 }

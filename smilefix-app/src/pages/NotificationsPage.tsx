@@ -52,11 +52,11 @@ function getNotifIcon(category: NotifItem['category'], severity: NotifItem['seve
 
 // ── Severity icon bg styles ───────────────────────────────────────────────────
 function iconBg(severity: NotifItem['severity'], unread: boolean) {
-  if (severity === 'error')   return 'bg-red-50 text-[var(--color-error)]'
-  if (severity === 'warning') return 'bg-amber-50 text-amber-600'
-  if (severity === 'success') return 'bg-emerald-50 text-emerald-600'
+  if (severity === 'error')   return 'bg-[var(--color-error-container)]/40 text-[var(--color-error)]'
+  if (severity === 'warning') return 'bg-[var(--color-tertiary-container)]/25 text-[var(--color-tertiary)]'
+  if (severity === 'success') return 'bg-[var(--color-secondary-container)]/25 text-[var(--color-secondary)]'
   if (severity === 'info')    return unread
-    ? 'bg-[#79d5dc]/15 text-[#00696f]'
+    ? 'bg-[var(--color-primary-container)]/20 text-[var(--color-primary)]'
     : 'bg-[var(--color-surface-container)] text-[var(--color-on-surface-variant)]'
   return 'bg-[var(--color-surface-container)] text-[var(--color-on-surface-variant)]'
 }
@@ -103,7 +103,7 @@ export default function NotificationsPage() {
 
     // ── 1. Explicit frontend handler ids (seed / local-only items) ────────
     if (n.actionHandlerId === 'openRestock') {
-      return n2Ordered ? undefined : () => { setRestockOpen(true); markRead(n.id) }
+      return n2Ordered ? undefined : () => { navigate(ROUTES.LAB); markRead(n.id) }
     }
     if (n.actionHandlerId === 'sendReminders') {
       return () => { navigate(ROUTES.CALENDAR); markRead(n.id) }
@@ -125,7 +125,7 @@ export default function NotificationsPage() {
       label.includes('طلب') ||
       n.category === 'inventory'
     ) {
-      return n2Ordered ? undefined : () => { setRestockOpen(true); markRead(n.id) }
+      return () => { navigate(ROUTES.LAB); markRead(n.id) }
     }
 
     // Appointment / calendar labels
@@ -175,7 +175,7 @@ export default function NotificationsPage() {
         return () => { navigate(ROUTES.REPORTS); markRead(n.id) }
       }
       if (key.includes('order') || key.includes('restock') || key.includes('inventory')) {
-        return n2Ordered ? undefined : () => { setRestockOpen(true); markRead(n.id) }
+        return () => { navigate(ROUTES.LAB); markRead(n.id) }
       }
     }
 
@@ -261,7 +261,7 @@ export default function NotificationsPage() {
                     actionLabel: n2Ordered
                       ? (t('notifications.ordered') ?? 'Ordered ✓')
                       : a.actionLabel,
-                    onAction: n2Ordered ? undefined : () => setRestockOpen(true),
+                    onAction: n2Ordered ? undefined : () => { navigate(ROUTES.LAB); markRead(restockNotif.id) },
                   }
                 : a,
             )}

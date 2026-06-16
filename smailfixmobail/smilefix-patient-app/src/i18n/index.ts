@@ -10,6 +10,8 @@ import en from './en';
 export type Locale = 'ar' | 'en';
 export type TranslationKey = keyof typeof ar;
 
+// Default to Arabic. The App component sets I18nManager.forceRTL
+// after the React Native bridge is ready (inside useLayoutEffect).
 i18n
   .use(initReactI18next)
   .init({

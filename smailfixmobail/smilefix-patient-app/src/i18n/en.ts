@@ -176,4 +176,72 @@ export default {
   networkError:  'Connection error, please try again',
   biometricNA:   'Biometric authentication is not available on this device',
   biometricFail: 'Biometric not recognized. Please try again.',
+
+  // Shared UI
+  saveChanges:         'Save Changes',
+  close:               'Close',
+  enabled:             'Enabled',
+  disabled:            'Disabled',
+
+  // Notifications modal
+  notificationsTitle:  'Notifications',
+  noNotificationsYet:  'No notifications yet',
+
+  // Help modal
+  howToUseApp:         'How to Use the App',
+
+  // About modal
+  aboutApp:            'About the App',
+  appVersion:          'Version 1.0.0',
+  appDescAbout:        'SmileFix is a comprehensive dental care app — book appointments, track treatment, and connect with your dentist anytime.',
+  copyright:           '© 2025 SmileFix Dental Care\nAll rights reserved',
+
+  // Appointment details modal
+  appointmentDetails:  'Appointment Details',
+  noAppointments:      'No appointments',
+  bookFirstAppointment:'Book your first appointment now',
+  cancelAppointmentTitle: 'Cancel Appointment',
+  confirmCancelAppt:   'Permanently cancel and delete this appointment?',
+  yesDelete:           'Yes, Delete',
+  failedToDelete:      'Failed to delete',
+  noNotesAvailable:    'No notes',
+
+  // Appointment detail row labels
+  doctorLabel:         'Doctor',
+  specialtyLabel:      'Specialty',
+  treatmentLabel:      'Treatment',
+  dateLabel:           'Date',
+  timeLabel:           'Time',
+  durationLabel:       'Duration (min)',
+  notesLabel:          'Notes',
+
+  // QR / Share screen
+  shareTitle:          'Share the App',
+  shareSubtitle:       'Scan this QR code to download the SmileFix Patient app directly onto your device.',
+  pointCameraToScan:   'Point your camera to scan',
+  openCamera:          'Open Camera',
+  scanQr:              'Scan QR',
+  downloadApk:         'Download APK',
+
+  // Date picker
+  selectDateOfBirth:   'Select date of birth',
+
+  // About features
+  aboutFeature1:       'Easy appointment booking anytime',
+  aboutFeature2:       'Step-by-step treatment progress tracking',
+  aboutFeature3:       'Automatic reminders before your visit',
+  aboutFeature4:       'Your medical data is secure and private',
+
+  // Register — password rules & errors
+  pwdNeedsUppercase:   'Password must contain at least one uppercase letter',
+  pwdNeedsNumber:      'Password must contain at least one number',
+  pwdNeedsSpecial:     'Password must contain at least one special character',
+  registerFailed:      'Registration failed. Please try again.',
+  emailAlreadyExists:  'Email is already in use. Please log in instead.',
+
+  // Register — step subtitles & hints
+  registerStep1Sub:    'Enter your personal details to continue',
+  registerStep2Sub:    'Create a secure password for your account',
+  phoneCountryCodeHint:'Enter international phone with country code (e.g., +966 for Riyadh, +1 for USA)',
+  pwdStrengthHint:     'Min 8 chars, one uppercase, one number, one special character',
 } as const;

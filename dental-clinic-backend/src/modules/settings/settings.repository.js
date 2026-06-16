@@ -51,4 +51,35 @@ export class SettingsRepository {
     );
     return this.getWorkingHours();
   }
+
+  /**
+   * Return the singleton clinic info row (id = 1).
+   */
+  async getClinicInfo() {
+    const row = await this.db('clinic_info').where({ id: 1 }).first();
+    if (row) return row;
+
+    const [created] = await this.db('clinic_info')
+      .insert({ id: 1 })
+      .returning('*');
+    return created;
+  }
+
+  /**
+   * Update the singleton clinic info row.
+   * @param {Record<string, unknown>} data
+   */
+  async updateClinicInfo(data) {
+    const [row] = await this.db('clinic_info')
+      .where({ id: 1 })
+      .update({ ...data, updated_at: new Date() })
+      .returning('*');
+
+    if (row) return row;
+
+    const [created] = await this.db('clinic_info')
+      .insert({ id: 1, ...data })
+      .returning('*');
+    return created;
+  }
 }

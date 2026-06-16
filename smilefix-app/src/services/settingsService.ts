@@ -1,7 +1,31 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings Service — clinic working hours
+// Settings Service — clinic working hours & clinic information
 // ─────────────────────────────────────────────────────────────────────────────
 import { apiClient } from './apiClient'
+
+/** Clinic info fields persisted in the settings form */
+export interface ClinicInfo {
+  name: string
+  phone: string
+  email: string
+  website: string
+  address: string
+  city: string
+  taxId: string
+  updatedAt?: string
+}
+
+export type ClinicInfoPayload = Omit<ClinicInfo, 'updatedAt'>
+
+/** Fetch persisted clinic information. */
+export async function fetchClinicInfo(): Promise<ClinicInfo> {
+  return apiClient.get<ClinicInfo>('/settings/clinic')
+}
+
+/** Persist clinic information. Requires ADMIN (settings:*). */
+export async function saveClinicInfo(payload: ClinicInfoPayload): Promise<ClinicInfo> {
+  return apiClient.put<ClinicInfo>('/settings/clinic', payload)
+}
 
 /** One row per weekday as returned by GET /settings/working-hours */
 export interface WorkingHoursDay {

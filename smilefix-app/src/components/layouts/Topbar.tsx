@@ -46,7 +46,7 @@ export function Topbar({ title, sidebarWidth }: TopbarProps) {
   }
 
   const userMenuItems = [
-    { id: 'profile',  label: t('topbar.myProfile'), onClick: () => {} },
+    { id: 'profile',  label: t('topbar.myProfile'), onClick: () => navigate(ROUTES.SETTINGS_PROFILE) },
     { id: 'settings', label: t('nav.settings'),     onClick: () => navigate(ROUTES.SETTINGS) },
     { id: 'divider',  label: '',                    onClick: () => {}, divider: true },
     { id: 'logout',   label: t('topbar.signOut'),   onClick: handleLogout, danger: true },
@@ -134,7 +134,7 @@ export function Topbar({ title, sidebarWidth }: TopbarProps) {
                   <p className="text-xs font-semibold text-[var(--color-on-surface)] leading-none">{user.name}</p>
                   <p className="text-[10px] text-[var(--color-on-surface-variant)] uppercase tracking-tight mt-0.5">{user.role}</p>
                 </div>
-                <Avatar name={user.name} size="sm" ring />
+                <Avatar name={user.name} src={user.avatar} size="sm" ring />
                 <ChevronDown size={14} className="text-[var(--color-outline)] hidden sm:block" />
               </div>
             }

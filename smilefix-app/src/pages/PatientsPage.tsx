@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { UserPlus, Users, LayoutGrid, List } from 'lucide-react'
+import { UserPlus, Users, UserCheck, Clock, AlertCircle, LayoutGrid, List } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageStatsGrid } from '@/components/shared/PageStatsGrid'
 import { DataTable, type DataTableColumn, type DataTableAction } from '@/components/ui/DataTable'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -117,25 +117,40 @@ export default function PatientsPage() {
         }
       />
 
-      {/* Stats row */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="patients-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"
-      >
-        {[
-          { label: t('patients.total'),   value: patients.length,                                    color: 'text-[var(--color-primary)]' },
-          { label: t('status.active'),    value: patients.filter((p) => p.status === 'active').length,  color: 'text-[var(--color-secondary)]' },
-          { label: t('status.pending'),   value: patients.filter((p) => p.status === 'pending').length, color: 'text-amber-600' },
-          { label: t('patients.overdue'), value: patients.filter((p) => (p.balance ?? 0) > 0).length,  color: 'text-[var(--color-error)]' },
-        ].map((s) => (
-          <div key={s.label} className="bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-lg)] border border-[var(--color-outline-variant)]/20 shadow-[var(--shadow-card)] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </motion.div>
+      <PageStatsGrid
+        className="patients-stats-grid mb-6"
+        stats={[
+          {
+            label: t('patients.total'),
+            value: patients.length,
+            icon: <Users size={18} />,
+            color: 'text-[var(--color-primary)]',
+            bg:    'bg-[var(--color-primary-container)]/20',
+          },
+          {
+            label: t('status.active'),
+            value: patients.filter((p) => p.status === 'active').length,
+            icon: <UserCheck size={18} />,
+            color: 'text-[var(--color-secondary)]',
+            bg:    'bg-[var(--color-secondary-container)]/20',
+          },
+          {
+            label: t('status.pending'),
+            value: patients.filter((p) => p.status === 'pending').length,
+            icon: <Clock size={18} />,
+            color: 'text-[var(--color-tertiary)]',
+            bg:    'bg-[var(--color-tertiary-container)]/20',
+          },
+          {
+            label: t('patients.overdue'),
+            value: patients.filter((p) => (p.balance ?? 0) > 0).length,
+            icon: <AlertCircle size={18} />,
+            color: 'text-[var(--color-error)]',
+            bg:    'bg-[var(--color-error-container)]/30',
+            glow: patients.some((p) => (p.balance ?? 0) > 0) ? 'shadow-[var(--shadow-glow-sm)]' : undefined,
+          },
+        ]}
+      />
 
       {/* Main table/grid */}
       <SectionCard noPadding delay={0.1}>

@@ -190,8 +190,9 @@ export function AnimatedModal({
           style={[styles.sheetContainer, { transform: [{ translateY }] }]}
           pointerEvents="box-none"
         >
-          <Pressable onPress={() => { /* absorb — prevent overlay dismiss */ }}>
-            <View style={containerStyle}>
+          {/* Pressable absorbs taps so they don't bubble to the overlay */}
+          <Pressable onPress={() => {}} style={styles.sheetPressable}>
+            <View style={[styles.sheetInner, containerStyle]}>
               {children}
             </View>
           </Pressable>
@@ -220,10 +221,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.48)',
   },
   sheetContainer: {
+    // Anchored firmly to the bottom edge — never centred
     position: 'absolute',
     bottom:   0,
     left:     0,
     right:    0,
+    // Cap at 92% of screen height so it never fully covers the screen
+    maxHeight: SCREEN_H * 0.92,
+  },
+  // The Pressable must fill the Animated.View width
+  sheetPressable: {
+    width: '100%',
+  },
+  // Inner wrapper lets the content grow naturally up to maxHeight
+  sheetInner: {
+    width: '100%',
   },
   centerWrapper: {
     ...StyleSheet.absoluteFillObject,

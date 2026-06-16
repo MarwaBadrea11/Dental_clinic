@@ -24,6 +24,8 @@ export interface User {
   email: string
   role: 'admin' | 'doctor' | 'receptionist' | 'nurse'
   specialty?: string
+  phone?: string
+  bio?: string
   avatar?: string
 }
 
@@ -290,6 +292,17 @@ export interface PurchaseOrderItem {
   quantity: number
   unitPrice: number
   total: number
+}
+
+export type LabOrderStatus = 'pending' | 'in-progress' | 'ready' | 'delayed' | 'delivered'
+
+export interface LabOrder {
+  id: string
+  orderNumber: string
+  patientName?: string
+  status: LabOrderStatus
+  dueDate?: string
+  createdAt: string
 }
 
 // ── Staff / HR ────────────────────────────────────────────────────────────────

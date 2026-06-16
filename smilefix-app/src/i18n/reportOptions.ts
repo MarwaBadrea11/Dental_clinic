@@ -163,7 +163,8 @@ export function getAuditActionLabel(t: TFunction, action: AuditLog['action']) {
   return translated === key ? action : translated
 }
 
-export function getPayrollStatusLabel(t: TFunction, status: string) {
+export function getPayrollStatusLabel(t: TFunction, status: string | null | undefined) {
+  if (!status) return '—'
   const key = payrollStatusKey[status.toUpperCase()]
   if (!key) return status
   const translated = t(key)

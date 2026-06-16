@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, List, LayoutGrid, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, CalendarRange, CheckCircle2, Hourglass, List, LayoutGrid, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageStatsGrid } from '@/components/shared/PageStatsGrid'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -196,23 +197,39 @@ export default function CalendarPage() {
           {t('calendar.loadFailed', { error: loadError })}
         </div>
       )}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="calendar-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"
-      >
-        {[
-          { label: t('calendar.today'),    value: stats?.today    ?? getByDate(todayStr).length,                               color: 'text-[var(--color-primary)]' },
-          { label: t('calendar.thisWeek'), value: stats?.thisWeek ?? weekAppts.length,                                          color: 'text-[var(--color-secondary)]' },
-          { label: t('calendar.confirmed'),value: stats?.confirmed ?? appointments.filter((a) => a.status === 'confirmed').length, color: 'text-[var(--color-secondary)]' },
-          { label: t('status.pending'),    value: stats?.pending   ?? appointments.filter((a) => a.status === 'scheduled').length, color: 'text-amber-600' },
-        ].map((s) => (
-          <div key={s.label} className="bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-lg)] border border-[var(--color-outline-variant)]/20 shadow-[var(--shadow-card)] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </motion.div>
+      <PageStatsGrid
+        className="calendar-stats-grid mb-6"
+        stats={[
+          {
+            label: t('calendar.today'),
+            value: stats?.today ?? getByDate(todayStr).length,
+            icon: <CalendarDays size={18} />,
+            color: 'text-[var(--color-primary)]',
+            bg:    'bg-[var(--color-primary-container)]/20',
+          },
+          {
+            label: t('calendar.thisWeek'),
+            value: stats?.thisWeek ?? weekAppts.length,
+            icon: <CalendarRange size={18} />,
+            color: 'text-[var(--color-secondary)]',
+            bg:    'bg-[var(--color-secondary-container)]/20',
+          },
+          {
+            label: t('calendar.confirmed'),
+            value: stats?.confirmed ?? appointments.filter((a) => a.status === 'confirmed').length,
+            icon: <CheckCircle2 size={18} />,
+            color: 'text-[var(--color-tertiary)]',
+            bg:    'bg-[var(--color-tertiary-container)]/20',
+          },
+          {
+            label: t('status.pending'),
+            value: stats?.pending ?? appointments.filter((a) => a.status === 'scheduled').length,
+            icon: <Hourglass size={18} />,
+            color: 'text-[var(--color-on-surface-variant)]',
+            bg:    'bg-[var(--color-surface-container-high)]',
+          },
+        ]}
+      />
 
       <AnimatePresence mode="wait">
         {/* ── WEEK VIEW ── */}

@@ -1,6 +1,20 @@
 import { create } from 'zustand'
 import type { User } from '@/types'
-import { logout as apiLogout, getAccessToken, getRefreshToken, getSavedUser, saveTokens, clearTokens, clearUser } from '@/services/authService'
+import {
+  logout as apiLogout,
+  getAccessToken,
+  getRefreshToken,
+  getSavedUser,
+  saveTokens,
+  clearTokens,
+  clearUser,
+  saveUser,
+  fetchMe,
+  resolveMediaUrl,
+  persistAuthUser,
+  type AuthUser,
+} from '@/services/authService'
+import { API_BASE } from '@/services/apiConfig'
 
 interface AuthState {
   user: User | null
@@ -8,6 +22,7 @@ interface AuthState {
   isLoading: boolean
 
   setUser: (user: User) => void
+  syncFromAuthUser: (authUser: AuthUser) => void
   logout: () => Promise<void>
   forceLogout: () => void
   setLoading: (loading: boolean) => void
@@ -15,13 +30,41 @@ interface AuthState {
   rehydrate: () => Promise<void>
 }
 
+function mapRole(role: string): User['role'] {
+  const normalized = role.toLowerCase()
+  if (normalized === 'admin') return 'admin'
+  if (normalized === 'dentist' || normalized === 'doctor') return 'doctor'
+  if (normalized === 'nurse') return 'nurse'
+  return 'receptionist'
+}
+
 function buildUser(saved: ReturnType<typeof getSavedUser>): User | null {
   if (!saved) return null
   return {
     id: saved.id,
-    name: (saved as { name?: string }).name ?? saved.email,
+    name: saved.name ?? saved.username ?? saved.email,
     email: saved.email,
-    role: (saved.role?.toLowerCase() ?? 'receptionist') as User['role'],
+    role: mapRole(saved.role),
+    specialty: saved.specialty ?? undefined,
+    phone: saved.phone ?? undefined,
+    bio: saved.bio ?? undefined,
+    avatar: saved.avatar ?? resolveMediaUrl(saved.avatar_url),
+  }
+}
+
+function authUserToStoreUser(authUser: AuthUser): User {
+  const name = authUser.username?.trim()
+    || authUser.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+
+  return {
+    id: authUser.id,
+    name,
+    email: authUser.email,
+    role: mapRole(authUser.role),
+    specialty: authUser.specialty ?? undefined,
+    phone: authUser.phone ?? undefined,
+    bio: authUser.bio ?? undefined,
+    avatar: resolveMediaUrl(authUser.avatar_url),
   }
 }
 
@@ -34,13 +77,56 @@ function isTokenAlive(token: string): boolean {
   }
 }
 
+async function ensureValidAccessToken(): Promise<string | null> {
+  const accessToken = getAccessToken()
+  if (accessToken && isTokenAlive(accessToken)) return accessToken
+
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return null
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+
+    if (!res.ok) return null
+
+    const json = await res.json()
+    const { accessToken: newAccess, refreshToken: newRefresh } = json.data
+    saveTokens(newAccess, newRefresh)
+    return newAccess as string
+  } catch {
+    return null
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   // Optimistically hydrate from localStorage — rehydrate() will correct this
   user: buildUser(getSavedUser()),
   isAuthenticated: !!getAccessToken(),
   isLoading: false,
 
-  setUser: (user) => set({ user, isAuthenticated: true }),
+  setUser: (user) => {
+    saveUser({
+      id: user.id,
+      email: user.email,
+      role: user.role.toUpperCase(),
+      username: user.name,
+      phone: user.phone ?? null,
+      specialty: user.specialty ?? null,
+      bio: user.bio ?? null,
+      avatar: user.avatar,
+    })
+    set({ user, isAuthenticated: true })
+  },
+
+  syncFromAuthUser: (authUser) => {
+    persistAuthUser(authUser)
+    const user = authUserToStoreUser(authUser)
+    set({ user, isAuthenticated: true })
+  },
 
   logout: async () => {
     await apiLogout()
@@ -56,18 +142,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   rehydrate: async () => {
-    const accessToken = getAccessToken()
-    const refreshToken = getRefreshToken()
+    const token = await ensureValidAccessToken()
 
-    // Token is still valid — nothing to do
-    if (accessToken && isTokenAlive(accessToken)) {
-      const user = buildUser(getSavedUser())
-      set({ user, isAuthenticated: !!user })
-      return
-    }
-
-    // Access token missing or expired — try to refresh silently
-    if (!refreshToken) {
+    if (!token) {
       clearTokens()
       clearUser()
       set({ user: null, isAuthenticated: false })
@@ -75,30 +152,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3002'}/api/v1/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      })
-
-      if (!res.ok) {
-        // Refresh token is dead — wipe everything so the app redirects to login
-        clearTokens()
-        clearUser()
-        set({ user: null, isAuthenticated: false })
-        return
-      }
-
-      const json = await res.json()
-      const { accessToken: newAccess, refreshToken: newRefresh } = json.data
-      saveTokens(newAccess, newRefresh)
-
+      const authUser = await fetchMe()
+      persistAuthUser(authUser)
+      const user = authUserToStoreUser(authUser)
+      set({ user, isAuthenticated: true })
+    } catch {
       const user = buildUser(getSavedUser())
       set({ user, isAuthenticated: !!user })
-    } catch {
-      clearTokens()
-      clearUser()
-      set({ user: null, isAuthenticated: false })
     }
   },
 }))

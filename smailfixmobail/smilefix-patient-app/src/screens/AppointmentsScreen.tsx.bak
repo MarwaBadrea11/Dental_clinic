@@ -139,7 +139,7 @@ function DetailsModal({
   item, visible, onClose, colors, isDark, isRTL, t,
 }: {
   item: Appointment | null; visible: boolean; onClose: () => void;
-  colors: AppColors; isDark: boolean; isRTL: boolean; t: (k: any) => string;
+  colors: AppColors; isDark: boolean; isRTL: boolean; t: (k: string) => string;
 }) {
   if (!item && !visible) return null;
 
@@ -149,13 +149,13 @@ function DetailsModal({
   const meta = item ? (statusCfg[item.status] ?? statusCfg.waiting) : statusCfg.waiting;
 
   const rows: { label: string; value: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = item ? [
-    { label: t('doctorLabel'),    icon: 'person-outline',        value: (isRTL ? item.doctor?.nameAr     : item.doctor?.name)      ?? '—' },
-    { label: t('specialtyLabel'), icon: 'medical-outline',       value: (isRTL ? item.doctor?.specialtyAr : item.doctor?.specialty) ?? '—' },
-    { label: t('treatmentLabel'), icon: 'bandage-outline',       value: (isRTL ? item.service?.nameAr    : item.service?.name)     ?? '—' },
-    { label: t('dateLabel'),      icon: 'calendar-outline',      value: item.date },
-    { label: t('timeLabel'),      icon: 'time-outline',          value: item.timeSlot },
-    { label: t('durationLabel'),  icon: 'hourglass-outline',     value: item.service?.duration ? `${item.service.duration}` : '—' },
-    { label: t('notesLabel'),     icon: 'document-text-outline', value: item.notes ?? t('noNotesAvailable') },
+    { label: isRTL ? 'الطبيب'        : 'Doctor',         icon: 'person-outline',        value: (isRTL ? item.doctor?.nameAr    : item.doctor?.name)    ?? '—' },
+    { label: isRTL ? 'التخصص'        : 'Specialty',      icon: 'medical-outline',       value: (isRTL ? item.doctor?.specialtyAr : item.doctor?.specialty) ?? '—' },
+    { label: isRTL ? 'العلاج'        : 'Treatment',      icon: 'bandage-outline',       value: (isRTL ? item.service?.nameAr   : item.service?.name)   ?? '—' },
+    { label: isRTL ? 'التاريخ'       : 'Date',           icon: 'calendar-outline',      value: item.date },
+    { label: isRTL ? 'الوقت'         : 'Time',           icon: 'time-outline',          value: item.timeSlot },
+    { label: isRTL ? 'المدة (دقيقة)' : 'Duration (min)', icon: 'hourglass-outline',     value: item.service?.duration ? `${item.service.duration}` : '—' },
+    { label: isRTL ? 'ملاحظات'       : 'Notes',          icon: 'document-text-outline', value: item.notes ?? (isRTL ? 'لا توجد ملاحظات' : 'No notes') },
   ] : [];
 
   return (
@@ -187,7 +187,7 @@ function DetailsModal({
               fontSize: 19, fontWeight: '700', fontFamily: 'Manrope_700Bold',
               color: isDark ? '#e6edf3' : '#1e5979',
             }}>
-              {t('appointmentDetails')}
+              {isRTL ? 'تفاصيل الموعد' : 'Appointment Details'}
             </Text>
           </View>
           {item && (
@@ -255,7 +255,7 @@ function DetailsModal({
             style={{ height: 54, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700', fontFamily: 'Manrope_700Bold', letterSpacing: 0.3 }}>
-              {t('close')}
+              {isRTL ? 'إغلاق' : 'Close'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -269,8 +269,6 @@ export default function AppointmentsScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
   const { t, isRTL }       = useTranslation();
   const { appointments, setAppointments, removeAppointment, patient } = useAppStore();
-  const isHydrating = useAppStore((s) => s.isHydrating);
-  const authToken   = useAppStore((s) => s.authToken);
   const [tab, setTab]               = useState<TabKey>('upcoming');
   const [loading, setLoading]       = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -307,33 +305,13 @@ export default function AppointmentsScreen({ navigation }: any) {
     setFetchError('');
     try {
       const result = await listAppointments({ patient_id: patient.id });
-      // result is { appointments: [...], stats: {...} }
-      const list = Array.isArray(result)
-        ? (result as BackendAppointment[])
-        : (result as any).appointments ?? [];
-      setAppointments(list.map(adaptAppointment));
+      setAppointments(result.appointments.map(adaptAppointment));
     } catch (err) {
-      if (err instanceof ApiRequestError) {
-        if (err.status === 0) {
-          setFetchError(t('networkError'));
-        } else if (err.status === 401 || err.status === 403) {
-          // Token expired or insufficient permissions — show retry so user can reload
-          setFetchError(t('loadingFailed'));
-        } else {
-          setFetchError(t('loadingFailed'));
-        }
-      } else {
-        setFetchError(t('networkError'));
-      }
+      setFetchError(err instanceof ApiRequestError && err.status === 0 ? t('networkError') : t('loadingFailed'));
     } finally { setLoading(false); setRefreshing(false); }
   }, [patient?.id]);
 
   useFocusEffect(useCallback(() => { fetchAppointments(); }, [fetchAppointments]));
-
-  // Re-fetch if patient was null on first focus and hydrates later
-  useEffect(() => {
-    if (patient?.id) fetchAppointments();
-  }, [patient?.id]);
 
   const nowMs = Date.now();
   const upcoming = appointments.filter((a) => {
@@ -353,12 +331,12 @@ export default function AppointmentsScreen({ navigation }: any) {
 
   const handleCancel = (id: string) => {
     Alert.alert(
-      t('cancelAppointmentTitle'),
-      t('confirmCancelAppt'),
+      isRTL ? 'إلغاء الموعد' : 'Cancel Appointment',
+      isRTL ? 'هل أنت متأكد من إلغاء وحذف هذا الموعد نهائياً؟' : 'Permanently cancel and delete this appointment?',
       [
-        { text: t('no'), style: 'cancel' },
+        { text: isRTL ? 'لا' : 'No', style: 'cancel' },
         {
-          text: t('yesDelete'),
+          text: isRTL ? 'نعم، احذف' : 'Yes, Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -366,7 +344,7 @@ export default function AppointmentsScreen({ navigation }: any) {
               removeAppointment(id);
               fetchAppointments(true);
             } catch {
-              Alert.alert(t('error'), t('failedToDelete'));
+              Alert.alert(isRTL ? 'خطأ' : 'Error', isRTL ? 'فشل الحذف' : 'Failed to delete');
             }
           },
         },
@@ -392,18 +370,13 @@ export default function AppointmentsScreen({ navigation }: any) {
           shadowColor:     isDark ? colors.teal : '#000',
         }]}>
 
-          {/* Neon left accent bar — mirrors to right edge in RTL */}
-          <View style={[cardStyles.accentBar, {
-            backgroundColor: cfg.text,
+          {/* Neon left accent bar */}
+          <View style={[cardStyles.accentBar, { backgroundColor: cfg.text,
             shadowColor: cfg.glow,
-            [isRTL ? 'right' : 'left']: 0,
           }]} />
 
           {/* Header */}
-          <View style={[cardStyles.header, {
-            flexDirection: rowDir,
-            [isRTL ? 'paddingRight' : 'paddingLeft']: 10,
-          }]}>
+          <View style={[cardStyles.header, { flexDirection: rowDir }]}>
             {/* Avatar */}
             <View style={[cardStyles.avatar, {
               backgroundColor: isDark ? 'rgba(97,190,197,0.13)' : 'rgba(97,190,197,0.16)',
@@ -437,14 +410,10 @@ export default function AppointmentsScreen({ navigation }: any) {
           {/* Divider */}
           <View style={[cardStyles.divider, {
             backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-            [isRTL ? 'marginRight' : 'marginLeft']: 10,
           }]} />
 
           {/* Details row */}
-          <View style={[cardStyles.detailsRow, {
-            flexDirection: rowDir,
-            [isRTL ? 'paddingRight' : 'paddingLeft']: 10,
-          }]}>
+          <View style={[cardStyles.detailsRow, { flexDirection: rowDir }]}>
             {/* Treatment */}
             <View style={cardStyles.detailCol}>
               <View style={[cardStyles.detailLabelRow, { flexDirection: rowDir }]}>
@@ -470,10 +439,7 @@ export default function AppointmentsScreen({ navigation }: any) {
 
           {/* Action buttons */}
           {item.status !== 'cancelled' && item.status !== 'completed' ? (
-            <View style={[cardStyles.actions, {
-              flexDirection: rowDir,
-              [isRTL ? 'paddingRight' : 'paddingLeft']: 10,
-            }]}>
+            <View style={[cardStyles.actions, { flexDirection: rowDir }]}>
               {/* View details */}
               <TouchableOpacity
                 style={[cardStyles.primaryBtnWrap, { flex: 1 }]}
@@ -518,10 +484,10 @@ export default function AppointmentsScreen({ navigation }: any) {
         <Ionicons name="calendar-outline" size={40} color={colors.teal} />
       </View>
       <Text style={[emptyStyles.title, { color: isDark ? '#e6edf3' : '#1e5979' }]}>
-        {t('noAppointments')}
+        {isRTL ? 'لا توجد مواعيد' : 'No appointments'}
       </Text>
       <Text style={[emptyStyles.sub, { color: colors.textSub }]}>
-        {t('bookFirstAppointment')}
+        {isRTL ? 'احجز موعدك الأول الآن' : 'Book your first appointment now'}
       </Text>
       <TouchableOpacity
         onPress={() => navigation.navigate('Booking')}
@@ -638,9 +604,12 @@ export default function AppointmentsScreen({ navigation }: any) {
               </TouchableOpacity>
             ))}
 
-            {/* Book now pill — pushed to the logical end of the row */}
+            {/* Book now pill */}
             <TouchableOpacity
-              style={[styles.newBtn, { marginStart: 'auto' as any }]}
+              style={[styles.newBtn, {
+                marginLeft: isRTL ? 0 : 'auto' as any,
+                marginRight: isRTL ? 'auto' as any : 0,
+              }]}
               onPress={() => navigation.navigate('Booking')}
               activeOpacity={0.85}
             >
@@ -693,12 +662,8 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 28, fontFamily: 'Manrope_700Bold',
     letterSpacing: -0.7, marginBottom: 14,
-    // textAlign is set inline via `align` — do NOT set a static value here
-    // so RTL/LTR flipping works without fighting the stylesheet.
   },
-  // flexDirection set inline via rowDir; flexWrap so "Book Now" pill wraps
-  // gracefully on narrow screens instead of pushing the title off-screen.
-  tabRow:  { alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  tabRow:  { alignItems: 'center', gap: 8 },
   tabBtn: {
     paddingHorizontal: 18, paddingVertical: 9,
     borderRadius: 999, borderWidth: 1.5,
@@ -724,15 +689,12 @@ const cardStyles = StyleSheet.create({
     shadowOpacity: 0.14, shadowRadius: 20, elevation: 6,
   },
   accentBar: {
-    position: 'absolute', top: 18, bottom: 18,
+    position: 'absolute', left: 0, top: 18, bottom: 18,
     width: 3.5, borderRadius: 2,
-    // `left` vs `right` is set inline per isRTL — do NOT set either here
-    // or it will override the inline position and clip on one side.
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.70, shadowRadius: 8,
   },
-  // paddingLeft/Right set inline per isRTL (paddingStart 10)
-  header: { alignItems: 'center' },
+  header: { alignItems: 'center', paddingLeft: 10 },
   avatar: {
     width: 48, height: 48, borderRadius: 15,
     alignItems: 'center', justifyContent: 'center',
@@ -749,17 +711,15 @@ const cardStyles = StyleSheet.create({
   },
   badgeText: { fontSize: 9, fontWeight: '700', fontFamily: 'Inter_600SemiBold', letterSpacing: 0.6, textTransform: 'uppercase' },
 
-  // paddingLeft/Right applied inline per isRTL
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 13 },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 13, marginLeft: 10 },
 
-  detailsRow: { justifyContent: 'space-between' },
+  detailsRow: { justifyContent: 'space-between', paddingLeft: 10 },
   detailCol:  { flex: 1 },
   detailLabelRow: { alignItems: 'center', gap: 4, marginBottom: 4 },
   detailLabel:  { fontSize: 9, fontWeight: '700', fontFamily: 'Inter_600SemiBold', letterSpacing: 0.9, textTransform: 'uppercase' },
   detailValue:  { fontSize: 13, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
 
-  // gap + paddingStart applied inline per isRTL
-  actions: { gap: 9, marginTop: 14 },
+  actions: { gap: 9, marginTop: 14, paddingLeft: 10 },
   primaryBtnWrap: { borderRadius: 12, overflow: 'hidden' },
   primaryBtnGrad: { height: 42, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
   primaryBtnText: { fontSize: 13, color: '#fff', fontWeight: '700', fontFamily: 'Inter_600SemiBold', letterSpacing: 0.2 },

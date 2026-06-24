@@ -35,6 +35,13 @@ async function licenseGuard(fastify) {
     '/api/v1/auth/login',
     '/api/v1/health',
     '/api/v1/auth/register',
+    // Mobile patient app routes — always accessible
+    '/api/v1/auth/users',
+    '/api/v1/auth/dentists',
+    '/api/v1/procedures',
+    '/api/v1/appointments',
+    '/api/v1/patients/me',
+    '/api/v1/settings/working-hours',
   ];
 
   // Check if route is public

@@ -42,6 +42,7 @@ interface CardProps {
   /** When set, renders a 2px accent stripe along the top edge */
   accent?: CardAccent
   onClick?: () => void
+  style?: React.CSSProperties
 }
 
 const paddingStyles = {
@@ -58,12 +59,14 @@ export function Card({
   padding = 'lg',
   accent,
   onClick,
+  style,
 }: CardProps) {
   return (
     <motion.div
       whileHover={hover ? { y: -2, boxShadow: 'var(--shadow-card-hover)' } : {}}
       transition={{ duration: 0.2 }}
       onClick={onClick}
+      style={style}
       className={cn(
         'bg-[var(--color-surface-container-lowest)] rounded-[var(--radius-lg)]',
         'border border-[var(--color-outline-variant)]/20',

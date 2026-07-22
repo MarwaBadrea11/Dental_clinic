@@ -134,6 +134,7 @@ export default function ProfileScreen() {
   const { t, isRTL, locale, i18n } = useTranslation();
   const { colors, isDark, toggleTheme } = useTheme();
   const { patient, logout, setLocale, setPatient } = useAppStore();
+  const resetBackendIp = useAppStore((s) => s.resetBackendIp);
   const [langLoading, setLangLoading] = useState(false);
   const tabBarHeight = useTabBarHeight();
 
@@ -255,6 +256,26 @@ export default function ProfileScreen() {
       { text: t('no'), style: 'cancel' },
       { text: t('yes'), style: 'destructive', onPress: () => logout() },
     ]);
+  };
+
+  const handleResetServer = () => {
+    Alert.alert(
+      locale === 'ar' ? 'إعادة تعيين الخادم' : 'Reset Server',
+      locale === 'ar'
+        ? 'سيتم حذف عنوان IP المحفوظ وستظهر شاشة الإعداد عند إعادة التشغيل.'
+        : 'The saved IP will be cleared and the setup screen will appear on next launch.',
+      [
+        { text: locale === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        {
+          text: locale === 'ar' ? 'إعادة تعيين' : 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();         // also clear auth so they start fresh
+            await resetBackendIp();
+          },
+        },
+      ],
+    );
   };
 
   // Progress %
@@ -495,8 +516,22 @@ export default function ProfileScreen() {
             />
           </StaggerItem>
 
-          {/* Logout */}
+          {/* Reset Server IP */}
           <StaggerItem index={9}>
+            <SettingRow
+              icon="wifi-outline"
+              iconColor={colors.warning}
+              iconBg={isDark ? 'rgba(227,179,65,0.12)' : 'rgba(227,179,65,0.14)'}
+              label={locale === 'ar' ? 'إعادة تعيين IP الخادم' : 'Reset Server IP'}
+              description={locale === 'ar' ? 'تغيير عنوان IP للخادم الخلفي' : 'Change the backend server address'}
+              isRTL={isRTL} colors={colors} isDark={isDark}
+              onPress={handleResetServer}
+              right={<Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textSub} />}
+            />
+          </StaggerItem>
+
+          {/* Logout */}
+          <StaggerItem index={10}>
             <TouchableOpacity
               onPress={handleLogout}
               activeOpacity={0.82}
@@ -512,7 +547,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </StaggerItem>
 
-          <StaggerItem index={10}>
+          <StaggerItem index={11}>
             <Text style={[styles.version, { color: colors.textSub }]}>SmileFix v1.0.0</Text>
           </StaggerItem>
 

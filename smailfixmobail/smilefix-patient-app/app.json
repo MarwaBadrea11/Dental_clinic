@@ -27,7 +27,8 @@
         "backgroundColor": "#61bec5"
       },
       "package": "com.smilefix.patient",
-      "edgeToEdgeEnabled": false,
+<<<<<<< HEAD
+      "edgeToEdgeEnabled": true,
       "usesCleartextTraffic": true
     },
     "web": {

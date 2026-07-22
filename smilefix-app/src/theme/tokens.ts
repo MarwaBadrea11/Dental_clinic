@@ -56,24 +56,6 @@ export const colors = {
   outline: '#6e797a',
   outlineVariant: '#bdc9c9',
 } as const
-  onBackground: '#171c1f',
-  surface: '#f6fafd',
-  surfaceDim: '#d6dbdd',
-  surfaceBright: '#f6fafd',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f0f4f7',
-  surfaceContainer: '#eaeef1',
-  surfaceContainerHigh: '#e5e9ec',
-  surfaceContainerHighest: '#dfe3e6',
-  onSurface: '#171c1f',
-  onSurfaceVariant: '#3e494a',
-  inverseSurface: '#2c3134',
-  inverseOnSurface: '#edf1f4',
-  surfaceVariant: '#dfe3e6',
-  surfaceTint: '#00696f',
-  outline: '#6e797a',
-  outlineVariant: '#bdc9c9',
-} as const
 
 export const typography = {
   fontDisplay: '"Manrope", sans-serif',

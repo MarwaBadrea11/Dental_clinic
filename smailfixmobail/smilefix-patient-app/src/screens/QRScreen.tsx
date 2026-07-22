@@ -1,29 +1,46 @@
 // ─────────────────────────────────────────────
-// QR Share Screen — مشاركة التطبيق
-// Shows a QR code patients can scan to share
-// the SmileFix app with friends & family.
-// NOTE: QR value is a static placeholder until
-// an official App Store / Play Store link exists.
+// QR Share Screen — App Download
+// Displays a QR code that lets anyone scan
+// and download the SmileFix Patient APK
+// directly from the Expo CDN.
 // ─────────────────────────────────────────────
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
   StatusBar,
   Animated,
   Easing,
+  TouchableOpacity,
+  Share,
+  Linking,
+  Alert,
 } from 'react-native';
 import Text from '../components/Text';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
-
-// ── QR value — clinic contact card, scannable on any phone ────────────────
-const SHARE_VALUE = 'https://wa.me/?text=SmileFix%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B9%D9%8A%D8%A7%D8%AF%D8%A9%20%D8%A7%D9%84%D8%A3%D8%B3%D9%86%D8%A7%D9%86';
+import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 
+// ── APK download URL ───────────────────────────────────────────────────────
+// This is the direct APK artifact URL from the latest successful EAS build.
+// Update this constant after each new build by copying the buildUrl from:
+//   eas build:list --platform android --limit 1 --json
+// The URL is valid for 14 days after the build completes.
+const APK_URL =
+  'https://expo.dev/artifacts/eas/mykICij0vuusCUkaKQKXAgj0SEecgPLnNwUnUp0BSCg.apk';
+
+// ── EAS install page (works without Expo Go) ──────────────────────────────
+// Scanning this URL on Android opens a browser page with a direct
+// "Download APK" button — no Expo Go required.
+const INSTALL_PAGE =
+  'https://expo.dev/accounts/marwamarwa11/projects/smilefix-patient-app/builds/257988d7-f90a-41da-bbca-1361bd147ada';
+
+// The QR code encodes the direct .apk URL so the browser downloads it immediately.
+const QR_VALUE = APK_URL;
 // ── Cinematic easing ───────────────────────────────────────────────────────
 const EASE_OUT_EXPO = Easing.bezier(0.16, 1, 0.3, 1);
 
@@ -57,7 +74,8 @@ function FadeInView({
 // ── Main screen ────────────────────────────────────────────────────────────
 export default function QRScreen() {
   const { colors, isDark } = useTheme();
-  const { t, isRTL }       = useTranslation();
+  const { t, isRTL } = useTranslation();
+  const [copied, setCopied] = useState(false);
 
   // Pulsing ambient orbs
   const orb1 = useRef(new Animated.Value(1)).current;
@@ -88,6 +106,28 @@ export default function QRScreen() {
 
   const cardBg     = isDark ? 'rgba(14,22,32,0.92)' : 'rgba(255,255,255,0.96)';
   const cardBorder = isDark ? 'rgba(97,190,197,0.25)' : 'rgba(0,105,111,0.15)';
+
+  async function handleCopy() {
+    await Clipboard.setStringAsync(APK_URL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  async function handleShare() {
+    try {
+      await Share.share({
+        message: `SmileFix Patient App — Download APK:\n${APK_URL}`,
+        url: APK_URL,
+        title: 'SmileFix APK',
+      });
+    } catch { /* user dismissed */ }
+  }
+
+  function handleOpenInstallPage() {
+    Linking.openURL(INSTALL_PAGE).catch(() =>
+      Alert.alert('Error', 'Could not open install page.')
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -187,8 +227,8 @@ export default function QRScreen() {
                 shadowColor: isDark ? colors.teal : '#00696f',
               }]}>
                 <QRCode
-                  value={SHARE_VALUE}
-                  size={190}
+                  value={QR_VALUE}
+                  size={200}
                   color={isDark ? '#0d1117' : '#1e5979'}
                   backgroundColor="#ffffff"
                 />
@@ -197,6 +237,67 @@ export default function QRScreen() {
               <Text style={[styles.qrCaption, { color: isDark ? colors.teal : colors.primary }]}>
                 {t('pointCameraToScan')}
               </Text>
+              <Text style={[styles.qrUrl, { color: colors.textSub }]} numberOfLines={2}>
+                {APK_URL}
+              </Text>
+
+              {/* ── Action buttons ── */}
+              <View style={styles.actionRow}>
+                {/* Copy link */}
+                <TouchableOpacity
+                  onPress={handleCopy}
+                  activeOpacity={0.80}
+                  style={[styles.actionBtn, {
+                    backgroundColor: copied
+                      ? (isDark ? 'rgba(86,211,100,0.15)' : 'rgba(53,103,93,0.10)')
+                      : (isDark ? 'rgba(97,190,197,0.12)' : 'rgba(0,105,111,0.08)'),
+                    borderColor: copied
+                      ? (isDark ? colors.success : colors.success)
+                      : (isDark ? 'rgba(97,190,197,0.30)' : 'rgba(0,105,111,0.20)'),
+                  }]}
+                >
+                  <Ionicons
+                    name={copied ? 'checkmark-circle-outline' : 'copy-outline'}
+                    size={15}
+                    color={copied ? colors.success : (isDark ? colors.teal : colors.primary)}
+                  />
+                  <Text style={[styles.actionBtnText, {
+                    color: copied ? colors.success : (isDark ? colors.teal : colors.primary),
+                  }]}>
+                    {copied ? 'Copied!' : 'Copy Link'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Share */}
+                <TouchableOpacity
+                  onPress={handleShare}
+                  activeOpacity={0.80}
+                  style={[styles.actionBtn, {
+                    backgroundColor: isDark ? 'rgba(97,190,197,0.12)' : 'rgba(0,105,111,0.08)',
+                    borderColor:     isDark ? 'rgba(97,190,197,0.30)' : 'rgba(0,105,111,0.20)',
+                  }]}
+                >
+                  <Ionicons name="share-outline" size={15} color={isDark ? colors.teal : colors.primary} />
+                  <Text style={[styles.actionBtnText, { color: isDark ? colors.teal : colors.primary }]}>
+                    Share
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Open install page */}
+                <TouchableOpacity
+                  onPress={handleOpenInstallPage}
+                  activeOpacity={0.80}
+                  style={[styles.actionBtn, {
+                    backgroundColor: isDark ? 'rgba(97,190,197,0.12)' : 'rgba(0,105,111,0.08)',
+                    borderColor:     isDark ? 'rgba(97,190,197,0.30)' : 'rgba(0,105,111,0.20)',
+                  }]}
+                >
+                  <Ionicons name="open-outline" size={15} color={isDark ? colors.teal : colors.primary} />
+                  <Text style={[styles.actionBtnText, { color: isDark ? colors.teal : colors.primary }]}>
+                    Install Page
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </FadeInView>
 
@@ -340,6 +441,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     letterSpacing: 0.1,
+  },
+  qrUrl: {
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+    maxWidth: 260,
+    marginBottom: 14,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  actionBtnText: {
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+    fontWeight: '600',
   },
 
   // Step chips

@@ -212,13 +212,27 @@ export async function fetchAuditLogs(
   return { data: json.data, ...json.meta }
 }
 
-// ── Export (triggers browser download) ───────────────────────────────────────
+// ── Export (triggers browser download OR native save dialog in Electron) ─────
 
 type ReportType = 'financial' | 'inventory' | 'payroll'
 
+// Extend Window to include the Electron preload bridge (only present in Electron)
+declare global {
+  interface Window {
+    electronAPI?: {
+      saveFile: (buffer: ArrayBuffer, filename: string) => Promise<{ success: boolean; filePath?: string; reason?: string }>
+      isElectron: boolean
+    }
+  }
+}
+
 /**
- * Fetches the export endpoint and triggers a browser file download.
- * No third-party library needed — uses a temporary <a> element.
+ * Fetches the export endpoint and saves the file.
+ *
+ * – In a browser: creates a temporary <a> element and triggers a download.
+ * – In Electron:  sends the buffer to the main process via IPC so the native
+ *   "Save As" dialog is shown. This is required because Electron blocks
+ *   blob URL downloads unless a will-download handler is registered.
  */
 export async function downloadReport(
   type: ReportType,
@@ -228,9 +242,7 @@ export async function downloadReport(
   const qs  = buildQs({ ...params, format })
   const url = `${API_BASE}/api/v1/reports/${type}/export${qs}`
 
-  // Get a fresh (non-expired) token — this is the key fix.
-  // If we send an expired token the server returns a 401 JSON response
-  // which would otherwise get saved as a corrupt .xlsx file.
+  // Proactively refresh token before the download request
   const token = await getFreshToken()
 
   const res = await fetch(url, {
@@ -247,7 +259,7 @@ export async function downloadReport(
     throw new Error(message)
   }
 
-  // Safety: if the server returned JSON instead of a file body, show a real error
+  // If the server returned JSON instead of a file body, surface a real error
   const contentType = res.headers.get('Content-Type') ?? ''
   if (contentType.includes('application/json')) {
     const json = await res.json().catch(() => ({}))
@@ -258,14 +270,24 @@ export async function downloadReport(
     ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     : 'application/pdf'
 
-  const buffer = await res.arrayBuffer()
-  const blob   = new Blob([buffer], { type: expectedMime })
-  const ext    = format === 'xlsx' ? 'xlsx' : 'pdf'
+  const buffer   = await res.arrayBuffer()
+  const filename = `${type}-report.${format}`
 
+  // ── Electron: use native Save dialog via IPC ──────────────────────────────
+  if (window.electronAPI?.isElectron) {
+    const result = await window.electronAPI.saveFile(buffer, filename)
+    if (!result.success && result.reason !== 'cancelled') {
+      throw new Error(`Could not save file: ${result.reason}`)
+    }
+    return
+  }
+
+  // ── Browser: create blob URL and click a hidden anchor ───────────────────
+  const blob      = new Blob([buffer], { type: expectedMime })
   const objectUrl = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href     = objectUrl
-  a.download = `${type}-report.${ext}`
+  a.download = filename
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

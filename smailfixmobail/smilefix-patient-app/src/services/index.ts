@@ -6,7 +6,7 @@
 export { api, apiRequest, ApiRequestError } from './api';
 export type { ApiSuccess, ApiError, ApiResponse } from './api';
 
-export { saveSession, saveAccessToken, loadSession, clearSession } from './storage';
+export { saveSession, saveAccessToken, loadSession, clearSession, saveBackendIp, loadBackendIp, clearBackendIp } from './storage';
 export type { PersistedSession } from './storage';
 
 export { login, register, refreshTokens, logout } from './authService';

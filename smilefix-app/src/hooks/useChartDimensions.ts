@@ -9,7 +9,7 @@ interface Dimensions { width: number; height: number }
  * directly to Recharts charts instead of using ResponsiveContainer — this fully
  * eliminates the "width/height should be greater than 0" warning in all React modes.
  */
-export function useChartDimensions(): { containerRef: React.RefObject<HTMLDivElement>; dimensions: Dimensions } {
+export function useChartDimensions(): { containerRef: React.RefObject<HTMLDivElement | null>; dimensions: Dimensions } {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState<Dimensions>({ width: 0, height: 0 })
 

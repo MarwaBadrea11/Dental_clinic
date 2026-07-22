@@ -140,7 +140,7 @@ export default function ActivateAppPage() {
             message: 'Development bypass active'
           };
         }
-        return originalCheck.apply(this, arguments);
+        return originalCheck.apply(this, arguments as unknown as []);
       };
       
       setSuccess(true)

@@ -4,7 +4,7 @@
 // • Automatic silent token refresh on 401
 // • Unified error handling + request timeout
 // ─────────────────────────────────────────────
-import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config';
+import { getApiBaseUrl, REQUEST_TIMEOUT_MS } from './config';
 import { useAppStore } from '../store/appStore';
 import { loadSession } from './storage';
 
@@ -140,7 +140,7 @@ export async function apiRequest<T>(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...rest,
       headers,
       signal: controller.signal,

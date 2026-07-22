@@ -4,7 +4,8 @@
 // ─────────────────────────────────────────────
 import { create } from 'zustand';
 import { I18nManager } from 'react-native';
-import { saveSession, clearSession, saveAccessToken, saveLocale } from '../services/storage';
+import { saveSession, clearSession, saveAccessToken, saveLocale, saveBackendIp, clearBackendIp, loadBackendIp } from '../services/storage';
+import { setDynamicBaseUrl, clearDynamicBaseUrl } from '../services/config';
 import i18n from '../i18n';
 
 // ── Types ─────────────────────────────────────
@@ -68,6 +69,11 @@ interface AppState {
   /** True while the app is reading SecureStore on launch */
   isHydrating: boolean;
 
+  // Backend IP — set once from ServerConfigScreen, persisted to AsyncStorage
+  backendIp: string | null;
+  /** True while we are checking AsyncStorage for a saved IP on launch */
+  isCheckingIp: boolean;
+
   // Locale & Theme
   locale: Locale;
   theme: ThemeMode;
@@ -96,6 +102,10 @@ interface AppState {
   logout: () => Promise<void>;
   /** Run once at app launch — reads SecureStore and restores session */
   hydrateFromStorage: () => Promise<void>;
+  /** Save a backend IP and activate it in the API client */
+  setBackendIp: (ip: string) => Promise<void>;
+  /** Clear the saved IP (forces Server Config screen on next launch) */
+  resetBackendIp: () => Promise<void>;
   setAppointments: (appointments: Appointment[]) => void;
   addAppointment: (appointment: Appointment) => void;
   archiveAppointment: (id: string) => void;
@@ -118,6 +128,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   authToken: null,
   refreshToken: null,
   isHydrating: true,
+  backendIp: null,
+  isCheckingIp: true,
   locale: 'ar',
   theme: 'light',
   appointments: [],
@@ -174,7 +186,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   hydrateFromStorage: async () => {
     try {
       const { loadSession, loadLocale } = await import('../services/storage');
-      const [session, storedLocale] = await Promise.all([loadSession(), loadLocale()]);
+      const [session, storedLocale, savedIp] = await Promise.all([
+        loadSession(),
+        loadLocale(),
+        loadBackendIp(),
+      ]);
       const updates: Partial<AppState> = {};
       if (session) {
         updates.isAuthenticated = true;
@@ -193,14 +209,31 @@ export const useAppStore = create<AppState>((set, get) => ({
         // Align i18next language with the persisted locale
         i18n.changeLanguage(storedLocale);
       }
+      if (savedIp) {
+        updates.backendIp = savedIp;
+        setDynamicBaseUrl(savedIp);
+      }
       if (Object.keys(updates).length > 0) {
         set(updates);
       }
     } catch {
       // If anything fails, just stay logged out — not a crash
     } finally {
-      set({ isHydrating: false });
+      set({ isHydrating: false, isCheckingIp: false });
     }
+  },
+
+  // ── Backend IP ────────────────────────────
+  setBackendIp: async (ip: string) => {
+    await saveBackendIp(ip);
+    setDynamicBaseUrl(ip);
+    set({ backendIp: ip });
+  },
+
+  resetBackendIp: async () => {
+    await clearBackendIp();
+    clearDynamicBaseUrl();
+    set({ backendIp: null });
   },
 
   setAppointments: (appointments) => set({ appointments }),

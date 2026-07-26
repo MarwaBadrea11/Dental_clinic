@@ -1,7 +1,7 @@
 # SmileFix Dental Clinic — Complete Project Context
 
 > **Send this file to any AI assistant** to give it full understanding of the project.  
-> Last updated: June 2026
+> Last updated: July 2026
 
 ---
 
@@ -127,8 +127,10 @@ Dental_clinic/
 | CORS | `@fastify/cors` (env-configurable) |
 | Rate limiting | `@fastify/rate-limit` (per user/IP) |
 | Security headers | `@fastify/helmet` (via plugin) |
+| License system | `node-machine-id` (hardware fingerprinting) |
 | PDF export | pdfkit |
 | Excel export | exceljs |
+| Task scheduling | node-cron |
 | Tests | Vitest |
 
 ---
@@ -614,6 +616,13 @@ PORT=3000
 CORS_ORIGIN=http://localhost:5173,http://localhost:5174
 RATE_LIMIT_MAX=100
 UPLOAD_DIR=uploads
+
+# License System Configuration
+HARDWARE_SALT=your-secure-salt-string-here
+MASTER_LICENSE_SERVER_URL=https://license.smilefix.com/api/validate
+LICENSE_GRACE_PERIOD_DAYS=7
+LICENSE_BACKGROUND_CHECK_INTERVAL=86400
+DEVELOPER_MASTER_KEY=optional-developer-master-key
 ```
 
 ---
@@ -624,10 +633,13 @@ UPLOAD_DIR=uploads
 ```bash
 cd dental-clinic-backend
 npm install
-# create .env with DATABASE_URL and JWT keys
-npm run db:migrate          # run all migrations
-node scripts/seed.mjs       # seed test users
+# create .env with DATABASE_URL, JWT keys, and HARDWARE_SALT
+npm run db:migrate          # run all migrations (including license tables)
+node scripts/seed.mjs       # seed test users and license records
 npm run dev                 # starts with --watch on port 3000
+
+# Test license system
+npm run license:generate-hardware-key
 ```
 
 ### Seed Credentials
@@ -636,6 +648,18 @@ npm run dev                 # starts with --watch on port 3000
 | admin@smilefix.com | Admin@1234 | ADMIN |
 | dr.smith@smilefix.com | Doctor@1234 | DENTIST |
 | dr.jones@smilefix.com | Dentist@5678 | DENTIST |
+
+### License Test Commands
+```bash
+# Generate hardware-bound license key for current machine
+npm run license:generate-hardware-key
+
+# Generate for specific machine ID (for client support)
+npm run license:generate-hardware-key -- --id=CLIENT_MACHINE_ID
+
+# Check license status
+curl http://localhost:3000/api/v1/license/status
+```
 
 ### Web Admin
 ```bash
@@ -675,6 +699,10 @@ npx expo start  # scan QR with Expo Go or use emulator
 
 10. **Report exports** — reports can be exported as PDF (pdfkit) or Excel (exceljs) via `/export` sub-routes. Heavy report data is cached in `report_snapshots` table with TTL.
 
+11. **Hardware-bound licensing** — Comprehensive protection system using hardware fingerprinting with `node-machine-id`. License keys bound to specific computer hardware, preventing unauthorized copying. Self-protecting system with automatic lockout on hardware mismatch detection.
+
+12. **Offline-first activation** — License activation designed for offline sales scenarios with simple copy-paste workflow. No internet required for licensing validation after initial activation.
+
 ---
 
 ## 17. Current State & Known Gaps
@@ -684,3 +712,109 @@ npx expo start  # scan QR with Expo Go or use emulator
 - Push notifications — schema exists, backend generates in-app notifications; no WebSocket/push yet
 - Mobile app `OTPVerifyScreen` — flow exists in UI, backend OTP endpoint status unclear
 - `smailfixmobail/stitch_smilefix_patient_app_ui/` — appears to be a UI prototype/archive (zip files)
+
+---
+
+## 18. Hardware-Bound License System
+
+### Overview
+A comprehensive license protection system that binds software activation to specific computer hardware, preventing unauthorized copying and distribution.
+
+### Key Features
+- **Hardware fingerprinting**: Unique identification of each computer using machine IDs, CPU info, RAM, hostname
+- **Offline activation**: No internet connection required for licensing
+- **Automatic copy protection**: Software automatically locks if copied to another computer
+- **Professional UX**: Simple copy-paste activation workflow for clients
+- **Developer tools**: Command-line tools for license generation and management
+
+### Technical Implementation
+
+#### Backend Components
+- `src/modules/license/` - License management module
+- `src/utils/hardwareId.js` - Hardware fingerprint generation service
+- `scripts/generate-hardware-key.mjs` - License key generator
+- `src/middleware/licenseGuard.js` - Global license protection middleware
+
+#### Database Schema Updates
+```sql
+-- Added to license_info table:
+hardware_fingerprint TEXT      -- SHA256 hardware fingerprint
+hardware_machine_id TEXT       -- Machine ID from node-machine-id
+is_hardware_bound BOOLEAN      -- Whether license is hardware-bound
+hardware_info JSONB            -- Hardware information storage
+```
+
+#### API Endpoints
+```
+GET    /api/v1/license/device-id       # Get hardware activation request code
+POST   /api/v1/license/activate        # Activate with hardware-bound key
+GET    /api/v1/license/status          # Check license status
+GET    /api/v1/license/health          # System health check
+```
+
+#### Frontend Activation Flow
+1. Client installs software → sees "Activation Request Code"
+2. Copies code → sends to support team
+3. Support generates hardware-bound license key using client's machine ID
+4. Client enters key → software activated permanently
+5. If copied to another computer → automatic lockout with security alert
+
+### New Dependencies
+- `node-machine-id`: For generating unique machine identifiers
+- Enhanced security with hardware-based cryptographic protection
+
+### Development Commands
+```bash
+# Generate hardware-bound license key for current machine
+npm run license:generate-hardware-key
+
+# Generate key for specific client machine
+npm run license:generate-hardware-key -- --id=CLIENT_MACHINE_ID
+
+# Generate from hardware fingerprint
+npm run license:generate-hardware-key -- --fingerprint=HARDWARE_FINGERPRINT
+```
+
+### Security Features
+- **Self-protecting**: Automatically detects hardware mismatches
+- **Session destruction**: Invalidates all tokens on license revocation
+- **Periodic checks**: License verified every 5 minutes during operation
+- **Route protection**: All dashboard routes require valid license
+- **Global guard**: License check on initial app load in App.tsx
+
+### Environment Variables
+```env
+# License system configuration
+HARDWARE_SALT=your-secure-salt-string-here           # Secret salt for hardware hashing
+MASTER_LICENSE_SERVER_URL=https://license.smilefix.com/api/validate  # Optional cloud validation
+LICENSE_GRACE_PERIOD_DAYS=7                         # Grace period for license checks
+LICENSE_BACKGROUND_CHECK_INTERVAL=86400             # Background check interval in seconds
+```
+
+### Documentation Files
+- `HARDWARE_BOUND_LICENSE.md` - Complete system documentation
+- `LICENSE_SYSTEM.md` - Original license system documentation
+- `FINAL_IMPLEMENTATION_SUMMARY.md` - Implementation completion report
+- `IMPLEMENTATION_SUMMARY.md` - Technical implementation details
+
+---
+
+## 19. Development Setup Updates
+
+### Backend with License System
+```bash
+cd dental-clinic-backend
+npm install
+# Create .env with HARDWARE_SALT and other license variables
+npm run db:migrate          # Run all migrations including license tables
+node scripts/seed.mjs       # Seed test users and license records
+npm run dev                 # Starts with --watch on port 3000
+
+# Test license system
+npm run license:generate-hardware-key
+```
+
+### License Activation Workflow
+1. **For Clients**: Install → Copy Activation Request Code → Send to support → Enter license key
+2. **For Support**: Receive machine ID → Generate key → Send to client
+3. **Security**: If copied to another PC → Automatic lockout with "SECURITY ALERT"

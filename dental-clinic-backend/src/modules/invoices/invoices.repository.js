@@ -1,5 +1,5 @@
+/** @param {import('knex').Knex} db */
 export class InvoicesRepository {
-  /** @param {import('knex').Knex} db */
   constructor(db) {
     this.db = db;
   }
@@ -67,11 +67,12 @@ export class InvoicesRepository {
     return Number(total ?? 0);
   }
 
+  /** تم إصلاح الدالة هنا بضبط الصيغة الخاصة بـ Knex raw */
   async patientDebt(patient_id) {
     const [{ total }] = await this.db('invoices')
       .where({ patient_id })
       .whereNotIn('status', ['PAID', 'CANCELLED'])
-      .sum(this.db.raw('(total_amount - amount_paid) as total'));
+      .select(this.db.raw('COALESCE(SUM(total_amount - amount_paid), 0) AS total'));
     return Number(total ?? 0);
   }
 
@@ -163,9 +164,8 @@ export class InvoicesRepository {
     return payments;
   }
 
-  async recordRefund(data) {
-    const [row] = await this.db('payment_refunds').insert(data).returning('*');
-    return row;
+  recordRefund(data) {
+    return this.db('payment_refunds').insert(data).returning('*').then(([row]) => row);
   }
 
   async sumRefunds(payment_id) {

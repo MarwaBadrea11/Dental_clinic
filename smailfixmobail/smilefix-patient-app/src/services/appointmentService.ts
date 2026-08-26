@@ -70,15 +70,18 @@ export interface ListAppointmentsParams {
   end_date?: string;            // YYYY-MM-DD
 }
 
-// Backend list response wraps appointments + stats
+// Backend list response — { appointments: [], stats: {} }
 export interface AppointmentsListResponse {
   appointments: BackendAppointment[];
   stats?: {
-    total: number;
-    scheduled: number;
-    confirmed: number;
-    completed: number;
-    cancelled: number;
+    today?: number;
+    thisWeek?: number;
+    confirmed?: number;
+    pending?: number;
+    total?: number;
+    scheduled?: number;
+    completed?: number;
+    cancelled?: number;
   };
 }
 

@@ -7,11 +7,12 @@ import 'react-native-gesture-handler';
 import './src/i18n';
 
 import React, { useEffect, useLayoutEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet, I18nManager } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, I18nManager, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
+import * as Updates from 'expo-updates';
 import Text from './src/components/Text';
 import {
   Manrope_400Regular,
@@ -57,16 +58,34 @@ function InnerApp() {
   const isHydrating        = useAppStore((s) => s.isHydrating);
   const locale             = useAppStore((s) => s.locale);
 
-  // ── Sync RTL direction with stored locale ──
-  // useLayoutEffect runs synchronously after mount before paint,
-  // which is the earliest safe point to call I18nManager on RN.
+  // ── Sync RTL direction with stored locale after hydration ──
+  // After hydrateFromStorage resolves, if the persisted locale's RTL state
+  // differs from the current native layout direction, reload the JS bundle so
+  // the native layout engine picks up the change. I18nManager changes require
+  // a full bundle reload to affect View flex direction, margin mirroring, etc.
   useLayoutEffect(() => {
+    if (isHydrating) return; // wait until SecureStore has been read
+
     const shouldBeRTL = locale === 'ar';
     if (I18nManager.isRTL !== shouldBeRTL) {
       I18nManager.allowRTL(true);
       I18nManager.forceRTL(shouldBeRTL);
+
+      // Reload the bundle so the native layout engine applies the new direction.
+      // Updates.reloadAsync() works in production builds and standalone apps.
+      // In Expo Go it is a no-op (returns without throwing), so we also show
+      // an Alert as a fallback for development.
+      Updates.reloadAsync().catch(() => {
+        Alert.alert(
+          'إعادة تشغيل مطلوبة / Restart Required',
+          locale === 'ar'
+            ? 'يرجى إعادة تشغيل التطبيق لتطبيق تخطيط اللغة العربية.'
+            : 'Please restart the app to apply the new layout direction.',
+          [{ text: 'OK' }],
+        );
+      });
     }
-  }, [locale]);
+  }, [isHydrating, locale]);
 
   // ── Sync i18next language with persisted locale ──
   // After hydration restores a locale different from i18n's current

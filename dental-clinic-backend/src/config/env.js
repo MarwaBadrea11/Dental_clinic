@@ -13,10 +13,6 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:5174'),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   UPLOAD_DIR: z.string().default('uploads'),
-  // License system configuration
-  MASTER_LICENSE_SERVER_URL: z.string().url().optional(),
-  LICENSE_GRACE_PERIOD_DAYS: z.coerce.number().int().min(0).default(7),
-  LICENSE_BACKGROUND_CHECK_INTERVAL: z.coerce.number().int().min(3600).default(86400), // seconds
 });
 
 const parsed = envSchema.safeParse(process.env);

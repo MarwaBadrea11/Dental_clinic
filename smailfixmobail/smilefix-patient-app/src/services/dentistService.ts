@@ -1,12 +1,11 @@
 // ─────────────────────────────────────────────
 // Dentist Service
-// Wraps: GET /auth/users?role=DENTIST
-// Returns the list of active dentists to
-// populate the doctor picker in BookingScreen.
+// Wraps: GET /auth/dentists
+// Patient-accessible endpoint — only requires
+// a valid auth token, no extra permissions.
 // ─────────────────────────────────────────────
 import { api } from './api';
 
-// ── Response shape ────────────────────────────
 export interface BackendDentist {
   id: string;
   username: string;
@@ -15,9 +14,12 @@ export interface BackendDentist {
 }
 
 /**
- * Fetch all active dentists from the backend.
- * Maps to the Doctor shape used in the Zustand store.
+ * Fetch all active dentists.
+ * Uses /auth/dentists — accessible to PATIENT role with only authentication.
  */
 export async function fetchDentists(): Promise<BackendDentist[]> {
-  return api.get<BackendDentist[]>('/auth/users?role=DENTIST');
+  const result = await api.get<BackendDentist[] | any>('/auth/dentists');
+  if (Array.isArray(result)) return result;
+  if (result && Array.isArray(result.data)) return result.data;
+  return [];
 }

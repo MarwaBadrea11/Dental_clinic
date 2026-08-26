@@ -15,8 +15,7 @@ export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:
  * Every backend route is registered under /api/v1.
  * Service files pass short paths like '/dashboard/stats' — this prefix is
  * prepended automatically in `request()` so callers never need to repeat it.
- * Paths that already start with /api/ are passed through unchanged (e.g. the
- * license service calls which were already fully-qualified).
+ * Paths that already start with /api/ are passed through unchanged.
  */
 const API_PREFIX = '/api/v1'
 
@@ -30,10 +29,6 @@ function buildUrl(path: string): string {
 // Expressed as short paths (without /api/v1) OR fully-qualified.
 // Requests to these paths skip token validation and session-expired logic entirely.
 const PUBLIC_PATHS = [
-  '/api/v1/license/status',
-  '/api/v1/license/activate',
-  '/api/v1/license/device-id',
-  '/api/v1/license/health',
   '/api/v1/auth/login',
   '/api/v1/auth/register',
   '/api/v1/health',

@@ -93,10 +93,29 @@ export class ReportsRepository {
     return { summary, items };
   }
 
-  // ─── Payroll Report ────────────────────────────────────────────────────────
+  // ─── Payroll Report (تمت المعالجة) ──────────────────────────────────────────
 
-  async payrollSummary({ month }) {
-    const [year, mon] = month.split('-');
+  async payrollSummary(params = {}) {
+    const now = new Date();
+    let year = now.getFullYear();
+    let mon = now.getMonth() + 1;
+    let targetMonthStr = `${year}-${String(mon).padStart(2, '0')}`;
+
+    if (params && params.month) {
+      if (typeof params.month === 'string' && params.month.includes('-')) {
+        const parts = params.month.split('-');
+        year = parseInt(parts[0], 10) || year;
+        mon = parseInt(parts[1], 10) || mon;
+        targetMonthStr = params.month;
+      } else if (!isNaN(Number(params.month))) {
+        mon = parseInt(params.month, 10);
+        if (params.year) year = parseInt(params.year, 10);
+        targetMonthStr = `${year}-${String(mon).padStart(2, '0')}`;
+      }
+    } else if (params && params.year) {
+      year = parseInt(params.year, 10);
+      targetMonthStr = `${year}-${String(mon).padStart(2, '0')}`;
+    }
 
     const records = await this.db('salary_records as sr')
       .join('staff as s', 'sr.staff_id', 's.id')
@@ -113,13 +132,13 @@ export class ReportsRepository {
         'sr.year'
       )
       .whereNull('s.deleted_at')
-      .where('sr.year', parseInt(year, 10))
-      .where('sr.month', parseInt(mon, 10))
+      .where('sr.year', year)
+      .where('sr.month', mon)
       .orderBy('s.role').orderBy('s.full_name');
 
     const [totals] = await this.db('salary_records')
-      .where('year', parseInt(year, 10))
-      .where('month', parseInt(mon, 10))
+      .where('year', year)
+      .where('month', mon)
       .select(
         this.db.raw('COALESCE(SUM(base_salary), 0)::float AS total_base'),
         this.db.raw('COALESCE(SUM(bonus), 0)::float     AS total_bonuses'),
@@ -128,12 +147,16 @@ export class ReportsRepository {
         this.db.raw('COUNT(*)::int AS headcount')
       );
 
-    return { month, totals, records };
+    return { 
+      month: targetMonthStr, 
+      totals: totals || { headcount: 0, total_base: 0, total_bonuses: 0, total_deductions: 0, total_net: 0 }, 
+      records: records || [] 
+    };
   }
 
   // ─── Audit Log Query ───────────────────────────────────────────────────────
 
-  async auditLogs({ resource, resourceId, userId, action, from, to, page = 1, limit = 50 }) {
+  async auditLogs({ resource, resourceId, userId, action, from, to, page = 1, limit = 50 } = {}) {
     const q = this.db('audit_logs as al')
       .leftJoin('users as u', 'al.user_id', 'u.id')
       .select(

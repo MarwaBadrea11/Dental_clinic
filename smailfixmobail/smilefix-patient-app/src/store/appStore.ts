@@ -3,8 +3,10 @@
 // SmileFix Patient App
 // ─────────────────────────────────────────────
 import { create } from 'zustand';
+import { I18nManager } from 'react-native';
 import { saveSession, clearSession, saveAccessToken, saveLocale, saveBackendIp, clearBackendIp, loadBackendIp } from '../services/storage';
 import { setDynamicBaseUrl, clearDynamicBaseUrl } from '../services/config';
+import i18n from '../i18n';
 
 // ── Types ─────────────────────────────────────
 export type Locale    = 'ar' | 'en';
@@ -140,8 +142,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedTimeSlot: null,
 
   setLocale: (locale) => {
-    set({ locale });
+    // 1. Persist to SecureStore
     saveLocale(locale).catch(() => {/* non-critical */});
+    // 2. Sync i18next translations immediately
+    i18n.changeLanguage(locale);
+    // 3. Prime the native layout engine — the caller (ProfileScreen/Settings)
+    //    is responsible for triggering a bundle reload after this returns,
+    //    because I18nManager changes only take full effect after a restart.
+    const isRTL = locale === 'ar';
+    I18nManager.allowRTL(true);
+    I18nManager.forceRTL(isRTL);
+    // 4. Update Zustand state last so subscribers re-render with the new locale
+    set({ locale });
   },
   setTheme:  (theme)  => set({ theme }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
@@ -188,6 +200,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       if (storedLocale === 'ar' || storedLocale === 'en') {
         updates.locale = storedLocale;
+        // Re-apply RTL layout engine state from the persisted locale.
+        // This must happen here (not just in i18n/index.ts) because index.ts
+        // always boots with the hardcoded DEFAULT_LOCALE and cannot read
+        // SecureStore synchronously.
+        I18nManager.allowRTL(true);
+        I18nManager.forceRTL(storedLocale === 'ar');
+        // Align i18next language with the persisted locale
+        i18n.changeLanguage(storedLocale);
       }
       if (savedIp) {
         updates.backendIp = savedIp;

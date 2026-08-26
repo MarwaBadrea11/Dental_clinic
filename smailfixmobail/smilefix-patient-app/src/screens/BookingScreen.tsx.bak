@@ -69,14 +69,13 @@ function adaptDentist(d: BackendDentist): Doctor {
 }
 
 // ── Adapter: BackendProcedure → Service store shape ─
-// DB columns: default_cost (price), duration_minutes (duration)
 function adaptProcedure(p: BackendProcedure): Service {
   return {
     id:       p.id,
     name:     p.name,
-    nameAr:   p.name,                         // no name_ar column in DB — use name
-    duration: p.duration_minutes ?? 30,
-    price:    Number(p.default_cost ?? 0),
+    nameAr:   p.name_ar ?? p.name,
+    duration: p.default_duration_minutes ?? 30,
+    price:    Number(p.default_price),
   };
 }
 
@@ -112,10 +111,6 @@ export default function BookingScreen({ navigation }: any) {
     setSelectedDate, setSelectedTimeSlot,
     resetBookingFlow, addAppointment, hasConflict, patient,
   } = useAppStore();
-
-  // ── Guard: don't fire any API calls until store is hydrated ──
-  const isHydrating = useAppStore((s) => s.isHydrating);
-  const authToken   = useAppStore((s) => s.authToken);
 
   // ── Remote data ───────────────────────────
   const [doctors,  setDoctors]  = useState<Doctor[]>([]);
@@ -222,54 +217,28 @@ export default function BookingScreen({ navigation }: any) {
   }, [selectedDate, selectedShift, selectedDoctor, workingHours, hasConflict]);
 
   // ── Fetch dentists when step 0 is shown ───
-  // Guard: wait until store is hydrated and token is present
   useEffect(() => {
-    if (isHydrating || !authToken) return;
     if (bookingStep !== 0) return;
     if (doctors.length > 0) return;
     setLoadingDocs(true);
     setFetchError('');
     fetchDentists()
-      .then((list) => {
-        const arr = Array.isArray(list) ? list : [];
-        console.log('[BookingScreen] Dentists loaded:', arr.length, 'items');
-        setDoctors(arr.map(adaptDentist));
-      })
-      .catch((err) => {
-        console.error('[BookingScreen] fetchDentists ERROR:', {
-          status:  err?.status,
-          message: err?.body?.message ?? err?.message,
-          body:    err?.body,
-        });
-        setFetchError(t('networkError'));
-      })
+      .then((list) => setDoctors(list.map(adaptDentist)))
+      .catch(() => setFetchError(t('networkError')))
       .finally(() => setLoadingDocs(false));
-  }, [bookingStep, isHydrating, authToken]);
+  }, [bookingStep]);
 
   // ── Fetch procedures when step 1 is shown ─
-  // Guard: wait until store is hydrated and token is present
   useEffect(() => {
-    if (isHydrating || !authToken) return;
     if (bookingStep !== 1) return;
     if (services.length > 0) return;
     setLoadingSrvs(true);
     setFetchError('');
     fetchProcedures()
-      .then((list) => {
-        const arr = Array.isArray(list) ? list : [];
-        console.log('[BookingScreen] Procedures loaded:', arr.length, 'items');
-        setServices(arr.filter((p) => p.is_active).map(adaptProcedure));
-      })
-      .catch((err) => {
-        console.error('[BookingScreen] fetchProcedures ERROR:', {
-          status:  err?.status,
-          message: err?.body?.message ?? err?.message,
-          body:    err?.body,
-        });
-        setFetchError(t('networkError'));
-      })
+      .then((list) => setServices(list.filter((p) => p.is_active).map(adaptProcedure)))
+      .catch(() => setFetchError(t('networkError')))
       .finally(() => setLoadingSrvs(false));
-  }, [bookingStep, isHydrating, authToken]);
+  }, [bookingStep]);
 
   // ── Helpers ───────────────────────────────
   const formatDate = (dateStr: string) =>
@@ -962,7 +931,7 @@ const modalStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#060b10' },
   flex: { flex: 1 },
-  scroll: { paddingHorizontal: 20, paddingTop: 8 },
+  scroll: { paddingHorizontal: 20 },
 
   // Orbs
   orb:   { position: 'absolute', borderRadius: 9999 },

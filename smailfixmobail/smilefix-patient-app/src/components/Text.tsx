@@ -1,6 +1,8 @@
 // ─────────────────────────────────────────────
 // Custom Text Component with RTL/LTR support
-// Automatically aligns text based on language direction
+// Enforces textAlign + writingDirection so the
+// layout engine never clips Arabic text in LTR
+// containers.
 // ─────────────────────────────────────────────
 import React from 'react';
 import { Text as RNText, TextProps as RNTextProps, StyleSheet } from 'react-native';
@@ -12,17 +14,19 @@ export interface TextProps extends RNTextProps {
 
 export default function Text({ style, children, ...props }: TextProps) {
   const { isRTL } = useTranslation();
-  
-  const textAlign = isRTL ? 'right' : 'left';
-  
-  // Merge styles with automatic text alignment
-  const mergedStyle = StyleSheet.flatten([
-    { textAlign },
-    style,
+
+  // Enforce both alignment AND writing direction so the native text engine
+  // never renders Arabic glyphs from the wrong edge of the container.
+  const rtlBase = StyleSheet.flatten([
+    {
+      textAlign:        isRTL ? ('right'  as const) : ('left'  as const),
+      writingDirection: isRTL ? ('rtl'    as const) : ('ltr'   as const),
+    },
+    style, // caller style wins — intentional override is allowed
   ]);
 
   return (
-    <RNText style={mergedStyle} {...props}>
+    <RNText style={rtlBase} {...props}>
       {children}
     </RNText>
   );

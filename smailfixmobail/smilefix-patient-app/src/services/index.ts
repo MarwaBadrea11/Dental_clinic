@@ -40,7 +40,7 @@ export { fetchDentists } from './dentistService';
 export type { BackendDentist } from './dentistService';
 
 export { fetchProcedures } from './procedureService';
-export type { BackendProcedure, ProcedureListResponse } from './procedureService';
+export type { BackendProcedure } from './procedureService';
 
 export { fetchMyPatient, adaptPatient } from './patientService';
 export type { BackendPatient } from './patientService';

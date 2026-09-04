@@ -42,4 +42,18 @@ export async function authRoutes(fastify) {
     const users = await q;
     return reply.status(200).send(successResponse(users));
   });
+
+  /**
+   * GET /api/v1/auth/dentists
+   * Patient-accessible endpoint — returns only active DENTIST users.
+   * Requires authentication only (no extra permission needed).
+   * Used by the mobile patient app booking screen.
+   */
+  fastify.get('/dentists', { preHandler: [authenticate] }, async (request, reply) => {
+    const dentists = await request.server.db('users')
+      .select('id', 'username', 'email', 'role')
+      .where({ is_active: true, role: 'DENTIST' })
+      .orderBy('username', 'asc');
+    return reply.status(200).send(successResponse(dentists));
+  });
 }

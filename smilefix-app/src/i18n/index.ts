@@ -4,8 +4,6 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 
 import enTranslation from './locales/en/translation.json'
 import arTranslation from './locales/ar/translation.json'
-import enLicense from './locales/en/license.json'
-import arLicense from './locales/ar/license.json'
 
 const LANG_KEY = 'smilefix-language'
 
@@ -16,11 +14,9 @@ i18n
     resources: {
       en: { 
         translation: enTranslation,
-        license: enLicense
       },
       ar: { 
         translation: arTranslation,
-        license: arLicense
       },
     },
     // Read from localStorage first, fall back to 'en'

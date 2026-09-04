@@ -13,7 +13,7 @@ export const InventoryReportSchema = z.object({
 });
 
 export const PayrollReportSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be in YYYY-MM format'),
+  month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be in YYYY-MM-DD format').optional(),
 });
 
 export const AuditLogQuerySchema = z.object({

@@ -518,7 +518,7 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   root:  { flex: 1, backgroundColor: '#060b10' },
   flex:  { flex: 1 },
-  scroll: { paddingHorizontal: 22, paddingBottom: 52, paddingTop: 0 },
+  scroll: { paddingHorizontal: 22, paddingBottom: 52, paddingTop: 12 },
 
   // Orbs
   orb:   { position: 'absolute', borderRadius: 9999 },

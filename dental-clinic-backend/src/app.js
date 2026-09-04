@@ -29,8 +29,6 @@ import { staffRoutes } from './modules/staff/staff.routes.js';
 import { notesRoutes } from './modules/notes/notes.routes.js';
 import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 import { settingsRoutes } from './modules/settings/settings.routes.js';
-import { licenseRoutes } from './modules/license/license.routes.js';
-import licenseGuard from './middleware/licenseGuard.js';
 import { AppError, ValidationError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
 
@@ -104,9 +102,6 @@ export async function buildApp(opts = {}) {
   // ─── Appointment Reminder Scheduler ──────────────────────────────────────────
   await fastify.register(appointmentReminderPlugin);
 
-  // ─── License Guard Middleware ────────────────────────────────────────────────
-  await fastify.register(licenseGuard);
-
   // ─── Global Error Handler ────────────────────────────────────────────────────
   fastify.setErrorHandler((error, _request, reply) => {
     if (!error.statusCode || error.statusCode >= 500) fastify.log.error(error);
@@ -130,7 +125,6 @@ export async function buildApp(opts = {}) {
   // ─── Routes ─────────────────────────────────────────────────────────────────
   await fastify.register(healthRoutes, { prefix: '/api/v1' });
   await fastify.register(authRoutes, { prefix: '/api/v1/auth' });
-  await fastify.register(licenseRoutes, { prefix: '/api/v1/license' });
   await fastify.register(rolesRoutes, { prefix: '/api/v1' });
   await fastify.register(patientsRoutes, { prefix: '/api/v1/patients' });
   await fastify.register(attachmentsRoutes, { prefix: '/api/v1/patients' });

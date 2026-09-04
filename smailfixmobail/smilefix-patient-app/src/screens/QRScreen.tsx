@@ -41,7 +41,6 @@ const INSTALL_PAGE =
 
 // The QR code encodes the direct .apk URL so the browser downloads it immediately.
 const QR_VALUE = APK_URL;
-
 // ── Cinematic easing ───────────────────────────────────────────────────────
 const EASE_OUT_EXPO = Easing.bezier(0.16, 1, 0.3, 1);
 
@@ -56,7 +55,7 @@ function FadeInView({
   style?: object;
 }) {
   const opacity    = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(28)).current;
+  const translateY = useRef(new Animated.Value(24)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -78,7 +77,7 @@ export default function QRScreen() {
   const { t, isRTL } = useTranslation();
   const [copied, setCopied] = useState(false);
 
-  // Pulsing orbs
+  // Pulsing ambient orbs
   const orb1 = useRef(new Animated.Value(1)).current;
   const orb2 = useRef(new Animated.Value(1)).current;
 
@@ -90,7 +89,7 @@ export default function QRScreen() {
       ])
     ).start();
 
-    const t2 = setTimeout(() =>
+    const timer = setTimeout(() =>
       Animated.loop(
         Animated.sequence([
           Animated.timing(orb2, { toValue: 1.14, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -98,7 +97,7 @@ export default function QRScreen() {
         ])
       ).start()
     , 1800);
-    return () => clearTimeout(t2);
+    return () => clearTimeout(timer);
   }, []);
 
   const bgColors: readonly [string, string, string] = isDark
@@ -158,19 +157,17 @@ export default function QRScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
 
-          {/* ── Header title ── */}
+          {/* ── Header ── */}
           <FadeInView delay={60} style={styles.headerWrap}>
-            {/* Share icon badge */}
             <View style={[styles.iconBadge, {
               borderColor: isDark ? 'rgba(97,190,197,0.35)' : 'rgba(0,105,111,0.25)',
               shadowColor: colors.teal,
             }]}>
               <LinearGradient
-                colors={isDark ? ['#00818a', '#004f54'] : ['#00818a', '#00696f']}
+                colors={['#00818a', '#004f54']}
                 start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
               />
-              {/* Shine overlay */}
               <LinearGradient
                 colors={['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.00)']}
                 start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
@@ -201,14 +198,14 @@ export default function QRScreen() {
                 style={styles.cardGlowBar}
               />
 
-              {/* Brand mark */}
+              {/* Brand row */}
               <View style={styles.brandRow}>
                 <View style={[styles.logoSquircle, {
                   borderColor: isDark ? 'rgba(97,190,197,0.40)' : 'rgba(0,105,111,0.30)',
                   shadowColor: colors.teal,
                 }]}>
                   <LinearGradient
-                    colors={isDark ? ['#00818a', '#004f54'] : ['#00818a', '#00696f']}
+                    colors={['#00818a', '#00696f']}
                     start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
                     style={StyleSheet.absoluteFillObject}
                   />
@@ -224,7 +221,7 @@ export default function QRScreen() {
                 </Text>
               </View>
 
-              {/* QR Code */}
+              {/* QR Code — encodes a WhatsApp share link, no API call needed */}
               <View style={[styles.qrWrapper, {
                 borderColor: isDark ? 'rgba(97,190,197,0.20)' : 'rgba(0,105,111,0.12)',
                 shadowColor: isDark ? colors.teal : '#00696f',
@@ -237,7 +234,6 @@ export default function QRScreen() {
                 />
               </View>
 
-              {/* Caption */}
               <Text style={[styles.qrCaption, { color: isDark ? colors.teal : colors.primary }]}>
                 {t('pointCameraToScan')}
               </Text>
@@ -305,12 +301,12 @@ export default function QRScreen() {
             </View>
           </FadeInView>
 
-          {/* ── Bottom instruction chips ── */}
+          {/* ── Step chips ── */}
           <FadeInView delay={280} style={styles.chipsRow}>
             {([
-              { icon: 'camera-outline'  as const, labelKey: 'openCamera'  as const },
-              { icon: 'scan-outline'    as const, labelKey: 'scanQr'      as const },
-              { icon: 'download-outline' as const, labelKey: 'downloadApk' as const },
+              { icon: 'camera-outline'      as const, labelKey: 'openCamera'   as const },
+              { icon: 'scan-outline'        as const, labelKey: 'scanQr'       as const },
+              { icon: 'share-social-outline' as const, labelKey: 'quickShare'   as const },
             ] as const).map((step, i) => (
               <View
                 key={step.labelKey}
@@ -348,58 +344,58 @@ export default function QRScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#060b10' },
+  root:    { flex: 1, backgroundColor: '#060b10' },
   safeArea: { flex: 1 },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    gap: 28,
+    gap: 24,
   },
 
   // Ambient orbs
   orb:   { position: 'absolute', borderRadius: 9999 },
   orbTR: { width: 340, height: 340, top: -100, right: -90 },
-  orbBL: { width: 240, height: 240, bottom: 80, left: -70 },
+  orbBL: { width: 240, height: 240, bottom: 80,  left: -70 },
 
   // Header
-  headerWrap: { alignItems: 'center', gap: 12 },
+  headerWrap: { alignItems: 'center', gap: 10 },
   iconBadge: {
-    width: 72, height: 72, borderRadius: 24,
+    width: 68, height: 68, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', borderWidth: 1.5,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45, shadowRadius: 20, elevation: 10,
+    shadowOpacity: 0.40, shadowRadius: 18, elevation: 10,
     marginBottom: 4,
   },
   titleText: {
-    fontSize: 28,
+    fontSize: 26,
     fontFamily: 'Manrope_700Bold',
     fontWeight: '700',
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
     textAlign: 'center',
   },
   subtitleText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 300,
+    lineHeight: 20,
+    maxWidth: 290,
   },
 
   // Card
   cardWrap: { width: '100%' },
   card: {
     width: '100%',
-    borderRadius: 28,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
+    borderRadius: 26,
+    paddingVertical: 24,
+    paddingHorizontal: 22,
     alignItems: 'center',
     borderWidth: 1,
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22, shadowRadius: 30, elevation: 12,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.20, shadowRadius: 28, elevation: 10,
   },
   cardGlowBar: {
     position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
@@ -410,41 +406,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   logoSquircle: {
-    width: 40, height: 40, borderRadius: 13,
+    width: 38, height: 38, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', borderWidth: 1.5,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.40, shadowRadius: 12, elevation: 6,
+    shadowOpacity: 0.38, shadowRadius: 10, elevation: 5,
   },
   logoLetters: {
-    fontSize: 15, color: '#fff',
+    fontSize: 14, color: '#fff',
     fontFamily: 'Manrope_700Bold', fontWeight: '700',
   },
   brandName: {
-    fontSize: 20,
+    fontSize: 19,
     fontFamily: 'Manrope_800ExtraBold',
     fontWeight: '800',
   },
 
-  // QR code
+  // QR
   qrWrapper: {
-    padding: 16,
+    padding: 14,
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
-    marginBottom: 16,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14, shadowRadius: 18, elevation: 6,
+    marginBottom: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10, shadowRadius: 14, elevation: 4,
   },
   qrCaption: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Manrope_700Bold',
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 6,
     letterSpacing: 0.1,
   },
   qrUrl: {
@@ -477,7 +472,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Step chips row
+  // Step chips
   chipsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -489,14 +484,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 14,
+    borderRadius: 13,
     borderWidth: 1,
-    gap: 6,
+    gap: 5,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+    shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
   },
   chipIconWrap: {
-    width: 28, height: 28, borderRadius: 9,
+    width: 26, height: 26, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
   chipLabel: {
@@ -504,7 +499,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontWeight: '600',
   },
-  chipArrow: {
-    marginLeft: 2,
-  },
+  chipArrow: { marginLeft: 2 },
 });

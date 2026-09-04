@@ -13,10 +13,11 @@
 // URL overrides everything. Call `setDynamicBaseUrl(ip)` to apply it,
 // and `getDynamicBaseUrl()` to read it in every request.
 // ─────────────────────────────────────────────
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 
-const DEFAULT_PORT = 3000;
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+const DEFAULT_PORT = 3002;
 
 function normalizeApiBaseUrl(raw: string): string {
   const trimmed = raw.trim().replace(/\/$/, '');

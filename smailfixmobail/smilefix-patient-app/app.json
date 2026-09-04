@@ -4,10 +4,14 @@
     "slug": "smilefix-patient-app",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
+    "updates": {
+      "enabled": false,
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -23,6 +27,7 @@
         "backgroundColor": "#61bec5"
       },
       "package": "com.smilefix.patient",
+<<<<<<< HEAD
       "edgeToEdgeEnabled": true,
       "usesCleartextTraffic": true
     },
@@ -37,7 +42,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "c8bab7e1-c3bd-4106-814f-996cbae6e893"
+        "projectId": "8b24eecb-d2b5-4e45-8d48-6f528eec3545"
       }
     }
   }

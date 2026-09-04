@@ -215,22 +215,36 @@ export default function ProfileScreen() {
     const next = locale === 'ar' ? 'en' : 'ar';
     setLangLoading(true);
     const shouldBeRTL = next === 'ar';
-    // Update i18next language and Zustand locale immediately
-    // so all screen text and isRTL-based layouts flip right away.
+
     i18n.changeLanguage(next).then(() => {
       setLocale(next);
+
+      // Apply the new RTL state at the native level
+      I18nManager.allowRTL(shouldBeRTL);
+      I18nManager.forceRTL(shouldBeRTL);
+
       setLangLoading(false);
-      // Force RTL at the native level. This change requires an app
-      // restart to fully apply to native layout (scroll direction,
-      // native text fields, etc.). JS-driven layouts already flipped.
-      if (I18nManager.isRTL !== shouldBeRTL) {
-        I18nManager.allowRTL(shouldBeRTL);
-        I18nManager.forceRTL(shouldBeRTL);
+
+      // Reload the JS bundle so the new direction takes effect immediately.
+      // In Expo Go dev mode this triggers a fast JS reload.
+      try {
+        const { reloadAsync } = require('expo-updates');
+        reloadAsync().catch(() => {
+          // Fallback: inform user to shake-to-reload
+          Alert.alert(
+            shouldBeRTL ? 'تم تغيير اللغة' : 'Language Changed',
+            shouldBeRTL
+              ? 'اهزّ الجهاز واختر "Reload" لتطبيق الاتجاه العربي بالكامل.'
+              : 'Shake the device and tap "Reload" to fully apply English direction.',
+            [{ text: shouldBeRTL ? 'حسناً' : 'OK' }]
+          );
+        });
+      } catch {
         Alert.alert(
-          shouldBeRTL ? 'إعادة التشغيل مطلوبة' : 'Restart Required',
+          shouldBeRTL ? 'تم تغيير اللغة' : 'Language Changed',
           shouldBeRTL
-            ? 'يرجى إعادة تشغيل التطبيق لتطبيق اتجاه اللغة العربية بالكامل.'
-            : 'Please restart the app to fully apply the English text direction.',
+            ? 'اهزّ الجهاز واختر "Reload" لتطبيق الاتجاه العربي بالكامل.'
+            : 'Shake the device and tap "Reload" to fully apply English direction.',
           [{ text: shouldBeRTL ? 'حسناً' : 'OK' }]
         );
       }

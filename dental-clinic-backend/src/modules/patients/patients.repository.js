@@ -1,3 +1,10 @@
+/**
+ * Patients Repository (TX-01: Multi-Tenancy Pilot)
+ * 
+ * All methods now require clinicId parameter for data isolation.
+ * This prevents cross-clinic data leaks.
+ */
+
 export class PatientsRepository {
   /** @param {import('knex').Knex} db */
   constructor(db) {
@@ -5,8 +12,10 @@ export class PatientsRepository {
   }
 
   // جلب جميع المرضى مع تصفية المحذوفين
-  findAll({ search, limit = 20, offset = 0 } = {}) {
+  // TX-01: Added clinicId parameter
+  findAll({ search, limit = 20, offset = 0, clinicId } = {}) {
     const q = this.db('patients')
+      .where({ clinic_id: clinicId })  // TX-01: Clinic isolation
       .whereNull('deleted_at')
       .orderBy('created_at', 'desc');
 
@@ -23,8 +32,12 @@ export class PatientsRepository {
   }
 
   // حساب العدد الكلي مع دعم البحث
-  count({ search } = {}) {
-    const q = this.db('patients').whereNull('deleted_at').count('id as total');
+  // TX-01: Added clinicId parameter
+  count({ search, clinicId } = {}) {
+    const q = this.db('patients')
+      .where({ clinic_id: clinicId })  // TX-01: Clinic isolation
+      .whereNull('deleted_at')
+      .count('id as total');
     if (search) {
       q.where((b) =>
         b
@@ -37,26 +50,39 @@ export class PatientsRepository {
     return q.first();
   }
 
-  findById(id) {
-    return this.db('patients').where({ id }).whereNull('deleted_at').first();
+  // TX-01: Added clinicId parameter
+  findById(id, clinicId) {
+    return this.db('patients')
+      .where({ id, clinic_id: clinicId })  // TX-01: Clinic isolation
+      .whereNull('deleted_at')
+      .first();
   }
 
-  findByNationalId(national_id) {
-    return this.db('patients').where({ national_id }).whereNull('deleted_at').first();
+  // TX-01: Added clinicId parameter
+  findByNationalId(national_id, clinicId) {
+    return this.db('patients')
+      .where({ national_id, clinic_id: clinicId })  // TX-01: Clinic isolation
+      .whereNull('deleted_at')
+      .first();
   }
 
   // إنشاء مريض جديد مع إرجاع البيانات المحفوظة
-  async create(data) {
+  // TX-01: Auto-assigns clinic_id
+  async create(data, clinicId) {
     const [patient] = await this.db('patients')
-      .insert(data)
+      .insert({
+        ...data,
+        clinic_id: clinicId,  // TX-01: Auto-assign clinic
+      })
       .returning('*');
     return patient;
   }
 
   // تحديث بيانات المريض مع تحديث طابع الـ updated_at تلقائياً
-  async update(id, data) {
+  // TX-01: Added clinicId parameter to prevent cross-clinic updates
+  async update(id, data, clinicId) {
     const [patient] = await this.db('patients')
-      .where({ id })
+      .where({ id, clinic_id: clinicId })  // TX-01: Clinic isolation
       .update({
         ...data,
         updated_at: this.db.fn.now(),
@@ -66,9 +92,10 @@ export class PatientsRepository {
   }
 
   // الحذف المنطقي (Soft Delete)
-  async delete(id) {
+  // TX-01: Added clinicId parameter to prevent cross-clinic deletes
+  async delete(id, clinicId) {
     return this.db('patients')
-      .where({ id })
+      .where({ id, clinic_id: clinicId })  // TX-01: Clinic isolation
       .update({
         deleted_at: this.db.fn.now(),
         status: 'inactive',

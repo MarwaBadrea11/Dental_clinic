@@ -5,7 +5,8 @@ import { successResponse, errorResponse } from '../../utils/response.js';
 import { hasPermission, ROLE_PERMISSIONS } from '../../middleware/authorize.js';
 
 function getService(request) {
-  return new AppointmentsService(new AppointmentsRepository(request.server.db));
+  // TX-03: Pass db to service for cross-clinic reference validation
+  return new AppointmentsService(new AppointmentsRepository(request.server.db), request.server.db);
 }
 
 /**
@@ -38,11 +39,16 @@ export async function bookAppointmentHandler(request, reply) {
   }
 
   try {
-    const appointment = await getService(request).book(data);
+    // TX-03: Pass clinic_id from JWT to service
+    const appointment = await getService(request).book(data, request.clinicId);
     return reply.status(201).send(successResponse(appointment));
   } catch (error) {
     if (error.code === 'APPOINTMENT_CONFLICT') {
       return reply.status(error.statusCode || 400).send(errorResponse(error.message));
+    }
+    // TX-03: Handle cross-clinic reference errors
+    if (error.code === 'INVALID_PATIENT_REFERENCE' || error.code === 'INVALID_DENTIST_REFERENCE') {
+      return reply.status(error.statusCode || 404).send(errorResponse(error.message));
     }
     if (error.code === '23503') {
       return reply.status(404).send(errorResponse('The provided Patient ID or Dentist ID does not exist in the system.'));
@@ -56,7 +62,8 @@ export async function listAppointmentsHandler(request, reply) {
   if (!query) return;
 
   try {
-    const result = await getService(request).list(query);
+    // TX-03: Pass clinic_id from JWT to service
+    const result = await getService(request).list(query, request.clinicId);
     return reply.status(200).send(successResponse(result));
   } catch (error) {
     throw error;
@@ -68,7 +75,8 @@ export async function getAppointmentHandler(request, reply) {
   if (!params) return;
 
   try {
-    const appointment = await getService(request).getById(params.id);
+    // TX-03: Pass clinic_id from JWT to service
+    const appointment = await getService(request).getById(params.id, request.clinicId);
     if (!appointment) {
       return reply.status(404).send(errorResponse('Appointment not found'));
     }
@@ -86,7 +94,8 @@ export async function updateAppointmentHandler(request, reply) {
   if (!data) return;
 
   try {
-    const appointment = await getService(request).updateById(params.id, data);
+    // TX-03: Pass clinic_id from JWT to service
+    const appointment = await getService(request).updateById(params.id, data, request.clinicId);
     if (!appointment) {
       return reply.status(404).send(errorResponse('Appointment not found'));
     }
@@ -94,6 +103,10 @@ export async function updateAppointmentHandler(request, reply) {
   } catch (error) {
     if (error.code === 'APPOINTMENT_CONFLICT') {
       return reply.status(error.statusCode || 400).send(errorResponse(error.message));
+    }
+    // TX-03: Handle cross-clinic reference errors
+    if (error.code === 'INVALID_PATIENT_REFERENCE' || error.code === 'INVALID_DENTIST_REFERENCE') {
+      return reply.status(error.statusCode || 404).send(errorResponse(error.message));
     }
     throw error;
   }
@@ -103,6 +116,7 @@ export async function updateAppointmentHandler(request, reply) {
  * DELETE /:id
  * PATIENT: can delete only their own appointment (ownership via users→patients email join).
  * Staff with appointments:*: can delete any appointment.
+ * TX-03: Now uses clinic_id for isolation
  */
 export async function deleteAppointmentHandler(request, reply) {
   request.log.warn({ params: request.params, role: request.user?.role }, '[DELETE] handler entered');
@@ -111,9 +125,9 @@ export async function deleteAppointmentHandler(request, reply) {
   if (!params) return;
 
   try {
-    // 1. Confirm the appointment exists
+    // 1. Confirm the appointment exists (TX-03: within clinic boundary)
     const existing = await request.server.db('appointments')
-      .where({ id: params.id })
+      .where({ id: params.id, clinic_id: request.clinicId })  // TX-03: Clinic isolation
       .select('id', 'patient_id')
       .first();
 
@@ -133,7 +147,7 @@ export async function deleteAppointmentHandler(request, reply) {
 
       const patientRow = userRow
         ? await request.server.db('patients')
-            .where({ email: userRow.email })
+            .where({ email: userRow.email, clinic_id: request.clinicId })  // TX-03: Clinic isolation
             .select('id')
             .first()
         : null;
@@ -152,8 +166,8 @@ export async function deleteAppointmentHandler(request, reply) {
       }
     }
 
-    // 3. Delete
-    await getService(request).deleteById(params.id);
+    // 3. Delete (TX-03: Pass clinic_id to service)
+    await getService(request).deleteById(params.id, request.clinicId);
     return reply.status(200).send(successResponse({ message: 'Appointment deleted successfully' }));
   } catch (error) {
     request.log.error({ err: error, stack: error?.stack }, '[DELETE] appointment error');

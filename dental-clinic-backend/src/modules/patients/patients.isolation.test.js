@@ -47,27 +47,45 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
   });
 
   beforeEach(async () => {
-    // Clean up test data (patients → users → clinics, respecting FK constraints)
-    await db('patients').where('first_name', 'LIKE', 'TestPatient%').del();
-    await db('patients').where('first_name', 'LIKE', 'NewPatient%').del();
-    await db('patients').where('first_name', 'LIKE', 'UpdatedName%').del();
+    // Clean up ONLY this test file's data (unique prefixes to avoid interference with appointments tests)
+    // FK order: appointments → patients → users → clinics
     
-    await db('users').where('email', 'LIKE', 'test-clinic-%').del();
-    await db('clinics').where('slug', 'LIKE', 'test-clinic-%').del();
+    // Delete appointments referencing this file's patients FIRST
+    await db('appointments').whereIn('patient_id', 
+      db('patients').select('id').where('first_name', 'LIKE', 'TXO2Patient%')
+    ).del();
+    await db('appointments').whereIn('patient_id',
+      db('patients').select('id').where('first_name', 'LIKE', 'TXO2NewPatient%')
+    ).del();
+    await db('appointments').whereIn('patient_id',
+      db('patients').select('id').where('first_name', 'LIKE', 'UpdatedName%')
+    ).del();
     
-    // Create two test clinics
+    // Delete this file's patients SECOND (including updated names)
+    await db('patients').where('first_name', 'LIKE', 'TXO2Patient%').del();
+    await db('patients').where('first_name', 'LIKE', 'TXO2NewPatient%').del();
+    await db('patients').where('first_name', 'LIKE', 'TXO2UpdatedName%').del();
+    await db('patients').where('first_name', 'LIKE', 'UpdatedName%').del();  // Catch any variants
+    
+    // Delete this file's users THIRD
+    await db('users').where('email', 'LIKE', 'txo2-patients-%').del();
+    
+    // Delete this file's clinics LAST
+    await db('clinics').where('slug', 'LIKE', 'txo2-patients-%').del();
+    
+    // Create two test clinics (unique to this test file)
     const clinicsA = await db('clinics')
       .insert({
-        name: 'Test Clinic A',
-        slug: 'test-clinic-a'
+        name: 'TXO2 Patients Clinic A',
+        slug: 'txo2-patients-clinic-a'
       })
       .returning('*');
     clinicA = clinicsA[0];
     
     const clinicsB = await db('clinics')
       .insert({
-        name: 'Test Clinic B',
-        slug: 'test-clinic-b'
+        name: 'TXO2 Patients Clinic B',
+        slug: 'txo2-patients-clinic-b'
       })
       .returning('*');
     clinicB = clinicsB[0];
@@ -78,8 +96,8 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
     // Create admin user for Clinic A
     const usersA = await db('users')
       .insert({
-        username: 'admin-clinic-a',
-        email: 'test-clinic-a-admin@test.local',
+        username: 'txo2-patients-admin-a',
+        email: 'txo2-patients-a-admin@test.local',
         password_hash,
         role: 'ADMIN',
         clinic_id: clinicA.id,
@@ -91,8 +109,8 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
     // Create admin user for Clinic B
     const usersB = await db('users')
       .insert({
-        username: 'admin-clinic-b',
-        email: 'test-clinic-b-admin@test.local',
+        username: 'txo2-patients-admin-b',
+        email: 'txo2-patients-b-admin@test.local',
         password_hash,
         role: 'ADMIN',
         clinic_id: clinicB.id,
@@ -106,7 +124,7 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
       method: 'POST',
       url: '/api/v1/auth/login',
       payload: {
-        email: 'test-clinic-a-admin@test.local',
+        email: 'txo2-patients-a-admin@test.local',
         password: 'password123'
       }
     });
@@ -121,7 +139,7 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
       method: 'POST',
       url: '/api/v1/auth/login',
       payload: {
-        email: 'test-clinic-b-admin@test.local',
+        email: 'txo2-patients-b-admin@test.local',
         password: 'password123'
       }
     });
@@ -135,11 +153,11 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
     const patientsA = await db('patients')
       .insert({
         clinic_id: clinicA.id,
-        first_name: 'TestPatientA',
+        first_name: 'TXO2PatientA',
         last_name: 'ClinicA',
         date_of_birth: '1990-01-01',
         gender: 'male',
-        national_id: 'TEST-A-' + Date.now(),
+        national_id: 'TXO2-PATIENTS-A-' + Date.now(),
         phone: '+1234567890'
       })
       .returning('*');
@@ -149,11 +167,11 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
     const patientsB = await db('patients')
       .insert({
         clinic_id: clinicB.id,
-        first_name: 'TestPatientB',
+        first_name: 'TXO2PatientB',
         last_name: 'ClinicB',
         date_of_birth: '1990-01-01',
         gender: 'female',
-        national_id: 'TEST-B-' + Date.now(),
+        national_id: 'TXO2-PATIENTS-B-' + Date.now(),
         phone: '+0987654321'
       })
       .returning('*');
@@ -214,7 +232,7 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
       expect(body.data.id).toBe(patientInClinicA.id);
-      expect(body.data.first_name).toBe('TestPatientA');
+      expect(body.data.first_name).toBe('TXO2PatientA');
     });
 
     it('🔒 ISOLATION TEST: should return 404 when requesting from DIFFERENT clinic', async () => {
@@ -267,9 +285,28 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
     });
 
     it('🔒 ISOLATION TEST: should return 404 when updating from DIFFERENT clinic', async () => {
+      // Use the shared patient from beforeEach, but check if it still exists first
+      let testPatient = await db('patients').where({ id: patientInClinicA.id }).first();
+      
+      // If it was deleted by a previous test, create a fresh one
+      if (!testPatient) {
+        const freshPatients = await db('patients')
+          .insert({
+            clinic_id: clinicA.id,
+            first_name: 'TXO2PatientA',
+            last_name: 'ClinicA',
+            date_of_birth: '1990-01-01',
+            gender: 'male',
+            national_id: 'TXO2-PATIENTS-A-FRESH-' + Date.now(),
+            phone: '+1234567890'
+          })
+          .returning('*');
+        testPatient = freshPatients[0];
+      }
+      
       const response = await app.inject({
         method: 'PUT',
-        url: '/api/v1/patients/' + patientInClinicA.id,
+        url: '/api/v1/patients/' + testPatient.id,
         headers: {
           'Authorization': 'Bearer ' + tokenClinicB
         },
@@ -281,8 +318,8 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
       expect(response.statusCode).toBe(404);
       
       // Verify patient was NOT updated
-      const patient = await db('patients').where({ id: patientInClinicA.id }).first();
-      expect(patient.first_name).toBe('TestPatientA');
+      const patient = await db('patients').where({ id: testPatient.id }).first();
+      expect(patient.first_name).toBe('TXO2PatientA');
     });
   });
 
@@ -329,11 +366,11 @@ describe('TX-02: Clinic Isolation - Patients Module (JWT-Based)', () => {
           'Authorization': 'Bearer ' + tokenClinicA
         },
         payload: {
-          first_name: 'NewPatient',
+          first_name: 'TXO2NewPatient',
           last_name: 'InClinicA',
           date_of_birth: '1995-05-05',
           gender: 'male',
-          national_id: 'NEW-A-' + Date.now(),
+          national_id: 'TXO2-NEW-A-' + Date.now(),
           phone: '+1111111111'
         }
       });

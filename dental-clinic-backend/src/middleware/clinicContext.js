@@ -1,20 +1,19 @@
 /**
- * Clinic Context Middleware (TX-01: Multi-Tenancy Pilot)
+ * Clinic Context Middleware (TX-02: Multi-Tenancy - JWT-Based)
  * 
  * Attaches clinic_id to every request for data isolation.
  * 
- * TX-01 PILOT: Reads clinic from X-Clinic-ID header (temporary mechanism)
- * - Allows testing isolation between multiple clinics
- * - Falls back to main clinic if header not provided
- * - Validates that clinic exists in database
- * 
- * TX-02 ROLLOUT: Will replace this with proper resolution:
- *   - Subdomain extraction (clinic1.smilefix.com)
- *   - User's associated clinic
- *   - API key-based clinic association
+ * TX-02: Reads clinic from authenticated user's JWT (request.user.clinic_id)
+ * - JWT issued at login/refresh contains user's clinic_id
+ * - All database queries MUST use request.clinicId to filter data
+ * - This prevents cross-clinic data leaks
  * 
  * CRITICAL: All database queries MUST use request.clinicId to filter data.
  * This prevents cross-clinic data leaks.
+ * 
+ * KNOWN LIMITATION: ADMIN users are currently scoped to a single clinic.
+ * Multi-clinic ADMIN access is documented in TX-02_PROGRESS.md for future
+ * implementation (post-TX-02 rollout).
  */
 
 import { AppError } from '../utils/errors.js';
@@ -22,43 +21,36 @@ import { AppError } from '../utils/errors.js';
 /**
  * Attaches clinic context to the request
  * 
- * Resolution order:
- * 1. X-Clinic-ID header (if provided and valid)
- * 2. Main clinic (fallback)
+ * TX-02: Reads clinic_id from JWT payload (set during authentication)
+ * Old tokens without clinic_id are rejected (force re-login)
  * 
  * @param {import('fastify').FastifyRequest} request
  * @param {import('fastify').FastifyReply} reply
  */
 export async function attachClinicContext(request, reply) {
   try {
-    let clinicId = null;
-    
-    // Step 1: Try to get clinic from X-Clinic-ID header
-    const headerClinicId = request.headers['x-clinic-id'];
-    
-    if (headerClinicId) {
-      // Validate that this clinic exists
-      const clinic = await request.server.db('clinics')
-        .where({ id: headerClinicId })
-        .first('id');
-      
-      if (!clinic) {
-        // Header provided but clinic doesn't exist - reject request
-        throw new AppError(`Invalid clinic ID: ${headerClinicId}`, 400);
-      }
-      
-      clinicId = clinic.id;
-      request.log.info({ clinicId }, 'Clinic context from X-Clinic-ID header');
-    }
-    
-    // Step 2: Fallback to main clinic if no header
-    if (!clinicId) {
-      clinicId = await getMainClinicId(request);
-      request.log.info({ clinicId }, 'Clinic context from main clinic (fallback)');
-    }
+    // TX-02: Get clinic_id from authenticated user's JWT
+    const clinicId = request.user?.clinic_id;
     
     if (!clinicId) {
-      throw new AppError('No clinic context available', 500);
+      // Old token issued before TX-02 (missing clinic_id) or unauthenticated request
+      throw new AppError(
+        'Your session is outdated. Please log in again.',
+        401  // Authentication error, not server error
+      );
+    }
+    
+    // Validate that this clinic still exists
+    const clinic = await request.server.db('clinics')
+      .where({ id: clinicId })
+      .first('id', 'name');
+    
+    if (!clinic) {
+      // User's clinic was deleted (should never happen due to FK RESTRICT)
+      throw new AppError(
+        'Your clinic assignment is invalid. Contact administrator.',
+        403
+      );
     }
     
     // Attach to request object for use in repositories/services
@@ -67,6 +59,9 @@ export async function attachClinicContext(request, reply) {
     // Also attach to reply locals for logging/debugging
     reply.locals = reply.locals || {};
     reply.locals.clinicId = clinicId;
+    reply.locals.clinicName = clinic.name;
+    
+    request.log.info({ clinicId, clinicName: clinic.name }, 'Clinic context attached from JWT');
     
   } catch (err) {
     if (err instanceof AppError) {
@@ -78,34 +73,7 @@ export async function attachClinicContext(request, reply) {
 }
 
 /**
- * Get the main clinic ID from database
- * Cached for performance (in production, use Redis or similar)
- * 
- * @param {import('fastify').FastifyRequest} request
- * @returns {Promise<string>} Clinic UUID
- */
-let mainClinicIdCache = null;
-
-async function getMainClinicId(request) {
-  if (mainClinicIdCache) {
-    return mainClinicIdCache;
-  }
-  
-  // Query database for main clinic
-  const mainClinic = await request.server.db('clinics')
-    .where({ slug: 'smilefix-main-clinic' })
-    .first('id');
-  
-  if (!mainClinic) {
-    throw new AppError('Main clinic not found - run migrations', 500);
-  }
-  
-  mainClinicIdCache = mainClinic.id;
-  return mainClinicIdCache;
-}
-
-/**
- * Enforces clinic isolation on patient queries
+ * Enforces clinic isolation on queries
  * MUST be used after attachClinicContext
  * 
  * @param {import('fastify').FastifyRequest} request
@@ -127,7 +95,7 @@ export async function enforceClinicIsolation(request, reply) {
  * 
  * @example
  * const patients = await addClinicFilter(
- *   request.server.knex('patients'),
+ *   request.server.db('patients'),
  *   request.clinicId
  * ).where({ id: patientId });
  * 
@@ -137,14 +105,4 @@ export async function enforceClinicIsolation(request, reply) {
  */
 export function addClinicFilter(query, clinicId) {
   return query.where({ clinic_id: clinicId });
-}
-
-/**
- * Clear clinic ID cache (for testing)
- * Call this between tests to ensure clean state
- * 
- * @internal
- */
-export function clearClinicCache() {
-  mainClinicIdCache = null;
 }

@@ -136,8 +136,18 @@ export class AuthService {
 
     await this.repo.resetFailedLogin(user.id);
 
+    // TX-02: Validate user has clinic assignment before issuing token
+    if (!user.clinic_id) {
+      throw new AppError('User missing clinic assignment. Contact administrator.', 500);
+    }
+
     const permissions = ROLE_PERMISSIONS[user.role] ?? [];
-    const accessToken = signAccessToken({ sub: user.id, role: user.role, permissions });
+    const accessToken = signAccessToken({ 
+      sub: user.id, 
+      role: user.role, 
+      permissions,
+      clinic_id: user.clinic_id  // TX-02: Include clinic_id for JWT-based isolation
+    });
 
     const rawRefreshToken = randomBytes(32).toString('hex');
     const tokenHash = hashRefreshToken(rawRefreshToken);
@@ -171,8 +181,18 @@ export class AuthService {
     const user = await this.repo.findUserById(stored.user_id);
     if (!user || !user.is_active) throw new AuthenticationError('User not found or inactive');
 
+    // TX-02: Validate user has clinic assignment before issuing token
+    if (!user.clinic_id) {
+      throw new AppError('User missing clinic assignment. Contact administrator.', 500);
+    }
+
     const permissions = ROLE_PERMISSIONS[user.role] ?? [];
-    const accessToken = signAccessToken({ sub: user.id, role: user.role, permissions });
+    const accessToken = signAccessToken({ 
+      sub: user.id, 
+      role: user.role, 
+      permissions,
+      clinic_id: user.clinic_id  // TX-02: Include clinic_id for JWT-based isolation
+    });
 
     const newRawToken = randomBytes(32).toString('hex');
     const newTokenHash = hashRefreshToken(newRawToken);

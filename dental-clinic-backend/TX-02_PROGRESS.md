@@ -106,10 +106,10 @@ Role breakdown:
 
 ---
 
-## Phase 2: Module-by-Module Rollout (PENDING)
+## Phase 2: Module-by-Module Rollout (IN PROGRESS)
 
 **Order** (safest → most complex):
-1. ⏳ appointments
+1. ✅ **appointments (TX-03 COMPLETE)**
 2. ⏳ treatments/procedures
 3. ⏳ odontogram
 4. ⏳ invoices/payments/finance
@@ -122,15 +122,104 @@ Role breakdown:
 11. ⏳ (remaining modules TBD)
 
 **Per-Module Checklist**:
-- [ ] Query inventory (list all DB queries)
-- [ ] Migration (add clinic_id column)
-- [ ] Wire middleware into routes
-- [ ] Update repository/service/controller
-- [ ] Write isolation test
-- [ ] Show RED → GREEN
-- [ ] Full test suite passes
-- [ ] Verification (data migrated, no loss)
-- [ ] Review + approval before next module
+- [x] Query inventory (list all DB queries)
+- [x] Migration (add clinic_id column)
+- [x] Wire middleware into routes
+- [x] Update repository/service/controller
+- [x] Write isolation test
+- [x] Show RED → GREEN
+- [x] Full test suite passes
+- [x] Verification (data migrated, no loss)
+- [x] Review + approval before next module
+
+---
+
+### ✅ TX-03: Appointments Module Isolation (COMPLETE)
+
+**Completed**: 2026-09-05  
+**Test Results**: 13/13 tests passing (3 consecutive runs, 29/29 total suite)
+
+#### Migration Summary
+
+**Files**:
+- `20260905000000_add_clinic_id_to_appointments.js`
+
+**Data Migration Results**:
+```
+✅ Before migration: 22 appointments
+✅ After migration: 22 appointments
+✅ NULL clinic_id after backfill: 0
+✅ Distinct clinics: 1
+✅ Zero data loss confirmed
+```
+
+**Backfill Strategy**: Derived `clinic_id` from `appointments.dentist_id → users.clinic_id` (deterministic, since dentists are one-clinic-per-account)
+
+#### Queries Updated (8 total)
+
+All queries now filter by `clinic_id`:
+
+1. ✅ `findConflict` - Added `clinic_id` parameter + WHERE filter
+2. ✅ `create` - Injects `clinic_id` into data, passes to `findById`
+3. ✅ `findById` - Added `clinic_id` parameter + WHERE filter
+4. ✅ `update` - Added `clinic_id` parameter + WHERE filter
+5. ✅ `delete` - Added `clinic_id` parameter + WHERE filter
+6. ✅ `listWithFilters` - Added `clinic_id` parameter + WHERE filter
+7. ✅ `autoTransitionPastAppointments` - Added `clinic_id` parameter + WHERE filter
+8. ✅ Direct query in `deleteAppointmentHandler` - Added `clinic_id` to WHERE clause
+
+#### Service Layer Enhancements
+
+**Cross-Clinic Reference Attack Prevention**:
+- Added `validateClinicReferences(patient_id, dentist_id, clinic_id)` method
+- Validates both patient and dentist belong to the requesting user's clinic
+- Blocks creation/update with cross-clinic entity references (404 error)
+- Fixed validation logic to handle partial updates correctly (OR instead of else-if)
+
+**Data Flow**:
+```
+JWT (clinic_id) 
+  → clinicContext middleware → request.clinicId
+  → controller passes to service(data, request.clinicId)
+  → service injects into repository methods
+  → repository filters all queries by clinic_id
+```
+
+#### Isolation Test Coverage
+
+**Test File**: `appointments.isolation.test.js` (13 tests)
+
+**Scenarios Verified**:
+1. ✅ List - Returns only own clinic's appointments
+2. ✅ Get single - 404 for cross-clinic access
+3. ✅ Update - 404 for cross-clinic access
+4. ✅ Delete - 404 for cross-clinic access
+5. ✅ Create - Correctly scoped to clinic
+6. ✅ **CROSS-CLINIC REFERENCE ATTACK**: Rejects Clinic B `patient_id` (404)
+7. ✅ **CROSS-CLINIC REFERENCE ATTACK**: Rejects Clinic B `dentist_id` (404)
+8. ✅ **CONFLICT SCOPING**: No false conflicts across clinics (same dentist/time/chair in different clinics allowed)
+
+**Test Isolation**: Fixed with unique prefixes per test file (`txo2-patients-*` vs `txo3-appt-*`) and FK-aware cleanup order
+
+#### Architecture Confirmation
+
+**Dentist-Clinic Relationship** (verified against live data):
+- ✅ Dentists are modeled as one-clinic-per-account (`users.clinic_id` NOT NULL)
+- ✅ No many-to-many relationship
+- ✅ Current data: 2 dentists, both single `clinic_id`, no shared accounts
+- ✅ `findConflict` filtering by `clinic_id` is architecturally correct (not just defensive)
+
+**Rationale for explicit `clinic_id` filter**:
+- **Performance**: Direct index on `appointments.clinic_id` avoids JOIN to users
+- **Explicit security**: Makes isolation boundary visible in every query
+- **Future-proofing**: If model changes (e.g., shared resources), filter already in place
+
+#### Known Gaps (Unchanged)
+
+**Dashboard Queries** (out of scope for TX-03):
+- Dashboard's appointment queries do NOT filter by `clinic_id`
+- Known limitation, documented for future work
+- TX-03 focused only on `/api/v1/appointments` module endpoints
 
 ---
 
@@ -163,4 +252,4 @@ Role breakdown:
 
 ---
 
-**Last Updated**: 2026-09-04 (Step 1 complete)
+**Last Updated**: 2026-09-05 (TX-03: Appointments isolation complete)

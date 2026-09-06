@@ -10,8 +10,9 @@ import {
 import { successResponse, errorResponse } from '../../utils/response.js';
 
 function getService(request) {
+  // TX-04: Pass clinic_id from request to repository
   return new TreatmentsService(
-    new TreatmentsRepository(request.server.db),
+    new TreatmentsRepository(request.server.db, request.clinicId),
     new InvoicesRepository(request.server.db)
   );
 }

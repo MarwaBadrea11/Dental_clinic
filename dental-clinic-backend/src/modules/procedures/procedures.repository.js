@@ -1,19 +1,30 @@
+/**
+ * TX-04: ProceduresRepository with clinic isolation
+ * All queries MUST filter by clinic_id to prevent cross-clinic data leaks
+ */
 export class ProceduresRepository {
   /** @param {import('knex').Knex} db */
-  constructor(db) {
+  constructor(db, clinicId) {
     this.db = db;
+    this.clinicId = clinicId;
   }
 
   async findById(id) {
-    return this.db('procedure_catalog').where({ id }).first();
+    // OLD: return this.db('procedure_catalog').where({ id }).first();
+    // NEW: Add clinic_id filter
+    return this.db('procedure_catalog').where({ id, clinic_id: this.clinicId }).first();
   }
 
   async findByCode(code) {
-    return this.db('procedure_catalog').where({ code }).first();
+    // OLD: return this.db('procedure_catalog').where({ code }).first();
+    // NEW: Add clinic_id filter (code is unique per clinic, not globally)
+    return this.db('procedure_catalog').where({ code, clinic_id: this.clinicId }).first();
   }
 
   async list({ category, is_active, search, page, limit }) {
-    const baseQuery = this.db('procedure_catalog');
+    // OLD: const baseQuery = this.db('procedure_catalog');
+    // NEW: Add clinic_id filter to base query
+    const baseQuery = this.db('procedure_catalog').where({ clinic_id: this.clinicId });
 
     if (category) baseQuery.where({ category });
     if (is_active !== undefined) baseQuery.where({ is_active });
@@ -39,6 +50,8 @@ export class ProceduresRepository {
   }
 
   async create(data) {
+    // OLD: Insert without clinic_id
+    // NEW: Add clinic_id to insert
     const [procedure] = await this.db('procedure_catalog')
       .insert({
         code: data.code,
@@ -49,14 +62,17 @@ export class ProceduresRepository {
         duration_minutes: data.duration_minutes,
         icon: data.icon,
         color: data.color,
+        clinic_id: this.clinicId, // TX-04: Enforce clinic ownership
       })
       .returning('*');
     return procedure;
   }
 
   async update(id, data) {
+    // OLD: .where({ id })
+    // NEW: Add clinic_id filter (can only update own clinic's procedures)
     const [procedure] = await this.db('procedure_catalog')
-      .where({ id })
+      .where({ id, clinic_id: this.clinicId })
       .update({
         ...data,
         updated_at: this.db.fn.now(),
@@ -66,9 +82,11 @@ export class ProceduresRepository {
   }
 
   async delete(id) {
-    // Soft delete if column exists, otherwise hard delete based on your migration architecture
-    // Given the context of archiving, we perform a hard delete or dynamic check here
-    const rowsDeleted = await this.db('procedure_catalog').where({ id }).del();
+    // OLD: .where({ id })
+    // NEW: Add clinic_id filter (can only delete own clinic's procedures)
+    const rowsDeleted = await this.db('procedure_catalog')
+      .where({ id, clinic_id: this.clinicId })
+      .del();
     return rowsDeleted > 0;
   }
 }

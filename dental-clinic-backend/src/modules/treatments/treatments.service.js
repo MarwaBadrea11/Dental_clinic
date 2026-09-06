@@ -23,6 +23,9 @@ export class TreatmentsService {
   async create(dto, actorId) {
     const { procedures, ...planData } = dto;
 
+    // TX-04: Validate cross-clinic references BEFORE creating
+    await this._validateClinicReferences(planData, procedures);
+
     // Snapshot unit_cost from catalog if not provided
     const procedureRows = procedures.map((p) => ({
       procedure_id: p.procedure_id,
@@ -77,6 +80,61 @@ export class TreatmentsService {
     }
 
     return this.repo.updateProcedure(procedureId, updateData);
+  }
+
+  /**
+   * TX-04: Validate that patient_id, dentist_id, and procedure_ids all belong to the requesting clinic
+   * This prevents cross-clinic reference attacks where Clinic A tries to create a plan
+   * referencing Clinic B's patient/dentist/procedures
+   */
+  async _validateClinicReferences(planData, procedures) {
+    const db = this.repo.db;
+    const clinicId = this.repo.clinicId;
+
+    // Validate patient belongs to requesting clinic
+    const patient = await db('patients')
+      .where({ id: planData.patient_id, clinic_id: clinicId })
+      .first('id');
+    
+    if (!patient) {
+      throw new NotFoundError('Patient not found or does not belong to your clinic');
+    }
+
+    // Validate dentist belongs to requesting clinic
+    const dentist = await db('users')
+      .where({ id: planData.dentist_id, clinic_id: clinicId })
+      .first('id');
+    
+    if (!dentist) {
+      throw new NotFoundError('Dentist not found or does not belong to your clinic');
+    }
+
+    // Validate all procedure_ids belong to requesting clinic
+    if (procedures && procedures.length > 0) {
+      const procedureIds = procedures.map(p => p.procedure_id);
+      const validProcedures = await db('procedure_catalog')
+        .whereIn('id', procedureIds)
+        .where({ clinic_id: clinicId })
+        .pluck('id');
+
+      if (validProcedures.length !== procedureIds.length) {
+        const invalidIds = procedureIds.filter(id => !validProcedures.includes(id));
+        throw new NotFoundError(
+          `One or more procedures not found or do not belong to your clinic: ${invalidIds.join(', ')}`
+        );
+      }
+    }
+
+    // Optional: Validate appointment_id if provided
+    if (planData.appointment_id) {
+      const appointment = await db('appointments')
+        .where({ id: planData.appointment_id, clinic_id: clinicId })
+        .first('id');
+      
+      if (!appointment) {
+        throw new NotFoundError('Appointment not found or does not belong to your clinic');
+      }
+    }
   }
 
   /** Build and insert a DRAFT invoice from completed treatment plan procedures */

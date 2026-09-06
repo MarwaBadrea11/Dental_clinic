@@ -1,5 +1,6 @@
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
+import { attachClinicContext } from '../../middleware/clinicContext.js';
 import {
   listTreatmentPlansHandler,
   getTreatmentPlanHandler,
@@ -9,9 +10,13 @@ import {
 } from './treatments.controller.js';
 
 export async function treatmentsRoutes(fastify) {
-  fastify.get('/',    { preHandler: [authenticate, authorize('treatments:read')] }, listTreatmentPlansHandler);
-  fastify.get('/:id', { preHandler: [authenticate, authorize('treatments:read')] }, getTreatmentPlanHandler);
-  fastify.post('/',   { preHandler: [authenticate, authorize('treatments:*')]    }, createTreatmentPlanHandler);
-  fastify.patch('/:id', { preHandler: [authenticate, authorize('treatments:*')] }, updateTreatmentPlanHandler);
-  fastify.patch('/:id/procedures/:procedureId', { preHandler: [authenticate, authorize('treatments:*')] }, updateProcedureStatusHandler);
+  // TX-04: All routes use clinicContext for isolation
+  const readHandlers = [authenticate, attachClinicContext, authorize('treatments:read')];
+  const mutationHandlers = [authenticate, attachClinicContext, authorize('treatments:*')];
+
+  fastify.get('/',    { preHandler: readHandlers }, listTreatmentPlansHandler);
+  fastify.get('/:id', { preHandler: readHandlers }, getTreatmentPlanHandler);
+  fastify.post('/',   { preHandler: mutationHandlers }, createTreatmentPlanHandler);
+  fastify.patch('/:id', { preHandler: mutationHandlers }, updateTreatmentPlanHandler);
+  fastify.patch('/:id/procedures/:procedureId', { preHandler: mutationHandlers }, updateProcedureStatusHandler);
 }

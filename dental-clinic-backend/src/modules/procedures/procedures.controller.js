@@ -2,7 +2,8 @@ import { ProceduresRepository } from './procedures.repository.js';
 import { successResponse } from '../../utils/response.js';
 
 function getRepository(request) {
-  return new ProceduresRepository(request.db || request.server.db);
+  // TX-04: Pass clinic_id from request to repository
+  return new ProceduresRepository(request.db || request.server.db, request.clinicId);
 }
 
 export async function listProceduresHandler(request, reply) {

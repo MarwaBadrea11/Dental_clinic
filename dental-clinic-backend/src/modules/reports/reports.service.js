@@ -5,16 +5,25 @@ import { ReportsRepository } from './reports.repository.js';
 const CACHE_TTL_MINUTES = 30;
 
 export class ReportsService {
-  /** @param {import('knex').Knex} db */
-  constructor(db) {
+  /**
+   * @param {import('knex').Knex} db
+   * @param {string} [clinicId] - TX-06: required for financial report isolation
+   */
+  constructor(db, clinicId) {
     this.db = db;
-    this.repo = new ReportsRepository(db);
+    this.clinicId = clinicId;
+    this.repo = new ReportsRepository(db, clinicId);
   }
 
+  /**
+   * TX-06: Cache is scoped by clinic_id. A row with clinic_id = NULL (written
+   * before this fix) will never match here, since `clinic_id = <uuid>`
+   * excludes NULLs - it just expires and is never read again.
+   */
   async _getCached(reportType, params) {
     try {
       const row = await this.db('report_snapshots')
-        .where({ report_type: reportType })
+        .where({ report_type: reportType, clinic_id: this.clinicId })
         .whereRaw(`params = ?::jsonb`, [JSON.stringify(params)])
         .where('expires_at', '>', this.db.fn.now())
         .orderBy('created_at', 'desc')
@@ -30,6 +39,7 @@ export class ReportsService {
       const expiresAt = new Date(Date.now() + CACHE_TTL_MINUTES * 60 * 1000);
       await this.db('report_snapshots').insert({
         report_type: reportType,
+        clinic_id: this.clinicId,
         params: JSON.stringify(params),
         data: JSON.stringify(data),
         generated_by: generatedBy || null,
@@ -49,6 +59,9 @@ export class ReportsService {
   }
 
   async getInventoryReport(params, userId) {
+    // NOTE: inventory itself is not yet clinic-scoped (see class doc on ReportsRepository) -
+    // caching here is still keyed by clinic_id defensively, so this stops leaking
+    // the moment inventorySummary() gets its own clinic_id filter later.
     const cached = await this._getCached('INVENTORY', params);
     if (cached) return cached;
     const data = await this.repo.inventorySummary(params);

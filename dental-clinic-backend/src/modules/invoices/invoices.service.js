@@ -6,6 +6,43 @@ export class InvoicesService {
     this.repo = repo;
   }
 
+  /**
+   * TX-06: Validate that patient_id (required) and, when provided,
+   * appointment_id/treatment_plan_id belong to the requesting clinic.
+   * Prevents cross-clinic reference attacks on invoice creation.
+   */
+  async _validateClinicReferences({ patient_id, appointment_id, treatment_plan_id }) {
+    const clinicId = this.repo.clinicId;
+
+    const patient = await this.repo.db('patients')
+      .where({ id: patient_id, clinic_id: clinicId })
+      .select('id')
+      .first();
+    if (!patient) {
+      throw new NotFoundError('Patient not found or does not belong to your clinic');
+    }
+
+    if (appointment_id) {
+      const appointment = await this.repo.db('appointments')
+        .where({ id: appointment_id, clinic_id: clinicId })
+        .select('id')
+        .first();
+      if (!appointment) {
+        throw new NotFoundError('Appointment not found or does not belong to your clinic');
+      }
+    }
+
+    if (treatment_plan_id) {
+      const plan = await this.repo.db('treatment_plans')
+        .where({ id: treatment_plan_id, clinic_id: clinicId })
+        .select('id')
+        .first();
+      if (!plan) {
+        throw new NotFoundError('Treatment plan not found or does not belong to your clinic');
+      }
+    }
+  }
+
   async list(query) {
     await this.repo.markOverdue();
     return this.repo.list(query);
@@ -19,6 +56,9 @@ export class InvoicesService {
   }
 
   async create(dto, actorId) {
+    // TX-06: Validate patient/appointment/treatment-plan references belong to this clinic
+    await this._validateClinicReferences(dto);
+
     const subtotal = dto.line_items.reduce((sum, li) => sum + li.total, 0);
     const taxAmount = +(subtotal * dto.tax_rate).toFixed(2);
     const totalAmount = +(subtotal + taxAmount).toFixed(2);
@@ -161,6 +201,7 @@ export class InvoicesService {
     // جلب بيانات الحسابات المعلقة والمستحقة للمرضى للجدول السفلي المالي
     const outstandingDebts = await this.repo.db('invoices as i')
       .join('patients as p', 'i.patient_id', 'p.id')
+      .where('i.clinic_id', this.repo.clinicId)  // TX-06: Clinic isolation
       .whereIn('i.status', ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'])
       .orderBy('i.total_amount', 'desc')
       .limit(5)

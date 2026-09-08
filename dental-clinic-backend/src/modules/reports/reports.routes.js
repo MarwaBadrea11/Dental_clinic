@@ -1,5 +1,6 @@
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
+import { attachClinicContext } from '../../middleware/clinicContext.js';
 import {
   FinancialReportSchema,
   InventoryReportSchema,
@@ -18,14 +19,14 @@ import {
 } from './reports.controller.js';
 
 export async function reportsRoutes(fastify) {
-  // Financial
-  fastify.get('/financial', { 
-    preHandler: [authenticate, authorize('finance:*')],
+  // Financial - TX-06: clinic-isolated
+  fastify.get('/financial', {
+    preHandler: [authenticate, attachClinicContext, authorize('finance:*')],
     schema: { query: FinancialReportSchema }
   }, getFinancialReportHandler);
 
-  fastify.get('/financial/export', { 
-    preHandler: [authenticate, authorize('finance:*')],
+  fastify.get('/financial/export', {
+    preHandler: [authenticate, attachClinicContext, authorize('finance:*')],
     schema: { query: FinancialReportSchema.merge(ExportQuerySchema) }
   }, exportFinancialReportHandler);
 

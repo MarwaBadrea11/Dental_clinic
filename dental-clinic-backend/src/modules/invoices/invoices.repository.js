@@ -1,7 +1,15 @@
-/** @param {import('knex').Knex} db */
+/**
+ * TX-06: InvoicesRepository with clinic isolation
+ * All queries MUST filter by clinic_id to prevent cross-clinic data leaks
+ */
 export class InvoicesRepository {
-  constructor(db) {
+  /**
+   * @param {import('knex').Knex} db
+   * @param {string} clinicId
+   */
+  constructor(db, clinicId) {
     this.db = db;
+    this.clinicId = clinicId;
   }
 
   /** Parse line_items from JSON string to array if needed */
@@ -14,12 +22,13 @@ export class InvoicesRepository {
   }
 
   async findById(id) {
-    const row = await this.db('invoices').where({ id }).first();
+    const row = await this.db('invoices').where({ id, clinic_id: this.clinicId }).first();  // TX-06: Clinic isolation
     return this._parseInvoice(row);
   }
 
   async list({ patient_id, status, from, to, page, limit, search }) {
     const q = this.db('invoices as i')
+      .where('i.clinic_id', this.clinicId)  // TX-06: Clinic isolation
       .join('patients as p', 'i.patient_id', 'p.id')
       .orderBy('i.created_at', 'desc')
       .select('i.*', this.db.raw("p.first_name || ' ' || p.last_name as patient_name"));
@@ -44,40 +53,51 @@ export class InvoicesRepository {
   }
 
   async create(data) {
-    const [row] = await this.db('invoices').insert(data).returning('*');
+    const [row] = await this.db('invoices')
+      .insert({ ...data, clinic_id: this.clinicId })  // TX-06: Enforce clinic ownership
+      .returning('*');
     return this._parseInvoice(row);
   }
 
   async update(id, data) {
-    const [row] = await this.db('invoices').where({ id }).update(data).returning('*');
+    const [row] = await this.db('invoices')
+      .where({ id, clinic_id: this.clinicId })  // TX-06: Clinic isolation
+      .update(data)
+      .returning('*');
     return this._parseInvoice(row);
   }
 
   getPayments(invoice_id) {
-    return this.db('payments').where({ invoice_id }).orderBy('paid_at', 'asc');
+    return this.db('payments').where({ invoice_id, clinic_id: this.clinicId }).orderBy('paid_at', 'asc');  // TX-06
   }
 
   async recordPayment(data) {
-    const [row] = await this.db('payments').insert(data).returning('*');
+    const [row] = await this.db('payments')
+      .insert({ ...data, clinic_id: this.clinicId })  // TX-06: Enforce clinic ownership
+      .returning('*');
     return row;
   }
 
   async sumPayments(invoice_id) {
-    const [{ total }] = await this.db('payments').where({ invoice_id }).sum('amount as total');
+    const [{ total }] = await this.db('payments')
+      .where({ invoice_id, clinic_id: this.clinicId })  // TX-06: Clinic isolation
+      .sum('amount as total');
     return Number(total ?? 0);
   }
 
   /** تم إصلاح الدالة هنا بضبط الصيغة الخاصة بـ Knex raw */
   async patientDebt(patient_id) {
     const [{ total }] = await this.db('invoices')
-      .where({ patient_id })
+      .where({ patient_id, clinic_id: this.clinicId })  // TX-06: Clinic isolation
       .whereNotIn('status', ['PAID', 'CANCELLED'])
       .select(this.db.raw('COALESCE(SUM(total_amount - amount_paid), 0) AS total'));
     return Number(total ?? 0);
   }
 
   async financeSummary({ from, to }) {
-    const q = this.db('invoices').whereNotIn('status', ['DRAFT', 'CANCELLED']);
+    const q = this.db('invoices')
+      .where('clinic_id', this.clinicId)  // TX-06: Clinic isolation
+      .whereNotIn('status', ['DRAFT', 'CANCELLED']);
     if (from) q.where('created_at', '>=', from);
     if (to) q.where('created_at', '<=', this.db.raw('?::timestamptz', [`${to}T23:59:59Z`]));
 
@@ -89,6 +109,7 @@ export class InvoicesRepository {
     );
 
     const monthlyRevenue = await this.db('invoices')
+      .where('clinic_id', this.clinicId)  // TX-06: Clinic isolation
       .whereNotIn('status', ['DRAFT', 'CANCELLED'])
       .select(
         this.db.raw("TO_CHAR(created_at, 'Mon') as month"),
@@ -99,6 +120,7 @@ export class InvoicesRepository {
 
     const methodBreakdown = await this.db('payments as p')
       .join('invoices as i', 'p.invoice_id', 'i.id')
+      .where('p.clinic_id', this.clinicId)  // TX-06: Clinic isolation
       .whereNotIn('i.status', ['DRAFT', 'CANCELLED'])
       .modify((q) => {
         if (from) q.where('p.paid_at', '>=', from);
@@ -123,8 +145,8 @@ export class InvoicesRepository {
         revenue: Number(m.revenue),
         target: Number(m.revenue) * 0.95
       })),
-      payment_methods: methodBreakdown.map((r) => ({ 
-        method: r.method, 
+      payment_methods: methodBreakdown.map((r) => ({
+        method: r.method,
         total: Number(r.total),
         count: Number(r.count)
       })),
@@ -133,6 +155,7 @@ export class InvoicesRepository {
 
   markOverdue() {
     return this.db('invoices')
+      .where('clinic_id', this.clinicId)  // TX-06: Clinic isolation
       .whereIn('status', ['ISSUED', 'PARTIALLY_PAID'])
       .where('due_date', '<', this.db.raw('CURRENT_DATE'))
       .update({ status: 'OVERDUE' });
@@ -142,6 +165,7 @@ export class InvoicesRepository {
     const payments = await this.db('payments as p')
       .leftJoin('payment_refunds as r', 'r.payment_id', 'p.id')
       .where('p.invoice_id', invoice_id)
+      .where('p.clinic_id', this.clinicId)  // TX-06: Clinic isolation
       .orderBy('p.paid_at', 'asc')
       .select(
         'p.*',
@@ -165,21 +189,28 @@ export class InvoicesRepository {
   }
 
   recordRefund(data) {
-    return this.db('payment_refunds').insert(data).returning('*').then(([row]) => row);
+    return this.db('payment_refunds')
+      .insert({ ...data, clinic_id: this.clinicId })  // TX-06: Enforce clinic ownership
+      .returning('*')
+      .then(([row]) => row);
   }
 
   async sumRefunds(payment_id) {
-    const [{ total }] = await this.db('payment_refunds').where({ payment_id }).sum('amount as total');
+    const [{ total }] = await this.db('payment_refunds')
+      .where({ payment_id, clinic_id: this.clinicId })  // TX-06: Clinic isolation
+      .sum('amount as total');
     return Number(total ?? 0);
   }
 
   async sumAllRefundsForInvoice(invoice_id) {
-    const [{ total }] = await this.db('payment_refunds').where({ invoice_id }).sum('amount as total');
+    const [{ total }] = await this.db('payment_refunds')
+      .where({ invoice_id, clinic_id: this.clinicId })  // TX-06: Clinic isolation
+      .sum('amount as total');
     return Number(total ?? 0);
   }
 
   async listByPatient(patient_id, { page = 1, limit = 20, status } = {}) {
-    const base = this.db('invoices').where({ patient_id });
+    const base = this.db('invoices').where({ patient_id, clinic_id: this.clinicId });  // TX-06: Clinic isolation
     if (status) base.where({ status });
 
     const [{ count }] = await base.clone().count('id as count');

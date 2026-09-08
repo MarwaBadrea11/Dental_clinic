@@ -3,7 +3,10 @@ import { DashboardRepository } from './dashboard.repository.js';
 import { successResponse } from '../../utils/response.js';
 
 function getService(request) {
-  return new DashboardService(new DashboardRepository(request.server.db));
+  // TX-05: Pass clinicId to repository for isolation
+  return new DashboardService(
+    new DashboardRepository(request.server.db, request.clinicId)
+  );
 }
 
 export async function getDashboardStatsHandler(request, reply) {

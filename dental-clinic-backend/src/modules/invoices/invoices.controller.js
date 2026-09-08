@@ -11,7 +11,8 @@ import { successResponse, errorResponse } from '../../utils/response.js';
 import { z } from 'zod';
 
 function getService(request) {
-  return new InvoicesService(new InvoicesRepository(request.server.db));
+  // TX-06: Pass clinicId to repository for isolation
+  return new InvoicesService(new InvoicesRepository(request.server.db, request.clinicId));
 }
 
 function parseValidation(schema, data, reply) {

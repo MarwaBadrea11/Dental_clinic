@@ -2,7 +2,8 @@ import { ReportsService } from './reports.service.js';
 import { successResponse } from '../../utils/response.js';
 
 function getService(request) {
-  return new ReportsService(request.db || request.server.db);
+  // TX-06: Pass clinicId (set by attachClinicContext) for financial report isolation
+  return new ReportsService(request.db || request.server.db, request.clinicId);
 }
 
 export async function getFinancialReportHandler(request, reply) {

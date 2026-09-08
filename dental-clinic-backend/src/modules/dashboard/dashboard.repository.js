@@ -51,15 +51,14 @@ export class DashboardRepository {
   }
 
   /**
-   * Sum of (total_amount - amount_paid) for OVERDUE invoices.
+   * Sum of (total_amount - amount_paid) for OVERDUE invoices in this clinic.
    * Also returns the count of overdue invoices.
-   * 
-   * TX-05: UNFILTERED - invoices table does not have clinic_id column yet.
-   * This is a KNOWN ACTIVE LEAK - deferred to future TX (invoices schema migration).
+   *
+   * TX-06: invoices now has clinic_id (see TX-06 invoices migration) - filtered.
    */
   async pendingPaymentsSummary() {
     const row = await this.db('invoices')
-      .where('status', 'OVERDUE')
+      .where({ clinic_id: this.clinicId, status: 'OVERDUE' })  // TX-06: Clinic isolation
       .select(
         this.db.raw('COALESCE(SUM(total_amount - amount_paid), 0) as total_overdue'),
         this.db.raw('COUNT(id) as overdue_count')

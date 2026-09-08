@@ -1,17 +1,29 @@
 /**
  * ReportsRepository
  * All heavy, multi-table Knex queries for the reporting system.
+ *
+ * TX-06: financialSummary() is clinic-isolated (invoices/payments have
+ * clinic_id as of TX-06). inventorySummary(), payrollSummary() and
+ * auditLogs() are NOT yet isolated - their underlying tables
+ * (inventory, staff/salary_records, audit_logs) do not have clinic_id.
+ * That is separate, still-open work.
  */
 export class ReportsRepository {
-  /** @param {import('knex').Knex} db */
-  constructor(db) {
+  /**
+   * @param {import('knex').Knex} db
+   * @param {string} [clinicId] - required for financialSummary()
+   */
+  constructor(db, clinicId) {
     this.db = db;
+    this.clinicId = clinicId;
   }
 
   // ─── Financial Report ──────────────────────────────────────────────────────
 
   async financialSummary({ from, to } = {}) {
-    const base = this.db('invoices').whereNotIn('status', ['DRAFT', 'CANCELLED']);
+    const base = this.db('invoices')
+      .where('clinic_id', this.clinicId)  // TX-06: Clinic isolation
+      .whereNotIn('status', ['DRAFT', 'CANCELLED']);
     if (from) base.where('created_at', '>=', from);
     if (to)   base.where('created_at', '<=', `${to}T23:59:59Z`);
 
@@ -33,6 +45,7 @@ export class ReportsRepository {
 
     const byMethod = await this.db('payments as p')
       .join('invoices as i', 'p.invoice_id', 'i.id')
+      .where('p.clinic_id', this.clinicId)  // TX-06: Clinic isolation
       .modify((q) => {
         if (from) q.where('p.paid_at', '>=', from);
         if (to)   q.where('p.paid_at', '<=', `${to}T23:59:59Z`);
@@ -44,6 +57,7 @@ export class ReportsRepository {
       .orderBy('total', 'desc');
 
     const topProcedures = await this.db('invoices as i')
+      .where('i.clinic_id', this.clinicId)  // TX-06: Clinic isolation
       .modify((q) => {
         if (from) q.where('i.created_at', '>=', from);
         if (to)   q.where('i.created_at', '<=', `${to}T23:59:59Z`);

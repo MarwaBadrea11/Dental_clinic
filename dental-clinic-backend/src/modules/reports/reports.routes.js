@@ -30,14 +30,14 @@ export async function reportsRoutes(fastify) {
     schema: { query: FinancialReportSchema.merge(ExportQuerySchema) }
   }, exportFinancialReportHandler);
 
-  // Inventory
+  // Inventory - TX-07: clinic-isolated
   fastify.get('/inventory', { 
-    preHandler: [authenticate, authorize('inventory:read')],
+    preHandler: [authenticate, attachClinicContext, authorize('inventory:read')],
     schema: { query: InventoryReportSchema }
   }, getInventoryReportHandler);
 
   fastify.get('/inventory/export', { 
-    preHandler: [authenticate, authorize('inventory:read')],
+    preHandler: [authenticate, attachClinicContext, authorize('inventory:read')],
     schema: { query: InventoryReportSchema.merge(ExportQuerySchema) }
   }, exportInventoryReportHandler);
 

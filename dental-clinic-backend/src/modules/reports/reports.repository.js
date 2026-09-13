@@ -2,11 +2,13 @@
  * ReportsRepository
  * All heavy, multi-table Knex queries for the reporting system.
  *
- * TX-06: financialSummary() is clinic-isolated (invoices/payments have
- * clinic_id as of TX-06). inventorySummary(), payrollSummary() and
- * auditLogs() are NOT yet isolated - their underlying tables
- * (inventory, staff/salary_records, audit_logs) do not have clinic_id.
- * That is separate, still-open work.
+ * TX-06: financialSummary() is clinic-isolated (invoices/payments have clinic_id).
+ * TX-07: inventorySummary() is NOW clinic-isolated (inventory has clinic_id).
+ * 
+ * REMAINING GAPS (not yet isolated):
+ * - payrollSummary() - staff/salary_records/attendance_logs lack clinic_id
+ * - auditLogs() - audit_logs table lacks clinic_id
+ * These require separate TX work (TX-08+).
  */
 export class ReportsRepository {
   /**
@@ -79,7 +81,15 @@ export class ReportsRepository {
   // ─── Inventory Report ──────────────────────────────────────────────────────
 
   async inventorySummary({ category, lowStockOnly } = {}) {
+    // TX-07: OLD - no clinic_id filter (was one of the 3 known gaps from TX-05/06)
+    // const q = this.db('inventory as ii')
+    //   .select(...)
+    //   .whereNull('ii.deleted_at')
+    //   .orderBy('ii.material_name');
+    
+    // TX-07: NEW - filter by clinic_id (closes inventorySummary gap)
     const q = this.db('inventory as ii')
+      .where('ii.clinic_id', this.clinicId)
       .select(
         'ii.id', 'ii.material_name as name', 'ii.quantity', 'ii.unit',
         'ii.min_stock_alert as reorder_level', 'ii.unit_price as unit_cost',
@@ -95,7 +105,14 @@ export class ReportsRepository {
 
     const items = await q;
 
+    // TX-07: OLD - summary query had no clinic_id filter
+    // const [summary] = await this.db('inventory')
+    //   .whereNull('deleted_at')
+    //   .select(...)
+    
+    // TX-07: NEW - filter summary aggregates by clinic_id
     const [summary] = await this.db('inventory')
+      .where('clinic_id', this.clinicId)
       .whereNull('deleted_at')
       .select(
         this.db.raw('COUNT(*)::int AS total_items'),

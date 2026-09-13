@@ -1,5 +1,6 @@
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
+import { attachClinicContext } from '../../middleware/clinicContext.js';
 import {
   listInventoryHandler,
   getInventoryItemHandler,
@@ -11,8 +12,9 @@ import {
 } from './inventory.controller.js';
 
 export async function inventoryRoutes(fastify) {
-  const readAuth  = [authenticate, authorize('inventory:read')];
-  const writeAuth = [authenticate, authorize('inventory:*')];
+  // TX-07: Added attachClinicContext to enforce clinic isolation
+  const readAuth  = [authenticate, authorize('inventory:read'), attachClinicContext];
+  const writeAuth = [authenticate, authorize('inventory:*'), attachClinicContext];
 
   fastify.get('/',           { preHandler: readAuth  }, listInventoryHandler);
   fastify.get('/alerts',     { preHandler: readAuth  }, getInventoryAlertsHandler);

@@ -4,7 +4,8 @@ import { CreateInventorySchema, UpdateInventorySchema, RestockInventorySchema } 
 import { successResponse, errorResponse } from '../../utils/response.js';
 
 function getService(request) {
-  return new InventoryService(new InventoryRepository(request.server.db));
+  // TX-07: Pass clinicId from JWT context to repository for clinic isolation
+  return new InventoryService(new InventoryRepository(request.server.db, request.clinicId));
 }
 
 function parseValidation(schema, body, reply) {
